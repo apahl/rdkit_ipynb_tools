@@ -1,0 +1,10 @@
+.ipynb_checkpoints/
+.kdev4/
+*.pkl
+*.png
+*.mrv
+*.mol
+*.pyc
+.spyderproject
+commit_msg.txt
+snippets.txt

@@ -1,0 +1,30 @@
+body{
+  background-color: #FFFFFF;
+  font-family: freesans, arial, verdana, sans-serif;
+}
+th {
+  border-collapse: collapse;
+  border-width: thin;
+  border-style: solid;
+  border-color: black;
+  text-align: left;
+  font-weight: bold;
+}
+td {
+  border-collapse:collapse;
+  border-width:thin;
+  border-style:solid;
+  border-color:black;
+}
+table {
+  border-collapse:collapse;
+  border-width:thin;
+  border-style:solid;
+  border-color:black;
+  background-color: #FFFFFF;
+  text-align: left;
+}
+
+
+
+
