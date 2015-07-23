@@ -43,7 +43,6 @@ else:
 
 print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
-
 JSME_OPTIONS = {"css": ["css/style.css", "css/collapsible_list.css"], 
                 "scripts": ["lib/jsme/jsme.nocache.js"]}
 
@@ -227,6 +226,7 @@ def mol_table(sdf_list, id_prop=None, highlight=None):
         for prop in prop_list:
             td_opt = {"align": "center"}
             if prop in mol_props:
+                td_opt["title"] = prop
                 prop_val = mol.GetProp(prop)
                 if highlight:
                     eval_str = None

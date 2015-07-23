@@ -13,8 +13,9 @@ import os.path as op
 TABLE_OPTIONS = {"cellspacing": "1", "cellpadding": "1", "border": "1", 
                  "align": "", "height": "60px", "summary": "Table", } # "width": "800px",
 
-PAGE_OPTIONS = {"icon": "icons/chart_bar.png", "css": ["css/style.css", "css/collapsible_list.css"], 
-                "scripts": ["lib/jquery.js", "lib/highcharts.js", "script/folding.js"]}
+# PAGE_OPTIONS = {"icon": "icons/chart_bar.png", "css": ["css/style.css", "css/collapsible_list.css"], 
+#                 "scripts": ["lib/jquery.js", "lib/highcharts.js", "script/folding.js"]}
+PAGE_OPTIONS = {"icon": "icons/benzene.png", "css": ["css/style.css"]}
 JSME = "lib/jsme/jsme.nocache.js"
 
 HTML_FILE_NAME = "html/mol_table/index.html"
