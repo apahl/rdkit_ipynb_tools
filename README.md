@@ -8,6 +8,6 @@ When an ID property is given, the table becomes interactive and compounds can be
 - *jsme*: Display Peter Ertl's Javascript Molecule Editor to enter a molecule directly in the IPython notebook (*how cool is that??*)
 
 
-A demonstration is worth a thousand words, so please have a look at the example notebook [rdkit_ipynb_tools.ipynb](http://nbviewer.ipython.org/github/apahl/rdkit_ipynb_tools/blob/master/rdkit_ipynb_tools.ipynb).
+A demonstration is worth a thousand words, so please have a look at the example notebook [rdkit_ipynb_tools.ipynb](http://nbviewer.ipython.org/github/apahl/rdkit_ipynb_tools/blob/master/rdkit_ipynb_tools_1.ipynb).
 
 The toolkit was written with and for Python3, but should also work on Python2. If not, please let me know.

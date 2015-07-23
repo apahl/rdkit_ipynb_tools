@@ -18,6 +18,7 @@ Created on Wed Jun 02 2015
 @author: pahl
 """
 
+from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
@@ -160,10 +161,26 @@ def mol_table(sdf_list, id_prop=None):
     td_opt = {"align": "center"}
     header_opt = {"bgcolor": "#94CAEF"}
     table_list = []
+    prop_list = list_fields(sdf_list)
+    guessed_id = None
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp))
+        if not id_prop in prop_list:
+            raise LookupError("id_prop not found in data set.")
+        guessed_id = id_prop
+    else: # try to guess an id_prop
+        for prop in prop_list:
+            if prop.lower().endswith("id"):
+                guessed_id = prop
+                break
 
-    prop_list = list_fields(sdf_list)
+    if guessed_id:
+        # make sure that the id_prop (or the guessed id prop) is first:
+        prop_list.pop(prop_list.index(guessed_id))
+        tmp_list = [guessed_id]
+        tmp_list.extend(prop_list)
+        prop_list = tmp_list
+
     cells = html.td(html.b("#"), header_opt)
     cells.extend(html.td(html.b("Molecule"), header_opt))
     for prop in prop_list:
