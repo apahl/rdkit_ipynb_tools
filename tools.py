@@ -152,9 +152,11 @@ def list_fields(sdf_list):
     return list(set(field_list))
 
 
-def mol_table(sdf_list, id_prop=None):
+def mol_table(sdf_list, id_prop=None, highlight=None):
     """
     input:   list of RDKit molecules
+    highlight: dict of properties (special: *all*) and values to highlight cells,
+               e.g. {"activity": "< 50"}
     returns: HTML table as TEXT to embed in IPython or a web page."""
     
     time_stamp = time.strftime("%y%m%d%H%M%S")
@@ -223,8 +225,21 @@ def mol_table(sdf_list, id_prop=None):
             cells.extend(html.td(html.img(img_src, img_opt)))
         
         for prop in prop_list:
+            td_opt = {"align": "center"}
             if prop in mol_props:
-                cells.extend(html.td(mol.GetProp(prop), td_opt))
+                prop_val = mol.GetProp(prop)
+                if highlight:
+                    eval_str = None
+                    if "*all*" in highlight:
+                        if not guessed_id or (guessed_id and prop != guessed_id):
+                            eval_str = " ".join([prop_val, highlight["*all*"]])
+                    else:
+                        if prop in highlight:
+                            eval_str = " ".join([prop_val, highlight[prop]])
+                    if eval_str and eval(eval_str):
+                        td_opt["bgcolor"] = "#99ff99"
+                    
+                cells.extend(html.td(prop_val, td_opt))
             else:
                 cells.extend(html.td("", td_opt))
         
@@ -239,8 +254,8 @@ def mol_table(sdf_list, id_prop=None):
     return "".join(table_list)
 
 
-def show_table(sdf_list, id_prop=None):
-    return HTML(mol_table(sdf_list, id_prop))
+def show_table(sdf_list, id_prop=None, highlight=None):
+    return HTML(mol_table(sdf_list, id_prop, highlight=highlight))
 
 
 def jsme(name="mol"):
