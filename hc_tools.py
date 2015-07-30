@@ -45,20 +45,20 @@ display(HTML(HIGHCHARTS))
 
 
 class Chart():
-    #TODO: fill this stub
     def __init__(self, kind="scatter", **kwargs):
         if not kind in CHART_KINDS:
             raise ValueError("{} is not a supported chart kind ({})".format(kind, CHART_KINDS))
 
         self.kind = kind
         self.height= kwargs.get("height", 400)
-        self.chart = {}
         self.chart_id = time.strftime("%y%m%d%H%M%S")
+        self.chart = {}
         self.chart["title"] = {"text": kwargs.get("title", "{} plot".format(self.kind))}
         self.chart["subtitle"] = {"text": kwargs.get("subtitle")}
     
     
     def _data_tuples(self, d, x, y, z, pid):
+        """Generate the data tuples required for Highcharts scatter plot."""
         data = []
         dlen = len(d[x])
         for i in range(dlen):
@@ -74,8 +74,11 @@ class Chart():
     
 
     def add_data(self, d, x="x", y="y", z="z", pid="id", **kwargs):
+        """Add the data to the chart.
+        d is the input dictionary, x, y [, and z] are the keys for the properties to plot.
+        pid is the optional key to a (compound) id to be displayed in the tooltip."""
         if not x in d or not y in d:
-            raise ValueError("'{x}' and '{y}' are required parameters for scatter plot, but could not be found in dict.".format(x=x, y=y))
+            raise ValueError("'{x}' and '{y}' are required parameters for scatter plot, but could not all be found in dict.".format(x=x, y=y))
         
         if len(d[x]) != len(d[y]):
             raise ValueError("'{x}' and '{y}' must have the same length.".format(x=x, y=y))
