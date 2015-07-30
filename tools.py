@@ -4,10 +4,10 @@ from __future__ import print_function, division
 Created on Thu Jul  2 10:07:56 2015
 
 @author: Axel Pahl
+@title: tools.py
 
 A set for tools to use with the RDKit in the IPython notebook
 """
-# tools.py
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -42,6 +42,7 @@ else:
     from cStringIO import StringIO as IO
 
 print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
+
 
 JSME_OPTIONS = {"css": ["css/style.css", "css/collapsible_list.css"], 
                 "scripts": ["lib/jsme/jsme.nocache.js"]}
@@ -151,6 +152,23 @@ def list_fields(sdf_list):
     return list(set(field_list))
 
 
+def guess_id_prop(prop_list):  # try to guess an id_prop
+    for prop in prop_list:
+        if prop.lower().endswith("id"):
+            return prop
+    return None
+
+
+def get_value(str_val):
+    try:
+        val = float(str_val)
+        if val == int(val):
+            val = int(val)
+    except ValueError:
+        val = str_val
+    return val
+
+
 def mol_table(sdf_list, id_prop=None, highlight=None):
     """
     input:   list of RDKit molecules
@@ -163,18 +181,14 @@ def mol_table(sdf_list, id_prop=None, highlight=None):
     header_opt = {"bgcolor": "#94CAEF"}
     table_list = []
     prop_list = list_fields(sdf_list)
-    guessed_id = None
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp))
         if not id_prop in prop_list:
             raise LookupError("id_prop not found in data set.")
         guessed_id = id_prop
     else: # try to guess an id_prop
-        for prop in prop_list:
-            if prop.lower().endswith("id"):
-                guessed_id = prop
-                break
-
+        guessed_id = guess_id_prop(prop_list)
+        
     if guessed_id:
         # make sure that the id_prop (or the guessed id prop) is first:
         prop_list.pop(prop_list.index(guessed_id))
@@ -265,3 +279,37 @@ def jsme(name="mol"):
     time_stamp = time.strftime("%y%m%d%H%M%S")
     
     return HTML(JSME_FORM.format(ts=time_stamp, var_name=name))
+
+
+def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
+    """Generate a dictionary from the properties of a list of molecules.
+    Currently not including the structure.
+    If <props> contains a list of property names, then only these properties plus the <id_prop> are returned.
+    Returns dict"""
+    
+    if not prop_list:
+        prop_list = list_fields(sdf_list)
+        
+    if id_prop:
+        if not id_prop in prop_list:
+            raise LookupError("id_prop not found in data set.")
+        guessed_id = id_prop
+    else: 
+        guessed_id = guess_id_prop(prop_list)
+
+    if not props:
+        props = prop_list
+    if guessed_id and not guessed_id in props:
+        props.append(guessed_id)
+    
+    df_dict = {prop: [] for prop in props}
+
+    for mol in sdf_list:
+        mol_props = list(mol.GetPropNames())
+        for prop in props:
+            if prop in mol_props:
+                df_dict[prop].append(get_value(mol.GetProp(prop)))
+            else:
+                df_dict[prop].append(pd.np.NaN)
+
+    return df_dict
