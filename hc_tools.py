@@ -93,13 +93,11 @@ class Chart():
             color_series_y[d[color_by][i]].append(d[y][i])
             if pid:
                 color_series_id[d[color_by][i]].append(d[pid][i])
-        print(color_series_id)
 
         for name in names:
             tmp_d = {x: color_series_x[name], y: color_series_y[name]}
             if pid:
                 tmp_d[pid] = color_series_id[name]
-            print(tmp_d)
             series_dict = {"name": name}
             series_dict["data"] = self._data_tuples(tmp_d, x, y, z, pid)
             series.append(series_dict)
@@ -159,7 +157,7 @@ class Chart():
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
             
             if color_by:
-                self.chart["tooltip"]["headerFormat"] = '<b>{series.name}</b><br>'
+                self.chart["tooltip"]["headerFormat"] = '<b>{color_by}: {{series.name}}</b><br>'.format(color_by=color_by)
                 series = self._data_series(d, x, y, color_by, pid)
                 self.chart["series"].extend(series)
             else:
