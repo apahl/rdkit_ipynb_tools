@@ -17,7 +17,7 @@ import json
 from . import tools
 
 # 4. IPython imports
-from IPython.html import widgets
+# from IPython.html import widgets
 from IPython.display import HTML, display
 
 HIGHCHARTS = """
