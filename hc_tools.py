@@ -51,8 +51,7 @@ class Chart():
 
         self.kind = kind
         self.height= kwargs.get("height", 400)
-        radius = kwargs.get("radius", 5)
-        radius = kwargs.get("r", 5)
+        radius = kwargs.get("r", kwargs.get("radius", 5)) # accept "r" or "radius" for this option
         self.chart_id = time.strftime("%y%m%d%H%M%S")
         self.chart = {}
         self.chart["title"] = {"text": kwargs.get("title", "{} plot".format(self.kind))}
