@@ -60,65 +60,72 @@ class Chart():
         self.chart["plotOptions"] = {"scatter": {"marker": {"radius": radius}}}
         
     
-    def _data_columns(self, d, x, y):
+    def _data_columns(self):
         """Generate the data for the Column plot"""
         data = []
         cats = []
-        dlen = len(d[x])
-        for i in range(dlen):
-            cats.append(str(d[x][i]))
-            data.append(float(d[y][i]))
+
+        for i in range(self.dlen):
+            cats.append(str(self.dx[i]))
+            data.append(float(self.dy[i]))
         
-        self.chart["series"].append({"name": y, "data": data})
+        self.chart["series"].append({"name": self.arg_y, "data": data})
         self.chart["xAxis"]["categories"] = cats
         
 
-    def _data_tuples(self, d, x, y, z, pid):
+    def _data_tuples(self, d):
         """Generate the data tuples required for Highcharts scatter plot."""
         data = []
-        dlen = len(d[x])
-        for i in range(dlen):
-            tmp_d = {"x": float(d[x][i]), "y": float(d[y][i])}
-            if z:
-                tmp_d["z"] = float(d[z][i])
-            if pid:
-                tmp_d["id"] = str(d[pid][i])
+        dx = d["x"]
+        dy = d["y"]
+        if self.arg_z:
+            dz = d["z"]
+        if self.arg_pid:
+            dpid = d["id"]
+        for i in range(len(dx)):
+            tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
+            if self.arg_z:
+                tmp_d["z"] = float(dz[i])
+            if self.arg_pid:
+                tmp_d["id"] = str(dpid[i])
 
             data.append(tmp_d)
         
         return data
     
 
-    def _data_series(self, d, x, y, color_by, pid):
+    def _data_series(self):
         # [{"name": "A", "data": [{"x": 1, "y": 2}, {"x": 2, "y": 3}]},
         #  {"name": "B", "data": [{"x": 2, "y": 3}, {"x": 3, "y": 4}]}]
-        z = None  # not implemented yet
+        self.arg_z = None  # not implemented yet
         series = []
-        names = set(str(c) for c in d[color_by])
+
+        names = set(str(c) for c in self.dcolor_by)
         color_series_x = {name: [] for name in names}
         color_series_y = {name: [] for name in names}
-        if pid:
+        if self.arg_pid:
             color_series_id = {name: [] for name in names}
         
-        for i in range(len(d[x])):
-            color_series_x[str(d[color_by][i])].append(d[x][i])
-            color_series_y[str(d[color_by][i])].append(d[y][i])
-            if pid:
-                color_series_id[str(d[color_by][i])].append(d[pid][i])
+        for i in range(self.dlen):
+            col_by_str = str(self.dcolor_by[i])
+            color_series_x[col_by_str].append(float(self.dx[i]))
+            color_series_y[col_by_str].append(float(self.dy[i]))
+            if self.arg_pid:
+                color_series_id[col_by_str].append(str(self.dpid[i]))
 
         for name in names:
-            tmp_d = {x: color_series_x[name], y: color_series_y[name]}
-            if pid:
-                tmp_d[pid] = color_series_id[name]
+            tmp_d = {"x": color_series_x[name], "y": color_series_y[name]}
+            if self.arg_pid:
+                tmp_d["id"] = color_series_id[name]
             series_dict = {"name": name}
-            series_dict["data"] = self._data_tuples(tmp_d, x, y, z, pid)
+            series_dict["data"] = self._data_tuples(tmp_d)
             series.append(series_dict)
         
         return series
         
 
 
-    def add_data(self, d, x="x", y="y", z=None, pid="id", **kwargs):
+    def add_data(self, d, x="x", y="y", pid=None, z=None, color_by=None, **kwargs):
         """Add the data to the chart.
         d is the input dictionary, x, y [, and z] are the keys for the properties to plot.
         pid is the optional key to a (compound) id to be displayed in the tooltip."""
@@ -127,16 +134,32 @@ class Chart():
         
         if len(d[x]) != len(d[y]):
             raise ValueError("'{x}' and '{y}' must have the same length.".format(x=x, y=y))
+        
+        self.arg_x = x
+        self.arg_y = y
+        self.arg_z = z
+        self.arg_color_by = color_by
+        self.arg_pid = pid
+        
+        self.dx = list(d[x])
+        self.dy = list(d[y])
+        self.dlen = len(self.dx)
             
-        if pid in d:
-            if len(d[x]) != len(d[pid]):
+        if self.arg_pid:
+            # pandas data series and pid == index
+            if not isinstance(d[x], list) and self.arg_pid == d.index.name:
+                self.dpid = list(d.index)
+            else:
+                self.dpid = list(d[pid])
+
+            if self.dlen != len(self.dpid):
                 raise ValueError("'{x}' and '{pid}' must have the same length.".format(x=x, pid=pid))
         else:
-            pid = None
+            self.arg_pid = None
 
         self.chart["credits"] = {'enabled': False}
-        self.chart["xAxis"] = {"title": {"enabled": True, "text": x}}
-        self.chart["yAxis"] = {"title": {"enabled": True, "text": y}}
+        self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
+        self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
         
         if self.kind == "scatter":
 
@@ -145,37 +168,38 @@ class Chart():
             # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
             self.chart["tooltip"]["headerFormat"] = ""
             
-            point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=x, y=y)]
+            point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=self.arg_x, y=self.arg_y)]
             if pid:
-                point_format.append("<b>{pid}:</b>  {{point.id}}".format(pid=pid))
+                point_format.append("<b>{pid}:</b>  {{point.id}}".format(pid=self.arg_pid))
             self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
 
-            color_by = kwargs.get("color_by")
-            if color_by:
-                if color_by in d:
-                    if len(d[x]) != len(d[color_by]):
-                        raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=x, color_by=color_by))
-                else:
-                    raise KeyError("'{}' was not found in d".format(color_by))
+            if self.arg_color_by:
+                if self.dlen != len(d[color_by]):
+                    raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=self.arg_x, color_by=self.arg_color_by))
+                self.dcolor_by = list(d[color_by])
             
-                if z:
-                    if len(d[x]) != len(d[z]):
-                        raise ValueError("'{x}' and '{z}' must have the same length.".format(x=x, pid=pid))
+            if self.arg_z:
+                if self.dlen != len(d[z]):
+                    raise ValueError("'{x}' and '{z}' must have the same length.".format(x=self.arg_x, pid=self.arg_pid))
+                self.dz = list(d[z])
 
             self.chart["legend"] = {'enabled': False}
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
             
-            if color_by:
-                self.chart["tooltip"]["headerFormat"] = '<b>{color_by}: {{series.name}}</b><br>'.format(color_by=color_by)
-                series = self._data_series(d, x, y, color_by, pid)
+            if self.arg_color_by:
+                self.chart["tooltip"]["headerFormat"] = '<b>{color_by}: {{series.name}}</b><br>'.format(color_by=self.arg_color_by)
+                series = self._data_series()
                 self.chart["series"].extend(series)
             else:
-                data = self._data_tuples(d, x, y, z, pid)
+                tmp_d = {"x": self.dx, "y": self.dy}
+                if self.arg_pid:
+                    tmp_d["id"] = self.dpid
+                data = self._data_tuples(tmp_d)
                 self.chart["series"].append({"name": "series", "data": data})
         
         if self.kind == "column":
             self.chart["chart"] = {"type": "column", "zoomType": "xy"}
-            self._data_columns(d, x, y)
+            self._data_columns()
 
     
     def show(self, debug=False):
