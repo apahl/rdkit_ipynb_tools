@@ -62,7 +62,6 @@ def move_col(df, col, new_pos=1):
     return new_df
     
 
-
 def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True):
     """
     Join data from file (e.g. Smiles, biol. data (tab-sep.) ) by index (set to Compound_Id) to df.

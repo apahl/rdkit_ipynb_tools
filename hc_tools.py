@@ -38,7 +38,7 @@ $chart
 </script>
 """
 
-CHART_KINDS = ["scatter"]
+CHART_KINDS = ["scatter", "column"]
 
 print("- loading highcharts...")
 display(HTML(HIGHCHARTS))
@@ -60,16 +60,29 @@ class Chart():
         self.chart["plotOptions"] = {"scatter": {"marker": {"radius": radius}}}
         
     
+    def _data_columns(self, d, x, y):
+        """Generate the data for the Column plot"""
+        data = []
+        cats = []
+        dlen = len(d[x])
+        for i in range(dlen):
+            cats.append(str(d[x][i]))
+            data.append(float(d[y][i]))
+        
+        self.chart["series"].append({"name": y, "data": data})
+        self.chart["xAxis"]["categories"] = cats
+        
+
     def _data_tuples(self, d, x, y, z, pid):
         """Generate the data tuples required for Highcharts scatter plot."""
         data = []
         dlen = len(d[x])
         for i in range(dlen):
-            tmp_d = {"x": d[x][i], "y": d[y][i]}
+            tmp_d = {"x": float(d[x][i]), "y": float(d[y][i])}
             if z:
-                tmp_d["z"] = d[z][i]
+                tmp_d["z"] = float(d[z][i])
             if pid:
-                tmp_d["id"] = d[pid][i]
+                tmp_d["id"] = str(d[pid][i])
 
             data.append(tmp_d)
         
@@ -81,17 +94,17 @@ class Chart():
         #  {"name": "B", "data": [{"x": 2, "y": 3}, {"x": 3, "y": 4}]}]
         z = None  # not implemented yet
         series = []
-        names = set(d[color_by])
+        names = set(str(c) for c in d[color_by])
         color_series_x = {name: [] for name in names}
         color_series_y = {name: [] for name in names}
         if pid:
             color_series_id = {name: [] for name in names}
         
         for i in range(len(d[x])):
-            color_series_x[d[color_by][i]].append(d[x][i])
-            color_series_y[d[color_by][i]].append(d[y][i])
+            color_series_x[str(d[color_by][i])].append(d[x][i])
+            color_series_y[str(d[color_by][i])].append(d[y][i])
             if pid:
-                color_series_id[d[color_by][i]].append(d[pid][i])
+                color_series_id[str(d[color_by][i])].append(d[pid][i])
 
         for name in names:
             tmp_d = {x: color_series_x[name], y: color_series_y[name]}
@@ -105,7 +118,7 @@ class Chart():
         
 
 
-    def add_data(self, d, x="x", y="y", z="z", pid="id", **kwargs):
+    def add_data(self, d, x="x", y="y", z=None, pid="id", **kwargs):
         """Add the data to the chart.
         d is the input dictionary, x, y [, and z] are the keys for the properties to plot.
         pid is the optional key to a (compound) id to be displayed in the tooltip."""
@@ -121,36 +134,33 @@ class Chart():
         else:
             pid = None
 
-            
-        color_by = kwargs.get("color_by")
-        if color_by:
-            if color_by in d:
-                if len(d[x]) != len(d[pid]):
-                    raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=x, color_by=color_by))
-            else:
-                raise KeyError("'{}' was not found in d".format(color_by))
-        
         self.chart["credits"] = {'enabled': False}
         self.chart["xAxis"] = {"title": {"enabled": True, "text": x}}
         self.chart["yAxis"] = {"title": {"enabled": True, "text": y}}
         
-        # defining the tooltip
-        self.chart["tooltip"] = {}
-        # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
-        self.chart["tooltip"]["headerFormat"] = ""
-        
-        point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=x, y=y)]
-        if pid:
-            point_format.append("<b>{pid}:</b>  {{point.id}}".format(pid=pid))
-        self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
-
         if self.kind == "scatter":
-        
-            if z in d:
-                if len(d[x]) != len(d[z]):
-                    raise ValueError("'{x}' and '{z}' must have the same length.".format(x=x, pid=pid))
-            else:
-                z = None
+
+            # defining the tooltip
+            self.chart["tooltip"] = {}
+            # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
+            self.chart["tooltip"]["headerFormat"] = ""
+            
+            point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=x, y=y)]
+            if pid:
+                point_format.append("<b>{pid}:</b>  {{point.id}}".format(pid=pid))
+            self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
+
+            color_by = kwargs.get("color_by")
+            if color_by:
+                if color_by in d:
+                    if len(d[x]) != len(d[color_by]):
+                        raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=x, color_by=color_by))
+                else:
+                    raise KeyError("'{}' was not found in d".format(color_by))
+            
+                if z:
+                    if len(d[x]) != len(d[z]):
+                        raise ValueError("'{x}' and '{z}' must have the same length.".format(x=x, pid=pid))
 
             self.chart["legend"] = {'enabled': False}
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
@@ -162,10 +172,16 @@ class Chart():
             else:
                 data = self._data_tuples(d, x, y, z, pid)
                 self.chart["series"].append({"name": "series", "data": data})
+        
+        if self.kind == "column":
+            self.chart["chart"] = {"type": "column", "zoomType": "xy"}
+            self._data_columns(d, x, y)
 
     
     def show(self, debug=False):
         formatter = string.Template(CHART_TEMPL)
+        # if debug:
+        #     print(self.chart)
         chart_json = json.dumps(self.chart)
         html = formatter.substitute({"id": self.chart_id, "chart": chart_json,
                                      "height": self.height})
