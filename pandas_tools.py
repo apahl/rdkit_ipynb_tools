@@ -94,6 +94,11 @@ def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True
     return data_df
 
 
+def left_join_on_index(df1, df2):
+    new_df = pd.merge(df1, df2, how="left", left_index=True, right_index=True)
+    return new_df
+
+
 def df_to_sdf_list(df):
     """
     returns: list of mols

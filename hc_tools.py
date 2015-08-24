@@ -52,6 +52,7 @@ class Chart():
         self.kind = kind
         self.height= kwargs.get("height", 400)
         radius = kwargs.get("r", kwargs.get("radius", 5)) # accept "r" or "radius" for this option
+        self.legend = kwargs.get("legend", None)
         self.chart_id = time.strftime("%y%m%d%H%M%S")
         self.chart = {}
         self.chart["title"] = {"text": kwargs.get("title", "{} plot".format(self.kind))}
@@ -133,7 +134,7 @@ class Chart():
             raise KeyError("'{x}' and '{y}' are required parameters for scatter plot, but could not all be found in dict.".format(x=x, y=y))
         
         if len(d[x]) != len(d[y]):
-            raise ValueError("'{x}' and '{y}' must have the same length.".format(x=x, y=y))
+            raise ValueError("'{x}' and '{y}' must have the same length.".format(x=self.arg_x, y=self.arg_y))
         
         self.arg_x = x
         self.arg_y = y
@@ -153,7 +154,7 @@ class Chart():
                 self.dpid = list(d[pid])
 
             if self.dlen != len(self.dpid):
-                raise ValueError("'{x}' and '{pid}' must have the same length.".format(x=x, pid=pid))
+                raise ValueError("'{x}' and '{pid}' must have the same length.".format(x=self.arg_x, pid=self.arg_pid))
         else:
             self.arg_pid = None
 
@@ -183,10 +184,15 @@ class Chart():
                     raise ValueError("'{x}' and '{z}' must have the same length.".format(x=self.arg_x, pid=self.arg_pid))
                 self.dz = list(d[z])
 
-            self.chart["legend"] = {'enabled': False}
+            if not self.legend:
+                self.chart["legend"] = {'enabled': False}
+            else:
+                self.chart["legend"] = {'enabled': True}
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
             
             if self.arg_color_by:
+                if self.legend != False:
+                    self.chart["legend"] = {'enabled': True}
                 self.chart["tooltip"]["headerFormat"] = '<b>{color_by}: {{series.name}}</b><br>'.format(color_by=self.arg_color_by)
                 series = self._data_series()
                 self.chart["series"].extend(series)
