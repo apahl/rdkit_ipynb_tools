@@ -94,6 +94,15 @@ def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True
     return data_df
 
 
+def keep_numeric_only(df):
+    """Keep only the numeric data in a df, 
+    remove all ROWS that contain non-numeric data.
+    returns new df"""
+    new_df = df.convert_objects(convert_numeric=True)
+    new_df = new_df.dropna()
+    return new_df
+
+
 def left_join_on_index(df1, df2):
     new_df = pd.merge(df1, df2, how="left", left_index=True, right_index=True)
     return new_df
@@ -103,6 +112,7 @@ def df_to_sdf_list(df):
     """
     returns: list of mols
     """
+    #TODO: fill stub
     pass
 
 
@@ -122,4 +132,13 @@ def align_molecules(df, qry, mol_col="mol"):
     Chem.Compute2DCoords(qry)
     for mol in df[mol_col]:
         Chem.GenerateDepictionMatching2DStructure(mol, qry)
-    
+
+
+def add_calc_prop(df, mol_col="mol", props="logp"):
+    avail_props = ["logp", "mw", "sa"]
+    if not isinstance(props, list):
+        prop = list(props)
+    for prop in props:
+        if not prop in avail_props:
+            raise ValueError("{} can not be calculated.".format(prop))
+    #TODO: fill stub
