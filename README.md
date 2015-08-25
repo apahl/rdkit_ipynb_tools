@@ -1,6 +1,9 @@
 ## RDKit IPython Tools
 by Axel Pahl
 
+#### development branch
+* working on molecule structure tooltips when using dataframes in highcharts
+
 #### module tools
 The toolkit currently contains two functions to use with [RDKit](http://rdkit.org) in the IPython notebook:
 - *show_table*: Display a list of molecules in a table with molecule properties as columns.

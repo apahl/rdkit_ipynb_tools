@@ -81,8 +81,9 @@ class Chart():
         dy = d["y"]
         if self.arg_z:
             dz = d["z"]
-        if self.arg_pid:
+        if self.arg_pid or self.arg_struct:
             dpid = d["id"]
+
         for i in range(len(dx)):
             tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
             if self.arg_z:
@@ -106,18 +107,25 @@ class Chart():
         color_series_y = {name: [] for name in names}
         if self.arg_pid:
             color_series_id = {name: [] for name in names}
+        if self.arg_struct:
+            color_series_mol = {name: [] for name in names}
         
         for i in range(self.dlen):
             col_by_str = str(self.dcolor_by[i])
             color_series_x[col_by_str].append(float(self.dx[i]))
             color_series_y[col_by_str].append(float(self.dy[i]))
-            if self.arg_pid:
+            if self.arg_struct:
+                color_series_mol[col_by_str].append(str(self.dpid[i])+"<br>"+str(self.dmol[i]))
+            elif self.arg_pid:
                 color_series_id[col_by_str].append(str(self.dpid[i]))
 
         for name in names:
             tmp_d = {"x": color_series_x[name], "y": color_series_y[name]}
-            if self.arg_pid:
+            if self.arg_struct:
+                tmp_d["id"] = color_series_mol[name]
+            elif self.arg_pid:
                 tmp_d["id"] = color_series_id[name]
+
             series_dict = {"name": name}
             series_dict["data"] = self._data_tuples(tmp_d)
             series.append(series_dict)
@@ -145,7 +153,7 @@ class Chart():
         self.dx = list(d[x])
         self.dy = list(d[y])
         self.dlen = len(self.dx)
-            
+        
         if self.arg_pid:
             # pandas data series and pid == index
             if not isinstance(d[x], list) and self.arg_pid == d.index.name:
@@ -158,6 +166,14 @@ class Chart():
         else:
             self.arg_pid = None
 
+        # plot-specific options
+        if self.kind in ["scatter"]:
+            self.arg_struct = "struct" in kwargs.get("tooltip", []) 
+            self.arg_mol_col = kwargs.get("mol_col", "mol")
+            if self.arg_struct:
+                self.dmol = list(d[self.arg_mol_col])
+                print("- try to display structure tooltips")
+
         self.chart["credits"] = {'enabled': False}
         self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
         self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
@@ -165,13 +181,13 @@ class Chart():
         if self.kind == "scatter":
 
             # defining the tooltip
-            self.chart["tooltip"] = {}
+            self.chart["tooltip"] = {"useHTML": True}
             # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
             self.chart["tooltip"]["headerFormat"] = ""
             
             point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=self.arg_x, y=self.arg_y)]
-            if pid:
-                point_format.append("<b>{pid}:</b>  {{point.id}}".format(pid=self.arg_pid))
+            if self.arg_pid or self.arg_struct:
+                point_format.append("<b>{pid}:</b> {{point.id}}".format(pid=self.arg_pid))
             self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
 
             if self.arg_color_by:

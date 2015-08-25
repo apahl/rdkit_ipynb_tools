@@ -97,6 +97,7 @@ def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True
 def keep_numeric_only(df):
     """Keep only the numeric data in a df, 
     remove all ROWS that contain non-numeric data.
+    Do this prior to a highchart plot
     returns new df"""
     new_df = df.convert_objects(convert_numeric=True)
     new_df = new_df.dropna()
