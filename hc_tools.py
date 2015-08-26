@@ -39,6 +39,7 @@ $chart
 """
 
 CHART_KINDS = ["scatter", "column"]
+TOOLTIP_OPTIONS = "struct"
 
 print("- loading highcharts...")
 display(HTML(HIGHCHARTS))
@@ -61,6 +62,10 @@ class Chart():
         self.chart["plotOptions"] = {"scatter": {"marker": {"radius": radius}}}
         
     
+    def _structure_tooltip(self, i):
+        return str(self.dpid[i])+"<br>"+str(self.dmol[i])
+
+
     def _data_columns(self):
         """Generate the data for the Column plot"""
         data = []
@@ -115,7 +120,7 @@ class Chart():
             color_series_x[col_by_str].append(float(self.dx[i]))
             color_series_y[col_by_str].append(float(self.dy[i]))
             if self.arg_struct:
-                color_series_mol[col_by_str].append(str(self.dpid[i])+"<br>"+str(self.dmol[i]))
+                color_series_mol[col_by_str].append(self._structure_tooltip(i))
             elif self.arg_pid:
                 color_series_id[col_by_str].append(str(self.dpid[i]))
 
@@ -168,7 +173,11 @@ class Chart():
 
         # plot-specific options
         if self.kind in ["scatter"]:
-            self.arg_struct = "struct" in kwargs.get("tooltip", []) 
+            self.arg_tooltip = kwargs.get("tooltip", "")
+            if self.arg_tooltip not in TOOLTIP_OPTIONS:
+                print("- unknown tooltip option {}, setting to empty.".format(self.arg_tooltip))
+                self.arg_tooltip = ""
+            self.arg_struct = "struct" in self.arg_tooltip
             self.arg_mol_col = kwargs.get("mol_col", "mol")
             if self.arg_struct:
                 self.dmol = list(d[self.arg_mol_col])
@@ -179,7 +188,6 @@ class Chart():
         self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
         
         if self.kind == "scatter":
-
             # defining the tooltip
             self.chart["tooltip"] = {"useHTML": True}
             # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
@@ -214,7 +222,9 @@ class Chart():
                 self.chart["series"].extend(series)
             else:
                 tmp_d = {"x": self.dx, "y": self.dy}
-                if self.arg_pid:
+                if self.arg_struct:
+                    tmp_d["id"] = [self._structure_tooltip(i) for i in range(self.dlen)]
+                elif self.arg_pid:
                     tmp_d["id"] = self.dpid
                 data = self._data_tuples(tmp_d)
                 self.chart["series"].append({"name": "series", "data": data})
