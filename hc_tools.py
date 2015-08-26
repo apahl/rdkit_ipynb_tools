@@ -88,6 +88,8 @@ class Chart():
             dz = d["z"]
         if self.arg_pid or self.arg_struct:
             dpid = d["id"]
+        if self.arg_color_by and not self.arg_color_discrete:
+            dcolorval = d["colorValue"]
 
         for i in range(len(dx)):
             tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
@@ -95,13 +97,15 @@ class Chart():
                 tmp_d["z"] = float(dz[i])
             if self.arg_pid:
                 tmp_d["id"] = str(dpid[i])
+            if self.arg_color_by and not self.arg_color_discrete:
+                tmp_d["colorValue"] = float(dcolorval[i])
 
             data.append(tmp_d)
         
         return data
     
 
-    def _data_series(self):
+    def _color_series_discrete(self):
         # [{"name": "A", "data": [{"x": 1, "y": 2}, {"x": 2, "y": 3}]},
         #  {"name": "B", "data": [{"x": 2, "y": 3}, {"x": 3, "y": 4}]}]
         self.arg_z = None  # not implemented yet
@@ -154,6 +158,8 @@ class Chart():
         self.arg_z = z
         self.arg_color_by = color_by
         self.arg_pid = pid
+        self.arg_color_discrete = "disc" in kwargs.get("color_mode", kwargs.get("mode", "discrete"))
+        
         
         self.dx = list(d[x])
         self.dy = list(d[y])
@@ -171,7 +177,13 @@ class Chart():
         else:
             self.arg_pid = None
 
-        # plot-specific options
+        self.chart["credits"] = {'enabled': False}
+        self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
+        self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
+        
+        #########################
+        # plot-specific options #
+        #########################
         if self.kind in ["scatter"]:
             self.arg_tooltip = kwargs.get("tooltip", "")
             if self.arg_tooltip not in TOOLTIP_OPTIONS:
@@ -181,12 +193,8 @@ class Chart():
             self.arg_mol_col = kwargs.get("mol_col", "mol")
             if self.arg_struct:
                 self.dmol = list(d[self.arg_mol_col])
-                print("- try to display structure tooltips")
+            
 
-        self.chart["credits"] = {'enabled': False}
-        self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
-        self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
-        
         if self.kind == "scatter":
             # defining the tooltip
             self.chart["tooltip"] = {"useHTML": True}
@@ -202,6 +210,8 @@ class Chart():
                 if self.dlen != len(d[color_by]):
                     raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=self.arg_x, color_by=self.arg_color_by))
                 self.dcolor_by = list(d[color_by])
+                if not self.arg_color_discrete:
+                    self.chart["colorAxis"] = {"minColor": "#FFFFFF", "maxColor": "Highcharts.getOptions().colors[0]"}
             
             if self.arg_z:
                 if self.dlen != len(d[z]):
@@ -214,11 +224,11 @@ class Chart():
                 self.chart["legend"] = {'enabled': True}
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
             
-            if self.arg_color_by:
+            if self.arg_color_by and self.arg_color_discrete:
                 if self.legend != False:
                     self.chart["legend"] = {'enabled': True}
                 self.chart["tooltip"]["headerFormat"] = '<b>{color_by}: {{series.name}}</b><br>'.format(color_by=self.arg_color_by)
-                series = self._data_series()
+                series = self._color_series_discrete()
                 self.chart["series"].extend(series)
             else:
                 tmp_d = {"x": self.dx, "y": self.dy}
@@ -226,6 +236,8 @@ class Chart():
                     tmp_d["id"] = [self._structure_tooltip(i) for i in range(self.dlen)]
                 elif self.arg_pid:
                     tmp_d["id"] = self.dpid
+                if self.arg_color_by: # continuous values
+                    tmp_d["colorValue"] = self.dcolor_by
                 data = self._data_tuples(tmp_d)
                 self.chart["series"].append({"name": "series", "data": data})
         
@@ -241,6 +253,7 @@ class Chart():
         chart_json = json.dumps(self.chart)
         html = formatter.substitute({"id": self.chart_id, "chart": chart_json,
                                      "height": self.height})
+        html = html.replace('"Highcharts.getOptions().colors[0]"', 'Highcharts.getOptions().colors[0]')
         if debug:
             print(html)
         return HTML(html)

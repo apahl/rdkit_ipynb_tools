@@ -2,7 +2,7 @@
 by Axel Pahl
 
 #### development branch
-* working on molecule structure tooltips when using dataframes in highcharts
+* working on continuous coloring (26-Aug-2015)
 
 #### module tools
 The toolkit currently contains two functions to use with [RDKit](http://rdkit.org) in the IPython notebook:
