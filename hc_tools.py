@@ -10,6 +10,7 @@ Created on Wed Jul 29 08:39:28 2015
 import time
 import string
 import json
+import colorsys
 
 # 2. third-party imports
 
@@ -43,6 +44,32 @@ TOOLTIP_OPTIONS = "struct"
 
 print("- loading highcharts...")
 display(HTML(HIGHCHARTS))
+
+
+class ColorScale():
+    
+    def __init__(self, num_values, val_min, val_max):
+        self.num_values = num_values
+        self.num_val_1 = num_values - 1
+        self.value_min = val_min
+        self.value_max = val_max
+        self.value_range = self.value_max - self.value_min
+        self.color_scale = []
+        hsv_tuples = [(0.35 + ((x*0.65)/(self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
+        rgb_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)
+        for rgb in rgb_tuples:
+            rgb_int = [int(255*x) for x in rgb]
+            self.color_scale.append('#{:02x}{:02x}{:02x}'.format(*rgb_int))
+
+    def __call__(self, value, reverse=False):
+        """return the color from the scale corresponding to the place in the value_min ..  value_max range"""
+        pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
+        print(pos)
+        
+        if reverse:
+            pos = self.num_val_1 - pos
+        
+        return self.color_scale[pos]
 
 
 class Chart():
@@ -88,8 +115,8 @@ class Chart():
             dz = d["z"]
         if self.arg_pid or self.arg_struct:
             dpid = d["id"]
-        if self.arg_color_by and not self.arg_color_discrete:
-            dcolorval = d["colorValue"]
+        if self.arg_color_by:
+            dcolorval = d["color_by"]
 
         for i in range(len(dx)):
             tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
@@ -97,43 +124,55 @@ class Chart():
                 tmp_d["z"] = float(dz[i])
             if self.arg_pid:
                 tmp_d["id"] = str(dpid[i])
-            if self.arg_color_by and not self.arg_color_discrete:
-                tmp_d["colorValue"] = float(dcolorval[i])
+            if self.arg_color_by:
+                color_val = float(dcolorval[i])
+                color_code = self.color_scale(color_val)
+                tmp_d["z"] = color_val 
+                tmp_d["color"] = color_code
+                marker = {"fillColor": color_code, 
+                          "states": {"hover": {"fillColor": color_code}}}
+                tmp_d["marker"] = marker
 
             data.append(tmp_d)
         
         return data
     
 
-    def _color_series_discrete(self):
+    def _series_discrete(self):
         # [{"name": "A", "data": [{"x": 1, "y": 2}, {"x": 2, "y": 3}]},
         #  {"name": "B", "data": [{"x": 2, "y": 3}, {"x": 3, "y": 4}]}]
         self.arg_z = None  # not implemented yet
         series = []
 
-        names = set(str(c) for c in self.dcolor_by)
-        color_series_x = {name: [] for name in names}
-        color_series_y = {name: [] for name in names}
+        names = set(str(c) for c in self.dseries_by)
+        data_series_x = {name: [] for name in names}
+        data_series_y = {name: [] for name in names}
         if self.arg_pid:
-            color_series_id = {name: [] for name in names}
+            data_series_id = {name: [] for name in names}
         if self.arg_struct:
-            color_series_mol = {name: [] for name in names}
+            data_series_mol = {name: [] for name in names}
+        if self.arg_color_by:
+            data_series_color = {name: [] for name in names}
         
         for i in range(self.dlen):
-            col_by_str = str(self.dcolor_by[i])
-            color_series_x[col_by_str].append(float(self.dx[i]))
-            color_series_y[col_by_str].append(float(self.dy[i]))
+            series_by_str = str(self.dseries_by[i])
+            data_series_x[series_by_str].append(float(self.dx[i]))
+            data_series_y[series_by_str].append(float(self.dy[i]))
             if self.arg_struct:
-                color_series_mol[col_by_str].append(self._structure_tooltip(i))
+                data_series_mol[series_by_str].append(self._structure_tooltip(i))
             elif self.arg_pid:
-                color_series_id[col_by_str].append(str(self.dpid[i]))
+                data_series_id[series_by_str].append(str(self.dpid[i]))
+            if self.arg_color_by:
+                data_series_color[series_by_str].append(self.dcolor_by[i])
 
         for name in names:
-            tmp_d = {"x": color_series_x[name], "y": color_series_y[name]}
+            tmp_d = {"x": data_series_x[name], "y": data_series_y[name]}
             if self.arg_struct:
-                tmp_d["id"] = color_series_mol[name]
+                tmp_d["id"] = data_series_mol[name]
             elif self.arg_pid:
-                tmp_d["id"] = color_series_id[name]
+                tmp_d["id"] = data_series_id[name]
+            if self.arg_color_by:
+                tmp_d["color_by"] = data_series_color[name]
 
             series_dict = {"name": name}
             series_dict["data"] = self._data_tuples(tmp_d)
@@ -143,7 +182,7 @@ class Chart():
         
 
 
-    def add_data(self, d, x="x", y="y", pid=None, z=None, color_by=None, **kwargs):
+    def add_data(self, d, x="x", y="y", z=None, **kwargs):
         """Add the data to the chart.
         d is the input dictionary, x, y [, and z] are the keys for the properties to plot.
         pid is the optional key to a (compound) id to be displayed in the tooltip."""
@@ -156,8 +195,9 @@ class Chart():
         self.arg_x = x
         self.arg_y = y
         self.arg_z = z
-        self.arg_color_by = color_by
-        self.arg_pid = pid
+        self.arg_series_by= kwargs.get("series_by", None)
+        self.arg_color_by = kwargs.get("color_by", None)
+        self.arg_pid = kwargs.get("pid", None)
         self.arg_color_discrete = "disc" in kwargs.get("color_mode", kwargs.get("mode", "discrete"))
         
         
@@ -170,7 +210,7 @@ class Chart():
             if not isinstance(d[x], list) and self.arg_pid == d.index.name:
                 self.dpid = list(d.index)
             else:
-                self.dpid = list(d[pid])
+                self.dpid = list(d[self.arg_pid])
 
             if self.dlen != len(self.dpid):
                 raise ValueError("'{x}' and '{pid}' must have the same length.".format(x=self.arg_x, pid=self.arg_pid))
@@ -202,21 +242,33 @@ class Chart():
             self.chart["tooltip"]["headerFormat"] = ""
             
             point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=self.arg_x, y=self.arg_y)]
+            if self.arg_color_by:
+                point_format.append("<b>{color_by}:</b> {{point.z}}".format(color_by=self.arg_color_by))
             if self.arg_pid or self.arg_struct:
                 point_format.append("<b>{pid}:</b> {{point.id}}".format(pid=self.arg_pid))
             self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
 
+
+            ############################
+            # defining the data series #
+            ############################
+            if self.arg_series_by:
+                if self.dlen != len(d[self.arg_series_by]):
+                    raise ValueError("'{x}' and '{series_by}' must have the same length.".format(x=self.arg_x, series_by=self.arg_series_by))
+                self.dseries_by = list(d[self.arg_series_by])
             if self.arg_color_by:
-                if self.dlen != len(d[color_by]):
+                if self.dlen != len(d[self.arg_color_by]):
                     raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=self.arg_x, color_by=self.arg_color_by))
-                self.dcolor_by = list(d[color_by])
-                if not self.arg_color_discrete:
-                    self.chart["colorAxis"] = {"minColor": "#FFFFFF", "maxColor": "Highcharts.getOptions().colors[0]"}
-            
+                self.dcolor_by = list(d[self.arg_color_by])
+                # self.chart["colorAxis"] = {"minColor": "#FFFFFF", "maxColor": "Highcharts.getOptions().colors[0]"}
+                self.color_scale = ColorScale(20, min(self.dcolor_by), max(self.dcolor_by))
+                if not self.chart["subtitle"]["text"]:
+                    self.chart["subtitle"]["text"] = "colored by {}".format(self.arg_color_by)
             if self.arg_z:
                 if self.dlen != len(d[z]):
                     raise ValueError("'{x}' and '{z}' must have the same length.".format(x=self.arg_x, pid=self.arg_pid))
                 self.dz = list(d[z])
+
 
             if not self.legend:
                 self.chart["legend"] = {'enabled': False}
@@ -224,11 +276,11 @@ class Chart():
                 self.chart["legend"] = {'enabled': True}
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
             
-            if self.arg_color_by and self.arg_color_discrete:
+            if self.arg_series_by:
                 if self.legend != False:
                     self.chart["legend"] = {'enabled': True}
-                self.chart["tooltip"]["headerFormat"] = '<b>{color_by}: {{series.name}}</b><br>'.format(color_by=self.arg_color_by)
-                series = self._color_series_discrete()
+                    self.chart["tooltip"]["headerFormat"] = '<b>{series_by}: {{series.name}}</b><br>'.format(series_by=self.arg_series_by)
+                series = self._series_discrete()
                 self.chart["series"].extend(series)
             else:
                 tmp_d = {"x": self.dx, "y": self.dy}
@@ -237,7 +289,8 @@ class Chart():
                 elif self.arg_pid:
                     tmp_d["id"] = self.dpid
                 if self.arg_color_by: # continuous values
-                    tmp_d["colorValue"] = self.dcolor_by
+                    tmp_d["color_by"] = self.dcolor_by
+                    
                 data = self._data_tuples(tmp_d)
                 self.chart["series"].append({"name": "series", "data": data})
         
@@ -253,7 +306,7 @@ class Chart():
         chart_json = json.dumps(self.chart)
         html = formatter.substitute({"id": self.chart_id, "chart": chart_json,
                                      "height": self.height})
-        html = html.replace('"Highcharts.getOptions().colors[0]"', 'Highcharts.getOptions().colors[0]')
+        # html = html.replace('"Highcharts.getOptions().colors[0]"', 'Highcharts.getOptions().colors[0]')
         if debug:
             print(html)
         return HTML(html)
