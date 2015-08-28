@@ -24,6 +24,7 @@ from IPython.display import HTML, display
 HIGHCHARTS = """
 <script src="lib/highcharts.js"></script>
 <script src="lib/highcharts-more.js"></script>
+<script src="lib/modules/heatmap.js"></script>
 <script src="lib/modules/exporting.js"></script>
 """
 
@@ -38,6 +39,13 @@ $chart
 });
 </script>
 """
+
+#colorAxis: {
+#    min: -1,
+#    max: 1,
+#    minColor: '#16E52B',
+#    maxColor: '#E51616'}
+
 
 CHART_KINDS = ["scatter", "column"]
 TOOLTIP_OPTIONS = "struct"
@@ -64,7 +72,6 @@ class ColorScale():
     def __call__(self, value, reverse=False):
         """return the color from the scale corresponding to the place in the value_min ..  value_max range"""
         pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
-        print(pos)
         
         if reverse:
             pos = self.num_val_1 - pos
@@ -236,6 +243,7 @@ class Chart():
             
 
         if self.kind == "scatter":
+            self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
             # defining the tooltip
             self.chart["tooltip"] = {"useHTML": True}
             # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
@@ -248,6 +256,11 @@ class Chart():
                 point_format.append("<b>{pid}:</b> {{point.id}}".format(pid=self.arg_pid))
             self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
 
+            if not self.legend:
+                self.chart["legend"] = {'enabled': False}
+            else:
+                self.chart["legend"] = {'enabled': True}
+            
 
             ############################
             # defining the data series #
@@ -261,21 +274,21 @@ class Chart():
                     raise ValueError("'{x}' and '{color_by}' must have the same length.".format(x=self.arg_x, color_by=self.arg_color_by))
                 self.dcolor_by = list(d[self.arg_color_by])
                 # self.chart["colorAxis"] = {"minColor": "#FFFFFF", "maxColor": "Highcharts.getOptions().colors[0]"}
-                self.color_scale = ColorScale(20, min(self.dcolor_by), max(self.dcolor_by))
+                min_color_by = min(self.dcolor_by)
+                max_color_by = max(self.dcolor_by)
+                self.color_scale = ColorScale(20, min_color_by, max_color_by)
+                # self.chart["colorAxis"] = {"min": min_color_by, "max": max_color_by, 
+                #                          "minColor": '#16E52B', "maxColor": '#E51616'}
+                # if self.legend != False:
+                #     self.chart["legend"] = {'enabled': True}
                 if not self.chart["subtitle"]["text"]:
-                    self.chart["subtitle"]["text"] = "colored by {}".format(self.arg_color_by)
+                    self.chart["subtitle"]["text"] = "colored by {} ({:.2f} .. {:.2f})".format(self.arg_color_by, min_color_by, max_color_by)
             if self.arg_z:
                 if self.dlen != len(d[z]):
                     raise ValueError("'{x}' and '{z}' must have the same length.".format(x=self.arg_x, pid=self.arg_pid))
                 self.dz = list(d[z])
 
 
-            if not self.legend:
-                self.chart["legend"] = {'enabled': False}
-            else:
-                self.chart["legend"] = {'enabled': True}
-            self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
-            
             if self.arg_series_by:
                 if self.legend != False:
                     self.chart["legend"] = {'enabled': True}
