@@ -14,6 +14,14 @@ from rdkit.Chem import PandasTools as PT
 from . import tools, hc_tools as hct
 
 
+def init_PT():
+    """create a dummy df to initialize the RDKit PandasTools (a bit hacky, I know)."""
+    init = pd.DataFrame.from_dict({"id": [123, 124], "Smiles": ["c1ccccc1C(=O)N", "c1ccccc1C(=O)O"]})
+    PT.AddMoleculeColumnToFrame(init)
+
+init_PT()
+
+
 def df_from_sdf_list(sdf_list, id_prop=None, props=None, set_index=True):
     """Generate a Pandas dataframe from the properties of a list of molecules.
     Currently not including the structure.

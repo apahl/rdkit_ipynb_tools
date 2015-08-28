@@ -133,7 +133,7 @@ class Chart():
                 tmp_d["id"] = str(dpid[i])
             if self.arg_color_by:
                 color_val = float(dcolorval[i])
-                color_code = self.color_scale(color_val)
+                color_code = self.color_scale(color_val, reverse=self.arg_reverse)
                 tmp_d["z"] = color_val 
                 tmp_d["color"] = color_code
                 marker = {"fillColor": color_code, 
@@ -206,7 +206,7 @@ class Chart():
         self.arg_color_by = kwargs.get("color_by", None)
         self.arg_pid = kwargs.get("pid", None)
         self.arg_color_discrete = "disc" in kwargs.get("color_mode", kwargs.get("mode", "discrete"))
-        
+        self.arg_reverse = kwargs.get("reverse", False)
         
         self.dx = list(d[x])
         self.dy = list(d[y])
