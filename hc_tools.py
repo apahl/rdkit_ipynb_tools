@@ -97,11 +97,25 @@ class Chart():
         
     
     def _structure_tooltip(self, i):
-        tooltip = [str(self.dpid[i]), "<br>", '<div style="width: 300px; height: 300px;">', 
-                   str(self.dmol[i]), "</div>"]
+        tooltip = []
+        if self.arg_pid:
+            tooltip.extend([str(self.dpid[i]), "<br>"])
+        tooltip.extend(['<div style="width: 300px; height: 300px;">', 
+                   str(self.dmol[i]), "</div>"])
         return "".join(tooltip)
 
 
+    def _extended_tooltip(self):
+        ext_tt = [[] for idx in self.dx]
+        for idx, _ in enumerate(self.dx):
+            for field in self.arg_include_in_tooltip:
+                ext_tt[idx].append("<b>{}</b>: {}".format(field, self.include[field][idx]))
+            if self.arg_pid:
+                ext_tt[idx].append("<b>{}</b>: {}".format(self.arg_pid, self.dpid[idx]))
+        self.dpid = ["<br>".join(i) for i in ext_tt]
+        self.arg_pid = True
+    
+    
     def _data_columns(self):
         """Generate the data for the Column plot"""
         data = []
@@ -122,7 +136,7 @@ class Chart():
         dy = d["y"]
         if self.arg_z:
             dz = d["z"]
-        if self.arg_pid or self.arg_struct:
+        if self.arg_pid or self.arg_struct or self.arg_include_in_tooltip:
             dpid = d["id"]
         if self.arg_color_by:
             dcolorval = d["color_by"]
@@ -131,7 +145,7 @@ class Chart():
             tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
             if self.arg_z:
                 tmp_d["z"] = float(dz[i])
-            if self.arg_pid:
+            if self.arg_pid or self.arg_struct or self.arg_include_in_tooltip:
                 tmp_d["id"] = str(dpid[i])
             if self.arg_color_by:
                 color_val = float(dcolorval[i])
@@ -209,6 +223,9 @@ class Chart():
         self.arg_pid = kwargs.get("pid", None)
         self.arg_color_discrete = "disc" in kwargs.get("color_mode", kwargs.get("mode", "discrete"))
         self.arg_reverse = kwargs.get("reverse", False)
+        self.arg_include_in_tooltip = kwargs.get("include_in_tooltip", kwargs.get("include", "xxx"))
+        if not isinstance(self.arg_include_in_tooltip, list):
+            self.arg_include_in_tooltip = [self.arg_include_in_tooltip]
         
         self.dx = list(d[x])
         self.dy = list(d[y])
@@ -219,6 +236,7 @@ class Chart():
             if not isinstance(d[x], list) and self.arg_pid == d.index.name:
                 self.dpid = list(d.index)
             else:
+                # self.dpid = ["<b>{}:</b> {}".format(self.arg_pid, i) for i in list(d[self.arg_pid])]
                 self.dpid = list(d[self.arg_pid])
 
             if self.dlen != len(self.dpid):
@@ -243,6 +261,17 @@ class Chart():
             if self.arg_struct:
                 self.dmol = list(d[self.arg_mol_col])
             
+            self.include = {}
+            includes = self.arg_include_in_tooltip[:]
+            for field in includes:
+                if field in d:
+                    self.include[field] = list(d[field])
+                else:
+                    self.arg_include_in_tooltip.remove(field)  # remove fields that are not present in the data set
+            
+            if self.arg_pid or self.arg_include_in_tooltip:
+                self._extended_tooltip()
+            
 
         if self.kind == "scatter":
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
@@ -254,8 +283,8 @@ class Chart():
             point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=self.arg_x, y=self.arg_y)]
             if self.arg_color_by:
                 point_format.append("<b>{color_by}:</b> {{point.z}}".format(color_by=self.arg_color_by))
-            if self.arg_pid or self.arg_struct:
-                point_format.append("<b>{pid}:</b> {{point.id}}".format(pid=self.arg_pid))
+            if self.arg_pid or self.arg_struct or self.arg_include_in_tooltip:
+                point_format.append("{point.id}")
             self.chart["tooltip"]["pointFormat"] = "<br>".join(point_format)
 
             if not self.legend:
@@ -323,5 +352,6 @@ class Chart():
                                      "height": self.height})
         # html = html.replace('"Highcharts.getOptions().colors[0]"', 'Highcharts.getOptions().colors[0]')
         if debug:
+            print(self.dpid)
             print(html)
         return HTML(html)
