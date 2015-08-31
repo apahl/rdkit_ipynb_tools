@@ -97,7 +97,9 @@ class Chart():
         
     
     def _structure_tooltip(self, i):
-        return str(self.dpid[i])+"<br>"+str(self.dmol[i])
+        tooltip = [str(self.dpid[i]), "<br>", '<div style="width: 300px; height: 300px;">', 
+                   str(self.dmol[i]), "</div>"]
+        return "".join(tooltip)
 
 
     def _data_columns(self):
