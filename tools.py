@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from __future__ import print_function, division
 """
@@ -7,15 +8,6 @@ Created on Thu Jul  2 10:07:56 2015
 @title: tools.py
 
 A set for tools to use with the RDKit in the IPython notebook
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# html_mol_table.py
-"""
-Created on Wed Jun 02 2015
-
-@author: pahl
 """
 
 from rdkit.Chem import AllChem as Chem
@@ -130,6 +122,21 @@ function onSubmit() {{
 </tr>
 </table>
 '''
+
+
+class Mol_List(list):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def __getitem__(self, item):
+        result = list.__getitem__(self, item)
+        try:
+            return Mol_List(result)
+        except TypeError:
+            return result
+        
+    def _repr_html_(self):
+        return mol_table(self)
 
 
 def autocrop(im, bgcolor="white"):
@@ -313,3 +320,15 @@ def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
                 df_dict[prop].append(pd.np.NaN)
 
     return df_dict
+
+
+def mol_3d(smiles_or_mol):
+    """return a 3d optimized molecule from a Smiles or 2d mol input"""
+    if isinstance(smiles_or_mol, str):  # input is Smiles
+        smiles_or_mol = Chem.MolFromSmiles(smiles_or_mol)
+    
+    mh = Chem.AddHs(smiles_or_mol)
+    Chem.Compute2DCoords(mh)
+    Chem.EmbedMolecule(mh)
+    Chem.MMFFOptimizeMolecule(mh)
+    return mh
