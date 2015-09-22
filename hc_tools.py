@@ -94,6 +94,7 @@ class Chart():
         self.chart["subtitle"] = {"text": kwargs.get("subtitle")}
         self.chart["series"] = []
         self.chart["plotOptions"] = {"scatter": {"marker": {"radius": radius}}}
+        self.chart["credits"] = {'enabled': False}
         
     
     def _structure_tooltip(self, i):
@@ -244,7 +245,6 @@ class Chart():
         else:
             self.arg_pid = None
 
-        self.chart["credits"] = {'enabled': False}
         self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
         self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
         

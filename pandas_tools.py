@@ -6,6 +6,8 @@ Created on Wed Jul 29 12:20:19 2015
 @title: pandas_tools.py
 """
 
+import time
+import os.path as op
 import pandas as pd
 
 from rdkit.Chem import AllChem as Chem
@@ -20,6 +22,7 @@ def init_PT():
     PT.AddMoleculeColumnToFrame(init)
 
 init_PT()
+print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
 
 def df_from_sdf_list(sdf_list, id_prop=None, props=None, set_index=True):
@@ -70,6 +73,16 @@ def move_col(df, col, new_pos=1):
     return new_df
     
 
+def left_join_on_index(df1, df2):
+    new_df = pd.merge(df1, df2, how="left", left_index=True, right_index=True)
+    return new_df
+
+
+def inner_join_on_index(df1, df2):
+    new_df = pd.merge(df1, df2, how="inner", left_index=True, right_index=True)
+    return new_df
+
+
 def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True):
     """
     Join data from file (e.g. Smiles, biol. data (tab-sep.) ) by index (set to Compound_Id) to df.
@@ -79,10 +92,13 @@ def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True
     index in df has to be set to the Compound_Id.
     returns new df
     """
-    data_df = pd.concat([df, pd.read_table(fn, index_col=df.index.name)], axis=1, join_axes=[df.index])
+    # data_df = pd.concat([df, pd.read_table(fn, index_col=df.index.name)], axis=1, join_axes=[df.index])
+    data_df = inner_join_on_index(df, pd.read_table(fn, index_col=df.index.name))
+    
+    not_found = list(set(df.index.tolist()) - set(data_df.index.tolist()))
     
     if dropna:
-        data_df = data_df.dropna(axis=1)
+        data_df = data_df.dropna(axis=1, how="all")
     
     if gen_struct:
         smiles_col = None
@@ -99,6 +115,9 @@ def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True
         
             data_df = move_col(data_df, "mol", new_pos=0)
     
+    if not_found:
+        print("* not found:", not_found)
+    
     return data_df
 
 
@@ -109,11 +128,6 @@ def keep_numeric_only(df):
     returns new df"""
     new_df = df.convert_objects(convert_numeric=True)
     new_df = new_df.dropna()
-    return new_df
-
-
-def left_join_on_index(df1, df2):
-    new_df = pd.merge(df1, df2, how="left", left_index=True, right_index=True)
     return new_df
 
 

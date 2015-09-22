@@ -139,7 +139,7 @@ def autocrop(im, bgcolor="white"):
     diff = ImageChops.difference(im, bg)
     bbox = diff.getbbox()
     if bbox:
-        return im.crop(bbox)
+         return im.crop(bbox)
     return None # no contents
 
 
