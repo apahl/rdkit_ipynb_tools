@@ -125,6 +125,10 @@ function onSubmit() {{
 
 
 class Mol_List(list):
+    """For now, a simple wrapper around built-in list.
+    Enables display of molecule lists as HTML tables in IPython notebook just by-call
+    (via _repr_html)."""
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
@@ -322,6 +326,7 @@ def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
     return df_dict
 
 
+# some convenience functions
 def mol_3d(smiles_or_mol):
     """return a 3d optimized molecule from a Smiles or 2d mol input"""
     if isinstance(smiles_or_mol, str):  # input is Smiles
@@ -332,3 +337,23 @@ def mol_3d(smiles_or_mol):
     Chem.EmbedMolecule(mh)
     Chem.MMFFOptimizeMolecule(mh)
     return mh
+
+
+def mol_grid(sdf_list, props, fn=None, mols_per_row=5, sub_img_size=(200, 200)):
+    """Draw a molecule grid from the input <sdf_list>. An inline graphics will be returned
+    in addition to writing the image to <fn> (if defined).
+    The given sdf <props> (as a list) will be concatenated to the molecules' legends."""
+
+    if not isinstance(props, list):
+        props = [props]
+
+    legends = []
+    for mol in sdf_list:
+        leg = [mol.GetProp(prop) for prop in props]
+        leg_str = "_".join(leg)
+        legends.append(leg_str)
+
+    img = Draw.MolsToGridImage(sdf_list, molsPerRow=mols_per_row, subImgSize=sub_img_size, legends=legends)
+    if fn:
+        img.save(fn)
+    return img

@@ -1,3 +1,4 @@
+doc/
 .ipynb_checkpoints/
 .kdev4/
 *.pkl
