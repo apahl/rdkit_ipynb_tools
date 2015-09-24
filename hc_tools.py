@@ -384,11 +384,11 @@ class Chart():
 
 
 # Quick Predefined Plots
-def cpd_scatter(df, x, y, r=7, pid="Compound_Id", tooltip="struct"):
+def cpd_scatter(df, x, y, r=7, pid="Compound_Id", series_by=None, tooltip="struct"):
     """Predefined Plot #1.
     Quickly plot an RDKit Pandas dataframe with structure tooltips."""
-    scatter = Chart(r=r)
-    scatter.add_data(df, x, y, pid=pid, tooltip=tooltip)
+    scatter = Chart(title="Compound Scatter Plot", r=r)
+    scatter.add_data(df, x, y, pid=pid, series_by=series_by, tooltip=tooltip)
     return scatter.show()
     
 
