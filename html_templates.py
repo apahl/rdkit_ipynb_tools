@@ -20,8 +20,6 @@ JSME = "lib/jsme/jsme.nocache.js"
 
 HTML_FILE_NAME = "html/mol_table/index.html"
 
-print("{:45s} ({}   {})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__))), HTML_FILE_NAME))
-
 
 def tag(name, content, options=None, lf_open=False, lf_close=False):
     """creates a HTML stub with closed tags of type <name> around <content> 
