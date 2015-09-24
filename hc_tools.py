@@ -13,6 +13,11 @@ import json
 import colorsys
 
 # 2. third-party imports
+try:
+    from misc_tools import apl_tools as apt
+    AP_TOOLS = True
+except ImportError:
+    AP_TOOLS = False
 
 # 3. internal project imports
 from . import tools
@@ -50,7 +55,12 @@ $chart
 CHART_KINDS = ["scatter", "column"]
 TOOLTIP_OPTIONS = "struct"
 
-print("- loading highcharts...")
+if AP_TOOLS:
+    # I use this to keep track of the library versions I use in my project notebooks
+    print("{:45s} (commit: {})".format("- loading highcharts...", apt.get_commit(__file__)))
+else:
+    print("- loading highcharts...")
+
 display(HTML(HIGHCHARTS))
 
 

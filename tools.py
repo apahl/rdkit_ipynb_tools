@@ -33,7 +33,17 @@ else:
     PY3 = False
     from cStringIO import StringIO as IO
 
-print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
+try:
+    from misc_tools import apl_tools as apt
+    AP_TOOLS = True
+except ImportError:
+    AP_TOOLS = False
+
+if AP_TOOLS:
+    # I use this to keep track of the library versions I use in my project notebooks
+    print("{:45s} (commit: {})".format(__name__, apt.get_commit(__file__)))
+else:
+    print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
 
 JSME_OPTIONS = {"css": ["css/style.css", "css/collapsible_list.css"], 

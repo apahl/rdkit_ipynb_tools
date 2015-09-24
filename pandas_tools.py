@@ -16,13 +16,24 @@ from rdkit.Chem import PandasTools as PT
 from . import tools, hc_tools as hct
 
 
+try:
+    from misc_tools import apl_tools as apt
+    AP_TOOLS = True
+except ImportError:
+    AP_TOOLS = False
+
 def init_PT():
     """create a dummy df to initialize the RDKit PandasTools (a bit hacky, I know)."""
     init = pd.DataFrame.from_dict({"id": [123, 124], "Smiles": ["c1ccccc1C(=O)N", "c1ccccc1C(=O)O"]})
     PT.AddMoleculeColumnToFrame(init)
 
 init_PT()
-print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
+
+if AP_TOOLS:
+    # I use this to keep track of the library versions I use in my project notebooks
+    print("{:45s} (commit: {})".format(__name__, apt.get_commit(__file__)))
+else:
+    print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
 
 def df_from_sdf_list(sdf_list, id_prop=None, props=None, set_index=True):
