@@ -118,6 +118,8 @@ def join_data_from_file(df, fn, dropna=True, gen_struct=True, remove_smiles=True
     if not_found:
         print("* not found:", not_found)
     
+    data_df = data_df.convert_objects(convert_numeric=True) # convert to numeric where possible
+    
     return data_df
 
 

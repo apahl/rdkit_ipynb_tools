@@ -55,6 +55,7 @@ display(HTML(HIGHCHARTS))
 
 
 class ColorScale():
+    """Used for continuous coloring."""
     
     def __init__(self, num_values, val_min, val_max):
         self.num_values = num_values
@@ -80,6 +81,10 @@ class ColorScale():
 
 
 class Chart():
+    """Available Chart types: scatter, column.
+    Options:
+    r, radius: size of the points."""
+    
     def __init__(self, kind="scatter", **kwargs):
         if not kind in CHART_KINDS:
             raise ValueError("{} is not a supported chart kind ({})".format(kind, CHART_KINDS))
@@ -101,7 +106,7 @@ class Chart():
         tooltip = []
         if self.arg_pid:
             tooltip.extend([str(self.dpid[i]), "<br>"])
-        tooltip.extend(['<div style="width: 300px; height: 300px;">', 
+        tooltip.extend(['<div style="width: 200px; height: 200px;">', 
                    str(self.dmol[i]), "</div>"])
         return "".join(tooltip)
 
@@ -209,7 +214,18 @@ class Chart():
     def add_data(self, d, x="x", y="y", z=None, **kwargs):
         """Add the data to the chart.
         d is the input dictionary, x, y [, and z] are the keys for the properties to plot.
-        pid is the optional key to a (compound) id to be displayed in the tooltip."""
+        Optional keys:
+        pid=*None*: a (compound) id to be displayed in the tooltip.
+        tooltip=[*""*, "struct"]: enable structure tooltips 
+        (currently only implemented for RDKit dataframes).
+        mol_col=*"mol"*: structure column in the df used for the tooltip.
+        (used if tooltip="struct")
+        color_by=*None*: property to use for coloring.
+        series_by=*None*: property to use as series.
+        mode, color_mode=[*"disc"*, "discrete", "cont", "continuos"]: point coloring mode.
+        reverse=[*False*, True]: reverse the ColorScale
+        """
+        
         if not x in d or not y in d:
             raise KeyError("'{x}' and '{y}' are required parameters for scatter plot, but could not all be found in dict.".format(x=x, y=y))
         
@@ -355,3 +371,19 @@ class Chart():
             print(self.dpid)
             print(html)
         return HTML(html)
+
+
+# Quick Predefined Plots
+def cpd_scatter(df, x, y, r=7, pid="Compound_Id", tooltip="struct"):
+    """Predefined Plot #1.
+    Quickly plot an RDKit Pandas dataframe with structure tooltips."""
+    scatter = Chart(r=r)
+    scatter.add_data(df, x, y, pid=pid, tooltip=tooltip)
+    return scatter.show()
+    
+
+# interactive exploration of an RDKit Pandas dataframe
+def inspect_df(df, pid="Compound_Id", tooltip="struct"):
+    """Use IPythons interactive widgets to visually and interactively explore an RDKit Pandas dataframe.
+    TODO: implement!"""
+    pass
