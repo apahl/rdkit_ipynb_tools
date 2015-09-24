@@ -36,27 +36,6 @@ else:
     print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
 
-def df_from_sdf_list(sdf_list, id_prop=None, props=None, set_index=True):
-    """Generate a Pandas dataframe from the properties of a list of molecules.
-    Currently not including the structure.
-    If <props> contains a list of property names, then only these properties plus the <id_prop> are returned.
-    Returns Pandas dataframe"""
-
-    prop_list = tools.list_fields(sdf_list)
-        
-    if id_prop:
-        guessed_id = id_prop
-    else: 
-        guessed_id = tools.guess_id_prop(prop_list)
-
-    df_dict = hct.dict_from_sdf_list(sdf_list, id_prop=id_prop, props=props, prop_list=prop_list)
-    df = pd.DataFrame(df_dict)
-    if set_index and guessed_id:
-        df = df.set_index(guessed_id)
-    
-    return df
-
-
 def move_col(df, col, new_pos=1):
     """
     Put column col on position new_pos.
@@ -83,6 +62,33 @@ def move_col(df, col, new_pos=1):
     
     return new_df
     
+
+def df_from_mol_list(mol_list, id_prop=None, props=None, set_index=True):
+    """Generate an RDKit Pandas dataframe from the properties of a list of molecules.
+    Currently not including the structure.
+    If <props> contains a list of property names, then only these properties plus the <id_prop> are returned.
+    Returns Pandas dataframe"""
+
+    prop_list = tools.list_fields(mol_list)
+        
+    if id_prop:
+        guessed_id = id_prop
+    else: 
+        guessed_id = tools.guess_id_prop(prop_list)
+
+    df_dict = tools.dict_from_sdf_list(mol_list, id_prop=id_prop, props=props, prop_list=prop_list)
+    smiles_col = [Chem.MolToSmiles(mol) for mol in mol_list]
+    df = pd.DataFrame(df_dict)
+    if set_index and guessed_id:
+        df = df.set_index(guessed_id)
+            
+    df["Smiles"] = pd.Series(data=smiles_col, index=df.index)
+    PT.AddMoleculeColumnToFrame(df, smilesCol="Smiles", molCol='mol', includeFingerprints=False)
+    df = df.drop("Smiles", axis=1)
+    df = move_col(df, "mol", new_pos=0)
+
+    return df
+
 
 def left_join_on_index(df1, df2):
     new_df = pd.merge(df1, df2, how="left", left_index=True, right_index=True)
@@ -144,13 +150,28 @@ def keep_numeric_only(df):
     return new_df
 
 
-def df_to_sdf_list(df):
+def mol_list_from_df(df, mol_col="mol"):
     """
-    returns: list of mols
+    Creates a Mol_List from an RDKit Pandas dataframe.
+    Returns Mol_List.
     """
-    #TODO: fill stub
-    pass
-
+    
+    mol_list = tools.Mol_List()
+    id_prop = df.index.name
+    props = [k for k in df.keys().tolist() if k != mol_col]
+    print(props)
+    for cid in df.index.values.tolist():
+        mol = df.at[cid, mol_col]
+        if not mol:
+            continue
+        mol.SetProp(id_prop, str(cid))
+        for prop in props:
+            if df.at[cid, prop]:
+                mol.SetProp(prop, str(df.at[cid, prop]))
+        mol_list.append(mol)
+    
+    return mol_list
+    
 
 def df_show_table(df):
     """

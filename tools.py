@@ -22,6 +22,8 @@ import os.path as op
 
 from PIL import Image, ImageChops
 
+import pandas as pd
+
 from . import html_templates as html
 
 from IPython.core.display import HTML
