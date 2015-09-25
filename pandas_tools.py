@@ -63,11 +63,11 @@ def move_col(df, col, new_pos=1):
     return new_df
     
 
-def df_from_mol_list(mol_list, id_prop=None, props=None, set_index=True):
-    """Generate an RDKit Pandas dataframe from the properties of a list of molecules.
-    Currently not including the structure.
+def df_from_mol_list(mol_list, id_prop="Compound_Id", props=None, set_index=True):
+    """Generate an RDKit Pandas dataframe from a Mol_List.
+    Now also including the structure.
     If <props> contains a list of property names, then only these properties plus the <id_prop> are returned.
-    Returns Pandas dataframe"""
+    Returns RDKit Pandas dataframe"""
 
     prop_list = tools.list_fields(mol_list)
         
@@ -85,6 +85,7 @@ def df_from_mol_list(mol_list, id_prop=None, props=None, set_index=True):
     df["Smiles"] = pd.Series(data=smiles_col, index=df.index)
     PT.AddMoleculeColumnToFrame(df, smilesCol="Smiles", molCol='mol', includeFingerprints=False)
     df = df.drop("Smiles", axis=1)
+    # move structure column to left side
     df = move_col(df, "mol", new_pos=0)
 
     return df
@@ -159,7 +160,7 @@ def mol_list_from_df(df, mol_col="mol"):
     mol_list = tools.Mol_List()
     id_prop = df.index.name
     props = [k for k in df.keys().tolist() if k != mol_col]
-    print(props)
+
     for cid in df.index.values.tolist():
         mol = df.at[cid, mol_col]
         if not mol:

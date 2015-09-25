@@ -369,3 +369,20 @@ def mol_grid(sdf_list, props, fn=None, mols_per_row=5, sub_img_size=(200, 200)):
     if fn:
         img.save(fn)
     return img
+
+
+def o3da(input_list, ref, fn="aligned.sdf"):
+    """Take a list of molecules and align them to ref.
+    Writes the result as SD file to fn."""
+    ref_pymp = Chem.MMFFGetMoleculeProperties(ref)
+    mol_list = input_list[:]
+    writer = Chem.SDWriter(fn)
+
+    print("N\t\tscore\t\trmsd")
+    for ctr, mol in enumerate(mol_list, 1):
+        mol_pymp = Chem.MMFFGetMoleculeProperties(mol)
+        o3a = Chem.GetO3A(mol, ref, mol_pymp, ref_pymp)
+        print("{}\t\t{:.2f}\t\t{:.2f}".format(ctr, o3a.Score(),o3a.Align()))
+        writer.write(mol)
+
+    writer.close()
