@@ -100,7 +100,7 @@ class Chart():
             raise ValueError("{} is not a supported chart kind ({})".format(kind, CHART_KINDS))
 
         self.kind = kind
-        self.height= kwargs.get("height", 400)
+        self.height= kwargs.get("height", 450)
         radius = kwargs.get("r", kwargs.get("radius", 5)) # accept "r" or "radius" for this option
         self.legend = kwargs.get("legend", None)
         self.chart_id = time.strftime("%y%m%d%H%M%S")
@@ -316,7 +316,7 @@ class Chart():
             if not self.legend:
                 self.chart["legend"] = {'enabled': False}
             else:
-                self.chart["legend"] = {'enabled': True}
+                self.chart["legend"] = {'enabled': True, "align": "right"}
             
 
             ############################
@@ -348,7 +348,8 @@ class Chart():
 
             if self.arg_series_by:
                 if self.legend != False:
-                    self.chart["legend"] = {'enabled': True}
+                    self.chart["legend"] = {'enabled': True, "title": {"text": self.arg_series_by},
+                                            "align": "right"}
                     self.chart["tooltip"]["headerFormat"] = '<b>{series_by}: {{series.name}}</b><br>'.format(series_by=self.arg_series_by)
                 series = self._series_discrete()
                 self.chart["series"].extend(series)
