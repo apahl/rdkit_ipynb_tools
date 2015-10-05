@@ -266,7 +266,7 @@ def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
     if isinstance(order, list):
         order_rev = order[:]
         order_rev.reverse()
-        for k in order:
+        for k in order_rev:
             prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
         
     if id_prop:
