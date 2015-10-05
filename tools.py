@@ -144,6 +144,7 @@ class Mol_List(list):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.order=None
     
     def __getitem__(self, item):
         result = list.__getitem__(self, item)
@@ -153,7 +154,8 @@ class Mol_List(list):
             return result
         
     def _repr_html_(self):
-        return mol_table(self)
+        id_prop = guess_id_prop(list_fields(self))
+        return mol_table(self, id_prop=id_prop, order=self.order)
 
 
 def autocrop(im, bgcolor="white"):
@@ -202,7 +204,7 @@ def ia_remove_props(mol_list):
     def on_btn_clicked(b):
         remove_props(mol_list, props=list(w_sm.selected_labels))
     
-    w_sm = widgets.SelectMultiple(description="Properties to <b>remove</b>:", options=all_props)
+    w_sm = widgets.SelectMultiple(description="Properties to remove:", options=all_props)
     w_btn = widgets.Button(description="Done !")
     w_btn.on_click(on_btn_clicked)
     
@@ -221,7 +223,7 @@ def ia_keep_props(mol_list):
         props_to_remove = list(set(all_props) - set(w_sm.selected_labels))
         remove_props(mol_list, props=props_to_remove)
     
-    w_sm = widgets.SelectMultiple(description="Properties to <b>keep</b>:", options=all_props)
+    w_sm = widgets.SelectMultiple(description="Properties to keep:", options=all_props)
     w_btn = widgets.Button(description="Done !")
     w_btn.on_click(on_btn_clicked)
     
@@ -248,11 +250,12 @@ def get_value(str_val):
     return val
 
 
-def mol_table(sdf_list, id_prop=None, highlight=None):
+def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
     """
     input:   list of RDKit molecules
     highlight: dict of properties (special: *all*) and values to highlight cells,
                e.g. {"activity": "< 50"}
+    order: a list of substrings to match with the field names for ordering in the table header
     returns: HTML table as TEXT to embed in IPython or a web page."""
     
     time_stamp = time.strftime("%y%m%d%H%M%S")
@@ -260,6 +263,11 @@ def mol_table(sdf_list, id_prop=None, highlight=None):
     header_opt = {"bgcolor": "#94CAEF"}
     table_list = []
     prop_list = list_fields(sdf_list)
+    if isinstance(order, list):
+        order.reverse()
+        for k in order:
+            prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
+        
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp))
         if not id_prop in prop_list:
@@ -347,8 +355,8 @@ def mol_table(sdf_list, id_prop=None, highlight=None):
     return "".join(table_list)
 
 
-def show_table(sdf_list, id_prop=None, highlight=None):
-    return HTML(mol_table(sdf_list, id_prop, highlight=highlight))
+def show_table(sdf_list, id_prop=None, highlight=None, order=None):
+    return HTML(mol_table(sdf_list, id_prop, highlight=highlight, order=order))
 
 
 def jsme(name="mol"):
