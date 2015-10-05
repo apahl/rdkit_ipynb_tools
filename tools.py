@@ -145,6 +145,7 @@ class Mol_List(list):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.order=None
+        self.ia = False
     
     def __getitem__(self, item):
         result = list.__getitem__(self, item)
@@ -154,8 +155,11 @@ class Mol_List(list):
             return result
         
     def _repr_html_(self):
-        id_prop = guess_id_prop(list_fields(self))
+        id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         return mol_table(self, id_prop=id_prop, order=self.order)
+
+    def table(self, id_prop=None, highlight=None):
+        return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order)
 
 
 def autocrop(im, bgcolor="white"):
@@ -231,6 +235,19 @@ def ia_keep_props(mol_list):
     
     display(w_hb)
 
+
+def align(mol_list, mol_or_smiles):
+    """Align the Mol_list to the common substructure provided as Smiles or Mol"""
+    if isinstance(mol_or_smiles, str):
+        mol_or_smiles = Chem.MolFromSmiles(mol_or_smiles)
+    try:
+        mol_or_smiles.GetConformer()
+    except ValueError: # no 2D coords... calculate them
+        mol_or_smiles.Compute2DCoords()
+    
+    for mol in mol_list:
+        if mol:
+            Chem.GenerateDepictionMatching2DStructure(mol, mol_or_smiles)
 
 
 def guess_id_prop(prop_list):  # try to guess an id_prop
