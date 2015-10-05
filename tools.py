@@ -26,7 +26,8 @@ import pandas as pd
 
 from . import html_templates as html
 
-from IPython.core.display import HTML
+from IPython.html import widgets
+from IPython.core.display import HTML, display
 
 if sys.version_info[0] > 2:
     PY3 = True
@@ -173,6 +174,38 @@ def list_fields(sdf_list):
         field_list.extend(mol.GetPropNames())
 
     return list(set(field_list))
+
+
+def remove_props_from_mol(mol, prop_or_propslist):
+    if not isinstance(prop_or_propslist, list):
+        prop_or_propslist = [prop_or_propslist]
+    for prop in prop_or_propslist:
+        if prop in mol.GetPropNames():
+            mol.ClearProp(prop)
+
+
+def remove_props(mol_or_sdf_list, props):
+    if isinstance(mol_or_sdf_list, list):
+        for mol in mol_or_sdf_list:
+            if mol:
+                remove_props_from_mol(mol, props)
+    else:
+        remove_props_from_mol(mol_or_sdf_list, props)
+
+
+def ia_remove_props(mol_list):
+    all_props = list_fields(mol_list)
+    
+    def on_btn_clicked(b):
+        remove_props(mol_list, props=list(w_sm.selected_labels))
+    
+    w_sm = widgets.SelectMultiple(description="Properties to remove:", options=all_props)
+    w_btn = widgets.Button(description="Done !")
+    w_btn.on_click(on_btn_clicked)
+    
+    w_hb = widgets.HBox(children=[w_sm, w_btn])
+    
+    display(w_hb)
 
 
 def guess_id_prop(prop_list):  # try to guess an id_prop
