@@ -194,18 +194,41 @@ def remove_props(mol_or_sdf_list, props):
 
 
 def ia_remove_props(mol_list):
+    """Interactively remove properties from a Mol_List.
+    Uses IPython widgets to display the properties to be selected for removal."""
+    
     all_props = list_fields(mol_list)
     
     def on_btn_clicked(b):
         remove_props(mol_list, props=list(w_sm.selected_labels))
     
-    w_sm = widgets.SelectMultiple(description="Properties to remove:", options=all_props)
+    w_sm = widgets.SelectMultiple(description="Properties to <b>remove</b>:", options=all_props)
     w_btn = widgets.Button(description="Done !")
     w_btn.on_click(on_btn_clicked)
     
     w_hb = widgets.HBox(children=[w_sm, w_btn])
     
     display(w_hb)
+
+
+def ia_keep_props(mol_list):
+    """Interactively keep properties from a Mol_List.
+    Uses IPython widgets to display the properties to be selected for keeping."""
+    
+    all_props = list_fields(mol_list)
+    
+    def on_btn_clicked(b):
+        props_to_remove = list(set(all_props) - set(w_sm.selected_labels))
+        remove_props(mol_list, props=props_to_remove)
+    
+    w_sm = widgets.SelectMultiple(description="Properties to <b>keep</b>:", options=all_props)
+    w_btn = widgets.Button(description="Done !")
+    w_btn.on_click(on_btn_clicked)
+    
+    w_hb = widgets.HBox(children=[w_sm, w_btn])
+    
+    display(w_hb)
+
 
 
 def guess_id_prop(prop_list):  # try to guess an id_prop
