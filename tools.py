@@ -264,7 +264,8 @@ def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
     table_list = []
     prop_list = list_fields(sdf_list)
     if isinstance(order, list):
-        order.reverse()
+        order_rev = order[:]
+        order_rev.reverse()
         for k in order:
             prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
         
