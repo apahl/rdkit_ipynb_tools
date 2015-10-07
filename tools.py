@@ -10,7 +10,7 @@ Created on Thu Jul  2 10:07:56 2015
 A set for tools to use with the RDKit in the IPython notebook
 """
 
-# TODO: Mol_List: mol_filter, list_from_ids
+# TODO: Mol_List: mol_filter
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
@@ -171,43 +171,6 @@ class Mol_List(list):
         return mol_table(self, id_prop=id_prop, order=self.order)
 
 
-    def align(self, mol_or_smiles):
-        """Align the Mol_list to the common substructure provided as Mol or Smiles"""
-        align(self, mol_or_smiles)
-
-
-    def write_sdf(self, fn, conf_id=-1):
-        """Write Mol_List instance as SD File"""
-
-        writer = Chem.SDWriter(fn)
-
-        # try to save the column order
-        first_mol = True
-        for mol in self:
-            if first_mol:
-                order = None
-                try:
-                    order = self.order
-                except AttributeError:
-                    pass
-                if order:
-                    mol.SetProp("order", ";".join(order))
-
-            try:
-                mol.GetConformer()
-            except ValueError: # no 2D coords... calculate them
-                mol.Compute2DCoords()
-
-            writer.write(mol, confId=conf_id)
-
-            # remove the order property again from mol_list
-            if first_mol:
-                first_mol = False
-                mol.ClearProp("order")
-
-        writer.close()
-
-
     def _key_get_prop(self, mol, field):
         try:
             val = float(mol.GetProp(field))
@@ -216,10 +179,6 @@ class Mol_List(list):
         except KeyError:   # field is not present in the mol properties
             val = 10000000.0
         return val
-
-
-    def sort_list(self, field, reverse=True):
-        self.sort(key=lambda x: self._key_get_prop(x, field), reverse=reverse)
 
 
     def _get_field_types(self):
@@ -262,7 +221,50 @@ class Mol_List(list):
         return field_types
 
 
+    def align(self, mol_or_smiles):
+        """Align the Mol_list to the common substructure provided as Mol or Smiles"""
+        align(self, mol_or_smiles)
+
+
+    def write_sdf(self, fn, conf_id=-1):
+        """Write Mol_List instance as SD File"""
+
+        writer = Chem.SDWriter(fn)
+
+        # try to save the column order
+        first_mol = True
+        for mol in self:
+            if first_mol:
+                order = None
+                try:
+                    order = self.order
+                except AttributeError:
+                    pass
+                if order:
+                    mol.SetProp("order", ";".join(order))
+
+            try:
+                mol.GetConformer()
+            except ValueError: # no 2D coords... calculate them
+                mol.Compute2DCoords()
+
+            writer.write(mol, confId=conf_id)
+
+            # remove the order property again from mol_list
+            if first_mol:
+                first_mol = False
+                mol.ClearProp("order")
+
+        writer.close()
+
+
+    def sort_list(self, field, reverse=True):
+        """Sort the Mol_List according to <field>."""
+        self.sort(key=lambda x: self._key_get_prop(x, field), reverse=reverse)
+
+
     def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None):
+        """Return a new Mol_List based on the property filtering"""
         result_list = Mol_List()
         mol_counter_out = 0
 
@@ -316,7 +318,7 @@ class Mol_List(list):
                     mol_counter_out += 1
                     result_list.append(mol)
 
-        print("  >  processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
+        print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
 
         if sorted:
             result_list.sort_list(field, reverse=reverse)
@@ -324,7 +326,47 @@ class Mol_List(list):
         return result_list
 
 
+    def mol_filter(self, smarts, invert=False, add_h=False):
+        result_list = Mol_List()
+
+        mol_counter_out = 0
+        query = Chem.MolFromSmarts(smarts)
+        if not query:
+            print("  * ERROR: could not generate query from SMARTS.")
+            return None
+
+        if not add_h and "[H]" in smarts:
+            add_h = True
+            print("  > explicit hydrogens turned on (add_h = True)")
+
+        for mol_counter_in, mol in enumerate(self):
+            if not mol: continue
+
+            hit = False
+            if add_h:
+                mol_with_h = Chem.AddHs(mol)
+                if mol_with_h.HasSubstructMatch(query):
+                    hit = True
+
+            else:
+                if mol.HasSubstructMatch(query):
+                    hit = True
+
+            if invert:
+                # reverse logic
+                hit = not hit
+
+            if hit:
+                mol_counter_out += 1
+                result_list.append(mol)
+
+        print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
+
+        return result_list
+
+
     def get_ids(self, id_prop=None):
+        """Return a list of compound ids"""
         prop_list = list_fields(self)
 
         if id_prop:
@@ -336,6 +378,7 @@ class Mol_List(list):
         if not id_prop:
             raise LookupError("no id prop could be found in data set.")
 
+        self.id_prop = id_prop
         id_list = []
         for mol in self:
             if mol:
@@ -346,7 +389,30 @@ class Mol_List(list):
         return id_list
 
 
+    def new_list_from_ids(self, id_list, id_prop=None):
+        id_all = set(self.get_ids(id_prop))
+        id_set = set(id_list)
+        id_found = id_set.intersection(id_all)
+        id_not_found = id_set - id_all
+        if id_not_found:
+            print("  not found:", id_not_found)
+
+        new_list = Mol_List()
+        for mol in self:
+            if mol:
+                if mol.HasProp(self.id_prop):
+                    val = get_value(mol.GetProp(self.id_prop))
+                    if val in id_found:
+                        new_list.append(mol)
+
+        return new_list
+
+
+
+
     def table(self, id_prop=None, highlight=None, raw=False):
+        """Return the Mol_List as HTML table.
+        Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
         if raw:
             return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order)
         else:
@@ -354,6 +420,8 @@ class Mol_List(list):
 
 
     def sheet(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, raw=False):
+        """Return the Mol_List as HTML grid table.
+        Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
         if raw:
             return mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
                              mols_per_row=mols_per_row, size=size)
