@@ -327,6 +327,7 @@ class Mol_List(list):
 
 
     def mol_filter(self, smarts, invert=False, add_h=False):
+        """Returns a new Mol_List containing the substructure matches"""
         result_list = Mol_List()
 
         mol_counter_out = 0
@@ -408,26 +409,37 @@ class Mol_List(list):
         return new_list
 
 
-
-
     def table(self, id_prop=None, highlight=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
+        if not id_prop:
+            id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         if raw:
             return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order)
         else:
             return HTML(mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order))
 
 
-    def sheet(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, raw=False):
+    def grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, raw=False):
         """Return the Mol_List as HTML grid table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
+        if not id_prop:
+            id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         if raw:
             return mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
                              mols_per_row=mols_per_row, size=size)
         else:
             return HTML(mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
                              mols_per_row=mols_per_row, size=size))
+
+
+    def write_table(self, id_prop=None, highlight=None, fn="mol_table.html"):
+        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True)), fn=fn)
+
+
+    def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, fn="mol_grid.html"):
+        html.write(html.page(self.grid(props=props, id_prop=id_prop, highlight=highlight,
+                             mols_per_row=mols_per_row, size=size, raw=True)), fn=fn)
 
 
 def autocrop(im, bgcolor="white"):
@@ -705,6 +717,9 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     prop_list = list_fields(sdf_list)
     if props and not isinstance(props, list):
         props = [props]
+
+    if props:
+        table_list.extend(["<p>properties shown: ", "["+"] _ [".join(props)+"]", "</p>"])
 
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor=BGCOLOR))
