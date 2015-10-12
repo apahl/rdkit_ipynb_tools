@@ -7,7 +7,7 @@ Tools
 
 *Created on Thu Jul  2 10:07:56 2015 by A. Pahl*
 
-A set for tools to use with the `RDKit <http://rdkit.org>_` in the IPython notebook.
+A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
 """
 
 from __future__ import print_function, division
