@@ -12,10 +12,8 @@ A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython noteb
 
 from __future__ import print_function, division
 
-# TODO: Mol_List: mol_filter
-
 from rdkit.Chem import AllChem as Chem
-from rdkit.Chem import Draw
+from rdkit.Chem import Draw, rdFMCS
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
@@ -225,8 +223,10 @@ class Mol_List(list):
         return field_types
 
 
-    def align(self, mol_or_smiles):
-        """Align the Mol_list to the common substructure provided as Mol or Smiles"""
+    def align(self, mol_or_smiles=None):
+        """Align the Mol_list to the common substructure provided as Mol or Smiles.
+        If mol_or_smiles == None, then the method uses rdFMCS to determine the MCSS
+        of the Mol_List."""
         align(self, mol_or_smiles)
 
 
@@ -572,10 +572,26 @@ def ia_keep_props(mol_list):
     display(w_hb)
 
 
-def align(mol_list, mol_or_smiles):
-    """Align the Mol_list to the common substructure provided as Smiles or Mol"""
-    if isinstance(mol_or_smiles, str):
+def align(mol_list, mol_or_smiles=None):
+    """Align the Mol_list to the common substructure provided as Smiles or Mol.
+    If mol_or_smiles == None, then the function uses rdFMCS to determine the MCSS
+    of the mol_list."""
+
+    if mol_or_smiles == None:
+        # determine the MCSS
+        mcs = rdFMCS.FindMCS(mol_list)
+        if mcs.canceled:
+            print("  * MCSS function timed out. Please provide a mol_or_smiles to align to.")
+            return
+        if mcs.smartsString:
+            mol_or_smiles = Chem.MolFromSmarts(mcs.smartsString)
+        else:
+            print("  * Could not find MCSS. Please provide a mol_or_smiles to align to.")
+            return
+
+    elif isinstance(mol_or_smiles, str):
         mol_or_smiles = Chem.MolFromSmiles(mol_or_smiles)
+
     try:
         mol_or_smiles.GetConformer()
     except ValueError: # no 2D coords... calculate them
