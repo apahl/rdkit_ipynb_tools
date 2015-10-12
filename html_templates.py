@@ -2,9 +2,13 @@
 # -*- coding: utf-8 -*-
 # html_templates.py
 """
-Created on Wed Jun 01 2015
+##############
+HTML Templates
+##############
 
-@author: pahl
+*Created on Wed Jun 01 2015 by A. Pahl*
+
+A simple and pythonic templating library where every HTML tag is a function.
 """
 
 import time
@@ -55,12 +59,12 @@ def tag(name, content, options=None, lf_open=False, lf_close=False):
     return stub
 
 
-def page(content, title="Results", options=PAGE_OPTIONS):
+def page(content, title="Results", header=None, summary=None, options=PAGE_OPTIONS):
     """create a full HTML page from a list of stubs below
     options dict:
-      css:     list of CSS style file paths to include.
-      scripts: list of javascript library file paths to include.
-      icon: path to icon image
+    css:     list of CSS style file paths to include.
+    scripts: list of javascript library file paths to include.
+    icon: path to icon image
     returns HTML page as STRING !!!"""
 
     # override the title if there is a title in <options>
@@ -121,6 +125,26 @@ table {
     else:
         js_str = ""
 
+    if header:
+        if not isinstance(header, list):
+            header = [header]
+
+        header_str = "".join(h2(header))
+
+    else:
+        header_str = ""
+
+    if summary:
+        if not isinstance(summary, list):
+            summary = [summary]
+
+        summary_str = "".join(p(summary))
+
+    else:
+        summary_str = ""
+
+
+
     if isinstance(content, list):
         content_str = "".join(content)
     else:
@@ -137,10 +161,13 @@ table {
 {js_str}
 </head>
 <body>
+{header_str}
+{summary_str}
 {content_str}
 </body>
 </html>
-""".format(title=title, icon_str=icon_str, css_str=css_str, js_str=js_str, content_str=content_str)
+""".format(title=title, icon_str=icon_str, css_str=css_str, js_str=js_str,
+           header_str=header_str, summary_str=summary_str, content_str=content_str)
 
     return html_page
 
@@ -185,6 +212,14 @@ def td(content, options=None):
 
 def p(content):
     return tag("p", content, lf_open=True, lf_close=True)
+
+
+def h1(content):
+    return tag("h1", content, lf_open=True, lf_close=True)
+
+
+def h2(content):
+    return tag("h2", content, lf_open=True, lf_close=True)
 
 
 def div(content, options=None):

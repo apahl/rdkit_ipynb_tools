@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jul 29 08:39:28 2015
+################
+Highcharts Tools
+################
 
-@author: Axel Pahl
-@title: hc_tools.py
+*Created on Wed Jul 29 08:39:28 2015 by Axel Pahl*
+
+Create Highcharts plots from dictionaries or Pandas dataframes.
+The latter supports structure tooltips.
 """
 
 # 1. stdlib imports
@@ -45,19 +49,17 @@ $chart
 </script>
 """
 
-#colorAxis: {
-#    min: -1,
-#    max: 1,
-#    minColor: '#16E52B',
-#    maxColor: '#E51616'}
-
-
+#: Currently supported chart kinds
 CHART_KINDS = ["scatter", "column"]
+
+#: Currently supported tooltip options
 TOOLTIP_OPTIONS = "struct"
 
 if AP_TOOLS:
+    #: Library version
+    VERSION = apt.get_commit(__file__)
     # I use this to keep track of the library versions I use in my project notebooks
-    print("{:45s} (commit: {})".format("- loading highcharts...", apt.get_commit(__file__)))
+    print("{:45s} (commit: {})".format(__name__, VERSION))
 else:
     print("- loading highcharts...")
 
@@ -66,7 +68,7 @@ display(HTML(HIGHCHARTS))
 
 class ColorScale():
     """Used for continuous coloring."""
-    
+
     def __init__(self, num_values, val_min, val_max):
         self.num_values = num_values
         self.num_val_1 = num_values - 1
@@ -83,10 +85,10 @@ class ColorScale():
     def __call__(self, value, reverse=False):
         """return the color from the scale corresponding to the place in the value_min ..  value_max range"""
         pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
-        
+
         if reverse:
             pos = self.num_val_1 - pos
-        
+
         return self.color_scale[pos]
 
 
@@ -94,7 +96,7 @@ class Chart():
     """Available Chart types: scatter, column.
     Options:
     r, radius: size of the points."""
-    
+
     def __init__(self, kind="scatter", **kwargs):
         if not kind in CHART_KINDS:
             raise ValueError("{} is not a supported chart kind ({})".format(kind, CHART_KINDS))
@@ -110,13 +112,13 @@ class Chart():
         self.chart["series"] = []
         self.chart["plotOptions"] = {"scatter": {"marker": {"radius": radius}}}
         self.chart["credits"] = {'enabled': False}
-        
-    
+
+
     def _structure_tooltip(self, i):
         tooltip = []
         if self.arg_pid:
             tooltip.extend([str(self.dpid[i]), "<br>"])
-        tooltip.extend(['<div style="width: 200px; height: 200px;">', 
+        tooltip.extend(['<div style="width: 200px; height: 200px;">',
                    str(self.dmol[i]), "</div>"])
         return "".join(tooltip)
 
@@ -130,8 +132,8 @@ class Chart():
                 ext_tt[idx].append("<b>{}</b>: {}".format(self.arg_pid, self.dpid[idx]))
         self.dpid = ["<br>".join(i) for i in ext_tt]
         self.arg_pid = True
-    
-    
+
+
     def _data_columns(self):
         """Generate the data for the Column plot"""
         data = []
@@ -140,10 +142,10 @@ class Chart():
         for i in range(self.dlen):
             cats.append(str(self.dx[i]))
             data.append(float(self.dy[i]))
-        
+
         self.chart["series"].append({"name": self.arg_y, "data": data})
         self.chart["xAxis"]["categories"] = cats
-        
+
 
     def _data_tuples(self, d):
         """Generate the data tuples required for Highcharts scatter plot."""
@@ -166,16 +168,16 @@ class Chart():
             if self.arg_color_by:
                 color_val = float(dcolorval[i])
                 color_code = self.color_scale(color_val, reverse=self.arg_reverse)
-                tmp_d["z"] = color_val 
+                tmp_d["z"] = color_val
                 tmp_d["color"] = color_code
-                marker = {"fillColor": color_code, 
+                marker = {"fillColor": color_code,
                           "states": {"hover": {"fillColor": color_code}}}
                 tmp_d["marker"] = marker
 
             data.append(tmp_d)
-        
+
         return data
-    
+
 
     def _series_discrete(self):
         # [{"name": "A", "data": [{"x": 1, "y": 2}, {"x": 2, "y": 3}]},
@@ -192,7 +194,7 @@ class Chart():
             data_series_mol = {name: [] for name in names}
         if self.arg_color_by:
             data_series_color = {name: [] for name in names}
-        
+
         for i in range(self.dlen):
             series_by_str = str(self.dseries_by[i])
             data_series_x[series_by_str].append(float(self.dx[i]))
@@ -216,32 +218,46 @@ class Chart():
             series_dict = {"name": name}
             series_dict["data"] = self._data_tuples(tmp_d)
             series.append(series_dict)
-        
+
         return series
-        
+
 
 
     def add_data(self, d, x="x", y="y", z=None, **kwargs):
         """Add the data to the chart.
-        d is the input dictionary, x, y [, and z] are the keys for the properties to plot.
+        ``d`` is the input dictionary, ``x``, ``y`` [, and ``z``] are the keys for the properties to plot.
+
         Optional keys:
-        pid=*None*: a (compound) id to be displayed in the tooltip.
-        tooltip=[*""*, "struct"]: enable structure tooltips 
-        (currently only implemented for RDKit dataframes).
-        mol_col=*"mol"*: structure column in the df used for the tooltip.
-        (used if tooltip="struct")
-        color_by=*None*: property to use for coloring.
-        series_by=*None*: property to use as series.
-        mode, color_mode=[*"disc"*, "discrete", "cont", "continuos"]: point coloring mode.
-        reverse=[*False*, True]: reverse the ColorScale
-        """
-        
+
+        pid=None
+            a (compound) id to be displayed in the tooltip.
+
+        tooltip=["", "struct"]
+            enable structure tooltips
+            (currently only implemented for RDKit dataframes).
+
+        mol_col="mol"
+            structure column in the df used for the tooltip.
+            (used if tooltip="struct")
+
+        color_by=None
+            property to use for coloring.
+
+        series_by=None
+            property to use as series.
+
+        mode, color_mode=["disc", "discrete", "cont", "continuos"]
+            point coloring mode.
+
+        reverse=[False, True]
+            reverse the ColorScale."""
+
         if not x in d or not y in d:
             raise KeyError("'{x}' and '{y}' are required parameters for scatter plot, but could not all be found in dict.".format(x=x, y=y))
-        
+
         if len(d[x]) != len(d[y]):
             raise ValueError("'{x}' and '{y}' must have the same length.".format(x=self.arg_x, y=self.arg_y))
-        
+
         self.arg_x = x
         self.arg_y = y
         self.arg_z = z
@@ -253,11 +269,11 @@ class Chart():
         self.arg_include_in_tooltip = kwargs.get("include_in_tooltip", kwargs.get("include", "xxx"))
         if not isinstance(self.arg_include_in_tooltip, list):
             self.arg_include_in_tooltip = [self.arg_include_in_tooltip]
-        
+
         self.dx = list(d[x])
         self.dy = list(d[y])
         self.dlen = len(self.dx)
-        
+
         if self.arg_pid:
             # pandas data series and pid == index
             if not isinstance(d[x], list) and self.arg_pid == d.index.name:
@@ -273,7 +289,7 @@ class Chart():
 
         self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
         self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
-        
+
         #########################
         # plot-specific options #
         #########################
@@ -286,7 +302,7 @@ class Chart():
             self.arg_mol_col = kwargs.get("mol_col", "mol")
             if self.arg_struct:
                 self.dmol = list(d[self.arg_mol_col])
-            
+
             self.include = {}
             includes = self.arg_include_in_tooltip[:]
             for field in includes:
@@ -294,10 +310,10 @@ class Chart():
                     self.include[field] = list(d[field])
                 else:
                     self.arg_include_in_tooltip.remove(field)  # remove fields that are not present in the data set
-            
+
             if self.arg_pid or self.arg_include_in_tooltip:
                 self._extended_tooltip()
-            
+
 
         if self.kind == "scatter":
             self.chart["chart"] = {"type": "scatter", "zoomType": "xy"}
@@ -305,7 +321,7 @@ class Chart():
             self.chart["tooltip"] = {"useHTML": True}
             # self.chart["tooltip"]["headerFormat"] = "{y} vs. {x}<br>".format(x=x, y=y)
             self.chart["tooltip"]["headerFormat"] = ""
-            
+
             point_format = ["<b>{x}:</b> {{point.x}}<br><b>{y}:</b> {{point.y}}".format(x=self.arg_x, y=self.arg_y)]
             if self.arg_color_by:
                 point_format.append("<b>{color_by}:</b> {{point.z}}".format(color_by=self.arg_color_by))
@@ -317,7 +333,7 @@ class Chart():
                 self.chart["legend"] = {'enabled': False}
             else:
                 self.chart["legend"] = {'enabled': True, "align": "right"}
-            
+
 
             ############################
             # defining the data series #
@@ -334,7 +350,7 @@ class Chart():
                 min_color_by = min(self.dcolor_by)
                 max_color_by = max(self.dcolor_by)
                 self.color_scale = ColorScale(20, min_color_by, max_color_by)
-                # self.chart["colorAxis"] = {"min": min_color_by, "max": max_color_by, 
+                # self.chart["colorAxis"] = {"min": min_color_by, "max": max_color_by,
                 #                          "minColor": '#16E52B', "maxColor": '#E51616'}
                 # if self.legend != False:
                 #     self.chart["legend"] = {'enabled': True}
@@ -361,16 +377,17 @@ class Chart():
                     tmp_d["id"] = self.dpid
                 if self.arg_color_by: # continuous values
                     tmp_d["color_by"] = self.dcolor_by
-                    
+
                 data = self._data_tuples(tmp_d)
                 self.chart["series"].append({"name": "series", "data": data})
-        
+
         if self.kind == "column":
             self.chart["chart"] = {"type": "column", "zoomType": "xy"}
             self._data_columns()
 
-    
+
     def show(self, debug=False):
+        """Show the plot."""
         formatter = string.Template(CHART_TEMPL)
         # if debug:
         #     print(self.chart)
@@ -391,7 +408,7 @@ def cpd_scatter(df, x, y, r=7, pid="Compound_Id", series_by=None, tooltip="struc
     scatter = Chart(title="Compound Scatter Plot", r=r)
     scatter.add_data(df, x, y, pid=pid, series_by=series_by, tooltip=tooltip)
     return scatter.show()
-    
+
 
 # interactive exploration of an RDKit Pandas dataframe
 def inspect_df(df, pid="Compound_Id", tooltip="struct"):

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+#####
+Tools
+#####
+
+*Created on Thu Jul  2 10:07:56 2015 by A. Pahl*
+
+A set for tools to use with the `RDKit <http://rdkit.org>_` in the IPython notebook.
+"""
+
 from __future__ import print_function, division
-"""
-Created on Thu Jul  2 10:07:56 2015
-
-@author: Axel Pahl
-@title: tools.py
-
-A set for tools to use with the RDKit in the IPython notebook
-"""
 
 # TODO: Mol_List: mol_filter
 
@@ -46,8 +48,10 @@ except ImportError:
     AP_TOOLS = False
 
 if AP_TOOLS:
+    #: Library version
+    VERSION = apt.get_commit(__file__)
     # I use this to keep track of the library versions I use in my project notebooks
-    print("{:45s} (commit: {})".format(__name__, apt.get_commit(__file__)))
+    print("{:45s} (commit: {})".format(__name__, VERSION))
 else:
     print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
@@ -409,6 +413,12 @@ class Mol_List(list):
         return new_list
 
 
+    def remove_props(self, props):
+        for mol in self:
+            if mol:
+                remove_props_from_mol(mol, props)
+
+
     def table(self, id_prop=None, highlight=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
@@ -433,13 +443,13 @@ class Mol_List(list):
                              mols_per_row=mols_per_row, size=size))
 
 
-    def write_table(self, id_prop=None, highlight=None, fn="mol_table.html"):
-        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True)), fn=fn)
+    def write_table(self, id_prop=None, highlight=None, header=None, summary=None, fn="mol_table.html"):
+        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True), header=header, summary=summary), fn=fn)
 
 
-    def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, fn="mol_grid.html"):
+    def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, header=None, summary=None, fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, id_prop=id_prop, highlight=highlight,
-                             mols_per_row=mols_per_row, size=size, raw=True)), fn=fn)
+                             mols_per_row=mols_per_row, size=size, raw=True), header=header, summary=summary), fn=fn)
 
 
 def autocrop(im, bgcolor="white"):
@@ -594,10 +604,9 @@ def get_value(str_val):
 
 
 def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
-    """
-    input:   list of RDKit molecules
+    """input:   list of RDKit molecules
     highlight: dict of properties (special: *all*) and values to highlight cells,
-               e.g. {"activity": "< 50"}
+    e.g. {"activity": "< 50"}
     order: a list of substrings to match with the field names for ordering in the table header
     returns: HTML table as TEXT to embed in IPython or a web page."""
 
@@ -701,10 +710,9 @@ def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
 
 
 def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4, size=200):
-    """
-    input:   list of RDKit molecules
+    """input:   list of RDKit molecules
     highlight: dict of properties (a.t.m only one) and values to highlight cells,
-               e.g. {"activity": "< 50"}
+    e.g. {"activity": "< 50"}
     order: a list of substrings to match with the field names for ordering in the table header
     returns: HTML table as TEXT with molecules in grid-like layout to embed in IPython or a web page."""
 
@@ -717,9 +725,6 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     prop_list = list_fields(sdf_list)
     if props and not isinstance(props, list):
         props = [props]
-
-    if props:
-        table_list.extend(["<p>properties shown: ", "["+"] _ [".join(props)+"]", "</p>"])
 
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor=BGCOLOR))
@@ -805,6 +810,9 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
             rows.extend(html.tr(prop_cells))
 
     table_list.extend(html.table(rows))
+
+    if props:
+        table_list.extend(["<p>properties shown: ", "["+"] _ [".join(props)+"]", "</p>"])
 
     if id_prop:
         table_list.append(ID_LIST.format(ts=time_stamp))
