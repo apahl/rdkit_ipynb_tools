@@ -14,6 +14,7 @@ from __future__ import print_function, division
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw, rdFMCS
+import rdkit.Chem.Descriptors as Desc
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
@@ -44,6 +45,14 @@ try:
     AP_TOOLS = True
 except ImportError:
     AP_TOOLS = False
+
+try:
+    from Contrib.SA_Score import sascorer
+    SASCORER = True
+except ImportError:
+    print("  * SA scorer not available. RDKit's Contrib dir needs to be in the Python import path...")
+    SASCORER = False
+
 
 if AP_TOOLS:
     #: Library version
@@ -225,8 +234,12 @@ class Mol_List(list):
 
     def align(self, mol_or_smiles=None):
         """Align the Mol_list to the common substructure provided as Mol or Smiles.
-        If mol_or_smiles == None, then the method uses rdFMCS to determine the MCSS
-        of the Mol_List."""
+
+        Args:
+            mol_or_smiles (bool): The substructure to which to align.
+                If None, then the method uses rdFMCS to determine the MCSS
+                of the Mol_List."""
+
         align(self, mol_or_smiles)
 
 
@@ -413,7 +426,91 @@ class Mol_List(list):
         return new_list
 
 
+    def calc_props(self, props):
+        """Remove properties from the Mol_List.
+        props can be a single property or a list of properties.
+
+        Calculable properties:
+            2d, date, formula, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa
+
+        Synthetic Accessibility (normalized):
+            0: hard to synthesize; 1: easy access
+
+            as described in:
+                | Estimation of Synthetic Accessibility Score of Drug-like Molecules based on Molecular Complexity and Fragment Contributions
+                | *Peter Ertl and Ansgar Schuffenhauer*
+                | Journal of Cheminformatics 1:8 (2009) (`link <http://www.jcheminf.com/content/1/1/8>`_)
+        """
+
+        if not isinstance(props, list):
+            props = [props]
+
+        ctr = 0
+        calculated_props = set()
+        for mol in self:
+            if not mol: continue
+
+            if "2d" in props:
+                mol.Compute2DCoords()
+                calculated_props.add("2d")
+            else:
+                try:
+                    mol.GetConformer()
+                except ValueError: # no 2D coords... calculate them
+                    mol.Compute2DCoords()
+
+            if "date" in props:
+                mol.SetProp("date", time.strftime("%Y%m%d"))
+                calculated_props.add("date")
+
+            if "formula" in props:
+                mol.SetProp("formula", Chem.CalcMolFormula(mol))
+                calculated_props.add("formula")
+
+            if "hba" in props:
+                mol.SetProp("hba", str(Desc.NOCount(mol)))
+                calculated_props.add("hba")
+
+            if "hbd" in props:
+                mol.SetProp("hbd", str(Desc.NHOHCount(mol)))
+                calculated_props.add("hbd")
+
+            if "logp" in props:
+                mol.SetProp("logp", "{:.2f}".format(Desc.MolLogP(mol)))
+                calculated_props.add("logp")
+
+            if "molid" in props:
+                mol.SetProp("molid", str(ctr))
+                ctr += 1
+                calculated_props.add("molid")
+
+            if "mw" in props:
+                mol.SetProp("mw", "{:.2f}".format(Desc.MolWt(mol)))
+                calculated_props.add("mw")
+
+            if "rotb" in props:
+                mol.SetProp("rotb", str(Desc.NumRotatableBonds(mol)))
+                calculated_props.add("rotb")
+
+            if SASCORER and "sa" in props:
+                score = sascorer.calculateScore(mol)
+                norm_score = 1 - (score / 10)
+                mol.SetProp("sa", "{:.2f}".format(norm_score))
+                calculated_props.add("sa")
+
+            if "tpsa" in props:
+                mol.SetProp("tpsa", str(int(Desc.TPSA(mol))))
+                calculated_props.add("tpsa")
+
+        not_calculated = set(props) - calculated_props
+        if not_calculated:
+            print("  * these props could not be calculated:", not_calculated)
+
+
     def remove_props(self, props):
+        """Remove properties from the Mol_List.
+        props can be a single property or a list of properties."""
+
         for mol in self:
             if mol:
                 remove_props_from_mol(mol, props)
@@ -422,6 +519,7 @@ class Mol_List(list):
     def table(self, id_prop=None, highlight=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
+
         if not id_prop:
             id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         if raw:
@@ -573,9 +671,14 @@ def ia_keep_props(mol_list):
 
 
 def align(mol_list, mol_or_smiles=None):
-    """Align the Mol_list to the common substructure provided as Smiles or Mol.
-    If mol_or_smiles == None, then the function uses rdFMCS to determine the MCSS
-    of the mol_list."""
+    """Align the Mol_list to the common substructure provided as Mol or Smiles.
+
+    Args:
+        mol_list: A list of RDKit molecules.
+        mol_or_smiles (bool): The substructure to which to align.
+            If None, then the method uses rdFMCS to determine the MCSS
+            of the mol_list."""
+
 
     if mol_or_smiles == None:
         # determine the MCSS

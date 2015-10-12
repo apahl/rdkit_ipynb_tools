@@ -94,8 +94,9 @@ class ColorScale():
 
 class Chart():
     """Available Chart types: scatter, column.
-    Options:
-    r, radius: size of the points."""
+
+    Args:
+        r, radius (int): size of the points."""
 
     def __init__(self, kind="scatter", **kwargs):
         if not kind in CHART_KINDS:
@@ -225,32 +226,30 @@ class Chart():
 
     def add_data(self, d, x="x", y="y", z=None, **kwargs):
         """Add the data to the chart.
-        ``d`` is the input dictionary, ``x``, ``y`` [, and ``z``] are the keys for the properties to plot.
 
-        Optional keys:
+        Parameters:
+            d (dictionary or dataframe): The input dictionary
+            x, y [, and z]: The keys for the properties to plot.
 
-        pid=None
-            a (compound) id to be displayed in the tooltip.
+        Other Parameters:
+            pid (str): The name of a (compound) id to be displayed in the tooltip.
+                Defaults to *None*.
 
-        tooltip=["", "struct"]
-            enable structure tooltips
-            (currently only implemented for RDKit dataframes).
+            tooltip (str): enable structure tooltips (currently only implemented for RDKit dataframes).
+                Possible values: ["", "struct"]. Defaults to "".
 
-        mol_col="mol"
-            structure column in the df used for the tooltip.
-            (used if tooltip="struct")
+            mol_col (str): Structure column in the df used for the tooltip
+                (used if tooltip="struct"). Defaults to *"mol"*.
 
-        color_by=None
-            property to use for coloring.
+            color_by (str, None): property to use for coloring. Defaults to *None*
 
-        series_by=None
-            property to use as series.
+            series_by (str, None): property to use as series. Defaults to *None*
 
-        mode, color_mode=["disc", "discrete", "cont", "continuos"]
-            point coloring mode.
+            mode, color_mode (str): point coloring mode.
+                Available values: *"disc", "discrete", "cont", "continuos"*. Defaults to *"disc"*
 
-        reverse=[False, True]
-            reverse the ColorScale."""
+            reverse (bool): Reverse the ColorScale. Defaults to *False*.
+        """
 
         if not x in d or not y in d:
             raise KeyError("'{x}' and '{y}' are required parameters for scatter plot, but could not all be found in dict.".format(x=x, y=y))
@@ -405,6 +404,7 @@ class Chart():
 def cpd_scatter(df, x, y, r=7, pid="Compound_Id", series_by=None, tooltip="struct"):
     """Predefined Plot #1.
     Quickly plot an RDKit Pandas dataframe with structure tooltips."""
+
     scatter = Chart(title="Compound Scatter Plot", r=r)
     scatter.add_data(df, x, y, pid=pid, series_by=series_by, tooltip=tooltip)
     return scatter.show()
