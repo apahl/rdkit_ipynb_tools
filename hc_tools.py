@@ -24,7 +24,6 @@ except ImportError:
     AP_TOOLS = False
 
 # 3. internal project imports
-from . import tools
 
 # 4. IPython imports
 # from IPython.html import widgets
@@ -96,7 +95,7 @@ class Chart():
     """Available Chart types: scatter, column.
 
     Args:
-        r, radius (int): size of the points."""
+        radius (int): Size of the points. Alias: *r*"""
 
     def __init__(self, kind="scatter", **kwargs):
         if not kind in CHART_KINDS:
@@ -141,8 +140,14 @@ class Chart():
         cats = []
 
         for i in range(self.dlen):
-            cats.append(str(self.dx[i]))
-            data.append(float(self.dy[i]))
+            try:
+                cv = str(self.dx[i])
+                dv = float(self.dy[i])
+            except TypeError:
+                continue
+
+            cats.append(cv)
+            data.append(dv)
 
         self.chart["series"].append({"name": self.arg_y, "data": data})
         self.chart["xAxis"]["categories"] = cats
@@ -161,21 +166,25 @@ class Chart():
             dcolorval = d["color_by"]
 
         for i in range(len(dx)):
-            tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
-            if self.arg_z:
-                tmp_d["z"] = float(dz[i])
-            if self.arg_pid or self.arg_struct or self.arg_include_in_tooltip:
-                tmp_d["id"] = str(dpid[i])
-            if self.arg_color_by:
-                color_val = float(dcolorval[i])
-                color_code = self.color_scale(color_val, reverse=self.arg_reverse)
-                tmp_d["z"] = color_val
-                tmp_d["color"] = color_code
-                marker = {"fillColor": color_code,
-                          "states": {"hover": {"fillColor": color_code}}}
-                tmp_d["marker"] = marker
+            try:
+                tmp_d = {"x": float(dx[i]), "y": float(dy[i])}
+                if self.arg_z:
+                    tmp_d["z"] = float(dz[i])
+                if self.arg_pid or self.arg_struct or self.arg_include_in_tooltip:
+                    tmp_d["id"] = str(dpid[i])
+                if self.arg_color_by:
+                    color_val = float(dcolorval[i])
+                    color_code = self.color_scale(color_val, reverse=self.arg_reverse)
+                    tmp_d["z"] = color_val
+                    tmp_d["color"] = color_code
+                    marker = {"fillColor": color_code,
+                              "states": {"hover": {"fillColor": color_code}}}
+                    tmp_d["marker"] = marker
 
-            data.append(tmp_d)
+                data.append(tmp_d)
+
+            except TypeError:
+                pass
 
         return data
 
@@ -223,31 +232,24 @@ class Chart():
         return series
 
 
-
     def add_data(self, d, x="x", y="y", z=None, **kwargs):
         """Add the data to the chart.
 
         Parameters:
             d (dictionary or dataframe): The input dictionary
-            x, y [, and z]: The keys for the properties to plot.
+            str x , y [, z]: The keys for the properties to plot.
 
         Other Parameters:
             pid (str): The name of a (compound) id to be displayed in the tooltip.
                 Defaults to *None*.
-
             tooltip (str): enable structure tooltips (currently only implemented for RDKit dataframes).
-                Possible values: ["", "struct"]. Defaults to "".
-
+                Possible values: *"", "struct"*. Defaults to "".
             mol_col (str): Structure column in the df used for the tooltip
                 (used if tooltip="struct"). Defaults to *"mol"*.
-
             color_by (str, None): property to use for coloring. Defaults to *None*
-
             series_by (str, None): property to use as series. Defaults to *None*
-
-            mode, color_mode (str): point coloring mode.
+            color_mode (str): Point coloring mode. Alias: *mode*
                 Available values: *"disc", "discrete", "cont", "continuos"*. Defaults to *"disc"*
-
             reverse (bool): Reverse the ColorScale. Defaults to *False*.
         """
 
@@ -400,10 +402,26 @@ class Chart():
         return HTML(html)
 
 
+def guess_id_prop(prop_list):  # try to guess an id_prop
+    for prop in prop_list:
+        if prop.lower().endswith("id"):
+            return prop
+    return None
+
+
 # Quick Predefined Plots
-def cpd_scatter(df, x, y, r=7, pid="Compound_Id", series_by=None, tooltip="struct"):
+def cpd_scatter(df, x, y, r=7, pid=None, series_by=None, tooltip="struct"):
     """Predefined Plot #1.
-    Quickly plot an RDKit Pandas dataframe with structure tooltips."""
+    Quickly plot an RDKit Pandas dataframe or a molecule dictionary with structure tooltips."""
+
+    if not pid:
+        if isinstance(df, dict):
+            prop_list = df.keys()
+        else:
+            prop_list = [df.index.name]
+            prop_list.extend(df.columns.values)
+
+        pid = guess_id_prop(prop_list)
 
     scatter = Chart(title="Compound Scatter Plot", r=r)
     scatter.add_data(df, x, y, pid=pid, series_by=series_by, tooltip=tooltip)

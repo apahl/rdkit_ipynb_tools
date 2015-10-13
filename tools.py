@@ -29,6 +29,7 @@ from PIL import Image, ImageChops
 import pandas as pd
 
 from . import html_templates as html
+from . import hc_tools as hct
 
 from IPython.html import widgets
 from IPython.core.display import HTML, display
@@ -211,7 +212,7 @@ class Mol_List(list):
                 prop_str = mol.GetProp(prop)
 
                 try:
-                    val = float(prop_str)
+                    float(prop_str)
                     if prop.lower().endswith("id"):
                         prop_type = "key"
 
@@ -232,6 +233,21 @@ class Mol_List(list):
         return field_types
 
 
+    def _calc_d(self):
+        self._d = {x: [] for x in self.fields}
+        self._d["mol"] = []
+        for mol in self:
+            if not mol: continue
+            img_tag = '<img src="data:image/png;base64,{}" alt="Mol"/>'.format(b64_img(mol))
+            self._d["mol"].append(img_tag)
+
+            for prop in self.fields:
+                if mol.HasProp(prop):
+                    self._d[prop].append(get_value(mol.GetProp(prop)))
+                else:
+                    self._d[prop].append(None)
+
+
     def align(self, mol_or_smiles=None):
         """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
@@ -241,6 +257,11 @@ class Mol_List(list):
                 of the Mol_List."""
 
         align(self, mol_or_smiles)
+
+        # only recalc the molecule dictionary if it is already present, e.g. after a plot
+        if hasattr(self, "_d"):
+            self._calc_d()
+
 
 
     def write_sdf(self, fn, conf_id=-1):
@@ -502,6 +523,10 @@ class Mol_List(list):
                 mol.SetProp("tpsa", str(int(Desc.TPSA(mol))))
                 calculated_props.add("tpsa")
 
+        # only recalc the molecule dictionary if it is already present, e.g. after a plot
+        if hasattr(self, "_d"):
+            self._calc_d()
+
         not_calculated = set(props) - calculated_props
         if not_calculated:
             print("  * these props could not be calculated:", not_calculated)
@@ -515,15 +540,45 @@ class Mol_List(list):
             if mol:
                 remove_props_from_mol(mol, props)
 
+        # only recalc the molecule dictionary if it is already present, e.g. after a plot
+        if hasattr(self, "_d"):
+            self._calc_d()
 
-    def table(self, id_prop=None, highlight=None, raw=False):
+
+    def copy_prop(self, prop_orig, prop_copy, move=False):
+        """Copy or rename a property in the Mol_List."""
+
+        for mol in self:
+            if not mol: continue
+            if mol.HasProp(prop_orig):
+                val_orig = mol.GetProp(prop_orig)
+                mol.SetProp(prop_copy, val_orig)
+                if move:
+                    mol.ClearProp(prop_orig)
+
+        # only recalc the molecule dictionary if it is already present, e.g. after a plot
+        if hasattr(self, "_d"):
+            self._calc_d()
+
+
+    def rename_prop(self, prop_orig, prop_new):
+        """Convenience wrapper around copy_prop"""
+
+        self.copy_prop(prop_orig, prop_new, move=True)
+
+
+    def table(self, id_prop=None, highlight=None, show_hidden=False, raw=False):
         """Return the Mol_List as HTML table.
-        Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
+        Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
+
+        Parameters:
+            show_hidden (bool): Whether to show hidden properties (name starts with _) or not.
+                Defaults to *False*."""
 
         if not id_prop:
             id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         if raw:
-            return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order)
+            return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order, show_hidden=show_hidden)
         else:
             return HTML(mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order))
 
@@ -548,6 +603,35 @@ class Mol_List(list):
     def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, header=None, summary=None, fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, id_prop=id_prop, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, raw=True), header=header, summary=summary), fn=fn)
+
+
+    def scatter(self, x, y, r=7, id_prop=None, series_by=None, tooltip="struct"):
+        """Displays a Highcharts plot in the IPython Notebook.
+        Requires the Highcharts javascript library."""
+
+        if not hasattr(self, "_d"):
+            self._calc_d() # calc _d for the first time
+
+        return hct.cpd_scatter(self._d, x, y, r=r, pid=id_prop, series_by=series_by, tooltip=tooltip)
+
+
+    @property
+    def fields(self):
+        return list_fields(self)
+
+
+    @property
+    def d(self):
+        """Representation of the Mol_List as a dictionary for plotting."""
+
+        try:
+            if len(self) != len(self._d["mol"]):
+                self._calc_d()
+            return self._d
+        except AttributeError:
+            self._calc_d()
+            return self._d
+
 
 
 def autocrop(im, bgcolor="white"):
@@ -722,12 +806,31 @@ def get_value(str_val):
     return val
 
 
-def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
-    """input:   list of RDKit molecules
-    highlight: dict of properties (special: *all*) and values to highlight cells,
-    e.g. {"activity": "< 50"}
-    order: a list of substrings to match with the field names for ordering in the table header
-    returns: HTML table as TEXT to embed in IPython or a web page."""
+def b64_img(mol):
+    img_file = IO()
+    img = autocrop(Draw.MolToImage(mol))
+    img.save(img_file, format='PNG')
+
+    b64 = base64.b64encode(img_file.getvalue())
+    if PY3:
+        b64 = b64.decode()
+    img_file.close()
+
+    return b64
+
+
+
+def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=None):
+    """Parameters:
+        sdf_list (Mol_List): List of RDKit molecules
+        highlight (dict): Dict of properties (special: *all*) and values to highlight cells,
+            e.g. {"activity": "< 50"}
+        show_hidden (bool): Whether to show hidden properties (name starts with _) or not.
+            Defaults to *False*.
+        order (list): A list of substrings to match with the field names for ordering in the table header
+
+    Returns:
+        HTML table as TEXT to embed in IPython or a web page."""
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
     td_opt = {"align": "center"}
@@ -779,14 +882,7 @@ def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
             cells.extend(html.td("no structure"))
 
         else:
-            img_file = IO()
-            img = autocrop(Draw.MolToImage(mol))
-            img.save(img_file, format='PNG')
-
-            b64 = base64.b64encode(img_file.getvalue())
-            if PY3:
-                b64 = b64.decode()
-            img_file.close()
+            b64 = b64_img(mol)
 
             if id_prop:
                 img_opt = {"title": "Click to select / unselect",
@@ -800,6 +896,7 @@ def mol_table(sdf_list, id_prop=None, highlight=None, order=None):
         for prop in prop_list:
             td_opt = {"align": "center"}
             if prop in mol_props:
+                if not show_hidden and prop.startswith("_"): continue
                 td_opt["title"] = prop
                 prop_val = mol.GetProp(prop)
                 if highlight:
