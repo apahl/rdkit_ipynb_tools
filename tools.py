@@ -567,6 +567,19 @@ class Mol_List(list):
         self.copy_prop(prop_orig, prop_new, move=True)
 
 
+    def set_default(self, prop, value):
+        """Set a default value in all mols, in which prop is not defined."""
+
+        for mol in self:
+            if not mol: continue
+            if not mol.HasProp(prop):
+                mol.SetProp(prop, str(value))
+
+        # only recalc the molecule dictionary if it is already present, e.g. after a plot
+        if hasattr(self, "_d"):
+            self._calc_d()
+
+
     def table(self, id_prop=None, highlight=None, show_hidden=False, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
