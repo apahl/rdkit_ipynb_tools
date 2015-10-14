@@ -10,6 +10,9 @@ Tools
 A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
 """
 
+# TODO: jsme: check for local installation, and use internet when not found
+# TODO: Mol_List remove duplicate entries (by id, by structure)
+
 from __future__ import print_function, division
 
 from rdkit.Chem import AllChem as Chem
@@ -51,7 +54,7 @@ try:
     from Contrib.SA_Score import sascorer
     SASCORER = True
 except ImportError:
-    print("  * SA scorer not available. RDKit's Contrib dir needs to be in the Python import path...")
+    print("* SA scorer not available. RDKit's Contrib dir needs to be in the Python import path...")
     SASCORER = False
 
 
@@ -371,7 +374,7 @@ class Mol_List(list):
         mol_counter_out = 0
         query = Chem.MolFromSmarts(smarts)
         if not query:
-            print("  * ERROR: could not generate query from SMARTS.")
+            print("* ERROR: could not generate query from SMARTS.")
             return None
 
         if not add_h and "[H]" in smarts:
@@ -529,7 +532,7 @@ class Mol_List(list):
 
         not_calculated = set(props) - calculated_props
         if not_calculated:
-            print("  * these props could not be calculated:", not_calculated)
+            print("* these props could not be calculated:", not_calculated)
 
 
     def remove_props(self, props):
@@ -567,13 +570,67 @@ class Mol_List(list):
         self.copy_prop(prop_orig, prop_new, move=True)
 
 
-    def set_default(self, prop, value):
-        """Set a default value in all mols, in which prop is not defined."""
+    def remove_dups_by_id(self, id_prop=None):
+        """Remove duplicate records by Compound Id.
+
+        Parameters:
+            id_prop (None, str): The name of the Id property, if *None*, it will be guessed.
+
+        Returns:
+            new Mol_list without the duplicate Ids."""
+
+        new_list = Mol_List()
+        id_list = []
+        if not id_prop:
+            id_prop = guess_id_prop(self)
+        if not id_prop:
+            print("* could not determine Id property.")
+            return None
 
         for mol in self:
             if not mol: continue
-            if not mol.HasProp(prop):
-                mol.SetProp(prop, str(value))
+            mol_id = mol.GetProp(id_prop)
+            if mol_id in id_list: continue
+            id_list.append(mol_id)
+            new_list.append(mol)
+
+        return new_list
+
+
+    def remove_dups_by_struct(self):
+        """Remove duplicates by structure. Duplicates are determined by Smiles.
+
+        Returns:
+            new Mol_List without the duplicate structures."""
+
+        new_list = Mol_List()
+        smiles_list = []
+        for mol in self:
+            if not mol: continue
+            smiles = Chem.MolFromSmiles(mol)
+            if smiles in smiles_list: continue
+            smiles_list.append(smiles)
+            new_list.append(mol)
+
+        return new_list
+
+
+    def set_default(self, prop, def_val, condition=None):
+        """Set a default value in all mols, in which `prop` is either not defined (`condition`==None) or
+        is evaluating `condition` to true."""
+
+        if condition and not isinstance(condition, str):
+            raise TypeError("condition needs to be of type str.")
+
+        for mol in self:
+            if not mol: continue
+            if not condition:
+                if not mol.HasProp(prop):
+                    mol.SetProp(prop, str(def_val))
+            else:
+                if mol.HasProp(prop):
+                    if eval("""{} {}""".format(mol.GetProp(prop), condition)):
+                        mol.SetProp(prop, str(def_val))
 
         # only recalc the molecule dictionary if it is already present, e.g. after a plot
         if hasattr(self, "_d"):
@@ -630,12 +687,15 @@ class Mol_List(list):
 
     @property
     def fields(self):
-        return list_fields(self)
+        """A List of properties that are present in the Mol_List (property)."""
+
+        self._fields = list_fields(self)
+        return self._fields
 
 
     @property
     def d(self):
-        """Representation of the Mol_List as a dictionary for plotting."""
+        """Representation of the Mol_List as a dictionary for plotting (property)."""
 
         try:
             if len(self) != len(self._d["mol"]):
@@ -781,12 +841,12 @@ def align(mol_list, mol_or_smiles=None):
         # determine the MCSS
         mcs = rdFMCS.FindMCS(mol_list)
         if mcs.canceled:
-            print("  * MCSS function timed out. Please provide a mol_or_smiles to align to.")
+            print("* MCSS function timed out. Please provide a mol_or_smiles to align to.")
             return
         if mcs.smartsString:
             mol_or_smiles = Chem.MolFromSmarts(mcs.smartsString)
         else:
-            print("  * Could not find MCSS. Please provide a mol_or_smiles to align to.")
+            print("* Could not find MCSS. Please provide a mol_or_smiles to align to.")
             return
 
     elif isinstance(mol_or_smiles, str):

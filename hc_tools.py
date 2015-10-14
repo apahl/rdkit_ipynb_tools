@@ -6,8 +6,8 @@ Highcharts Tools
 
 *Created on Wed Jul 29 08:39:28 2015 by Axel Pahl*
 
-Create Highcharts plots from dictionaries or Pandas dataframes.
-The latter supports structure tooltips.
+Create Highcharts plots from dictionaries, molecule dictionaries or Pandas dataframes.
+The latter two support structure tooltips.
 """
 
 # 1. stdlib imports
@@ -15,6 +15,7 @@ import time
 import string
 import json
 import colorsys
+import os.path as op
 
 # 2. third-party imports
 try:
@@ -29,12 +30,19 @@ except ImportError:
 # from IPython.html import widgets
 from IPython.display import HTML, display
 
+if op.isfile("lib/highcharts.js"):
+    HC_LOCATION = "lib"
+else:
+    print("- no local installation of highcharts found, using web version.")
+    HC_LOCATION = "http://code.highcharts.com"
+
+
+# <script src="{hc_loc}/modules/heatmap.js"></script>
 HIGHCHARTS = """
-<script src="lib/highcharts.js"></script>
-<script src="lib/highcharts-more.js"></script>
-<script src="lib/modules/heatmap.js"></script>
-<script src="lib/modules/exporting.js"></script>
-"""
+<script src="{hc_loc}/highcharts.js"></script>
+<script src="{hc_loc}/highcharts-more.js"></script>
+<script src="{hc_loc}/modules/exporting.js"></script>
+""".format(hc_loc=HC_LOCATION)
 
 CHART_TEMPL = """<div id="container_${id}" style="height: ${height}px"></div>
 <script>
