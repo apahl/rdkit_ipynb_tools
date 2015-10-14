@@ -41,6 +41,7 @@ else:
 HIGHCHARTS = """
 <script src="{hc_loc}/highcharts.js"></script>
 <script src="{hc_loc}/highcharts-more.js"></script>
+<script src="{hc_loc}/modules/heatmap.js"></script>
 <script src="{hc_loc}/modules/exporting.js"></script>
 """.format(hc_loc=HC_LOCATION)
 

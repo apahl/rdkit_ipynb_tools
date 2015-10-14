@@ -582,7 +582,7 @@ class Mol_List(list):
         new_list = Mol_List()
         id_list = []
         if not id_prop:
-            id_prop = guess_id_prop(self)
+            id_prop = guess_id_prop(list_fields(self))
         if not id_prop:
             print("* could not determine Id property.")
             return None
@@ -607,7 +607,7 @@ class Mol_List(list):
         smiles_list = []
         for mol in self:
             if not mol: continue
-            smiles = Chem.MolFromSmiles(mol)
+            smiles = Chem.MolToSmiles(mol)
             if smiles in smiles_list: continue
             smiles_list.append(smiles)
             new_list.append(mol)
@@ -616,8 +616,8 @@ class Mol_List(list):
 
 
     def set_default(self, prop, def_val, condition=None):
-        """Set a default value in all mols, in which `prop` is either not defined (`condition`==None) or
-        is evaluating `condition` to true."""
+        """Set a default value in all mols, in which ``prop`` is either not defined (``condition`` == None) or
+        is evaluating ``condition`` to true."""
 
         if condition and not isinstance(condition, str):
             raise TypeError("condition needs to be of type str.")
