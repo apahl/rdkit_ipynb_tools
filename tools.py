@@ -304,6 +304,15 @@ class Mol_List(list):
         self.sort(key=lambda x: self._key_get_prop(x, field), reverse=reverse)
 
 
+    def mols_with_prop(self, prop):
+        """Returns:
+            Am iterator of molecules in the list where mol and prop are defined."""
+
+        for mol in self:
+            if mol and mol.HasProp(prop):
+                yield mol
+
+
     def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None):
         """Return a new Mol_List based on the property filtering"""
         result_list = Mol_List()
@@ -551,13 +560,11 @@ class Mol_List(list):
     def copy_prop(self, prop_orig, prop_copy, move=False):
         """Copy or rename a property in the Mol_List."""
 
-        for mol in self:
-            if not mol: continue
-            if mol.HasProp(prop_orig):
-                val_orig = mol.GetProp(prop_orig)
-                mol.SetProp(prop_copy, val_orig)
-                if move:
-                    mol.ClearProp(prop_orig)
+        for mol in self.mols_with_prop(prop_orig):
+            val_orig = mol.GetProp(prop_orig)
+            mol.SetProp(prop_copy, val_orig)
+            if move:
+                mol.ClearProp(prop_orig)
 
         # only recalc the molecule dictionary if it is already present, e.g. after a plot
         if hasattr(self, "_d"):
