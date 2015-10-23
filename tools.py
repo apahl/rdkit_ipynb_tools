@@ -701,6 +701,12 @@ class Mol_List(list):
 
 
     @property
+    def field_types(self):
+        if self.recalc_needed["field_types"]:
+            pass
+
+
+    @property
     def d(self):
         """Representation of the Mol_List as a dictionary for plotting (property)."""
 
@@ -876,6 +882,45 @@ def guess_id_prop(prop_list):  # try to guess an id_prop
     return None
 
 
+def get_field_types(mol_list):
+    """Detect all the property field types and return as dict"""
+
+    field_types = {}
+
+    if len(mol_list) > 100:
+        sdf_sample = random.sample(mol_list, len(mol_list)//5)
+    else:
+        sdf_sample = mol_list
+
+    for mol in sdf_sample:
+        prop_names = mol.GetPropNames()
+
+        for prop in prop_names:
+            prop_type = "number"
+            prop_str = mol.GetProp(prop)
+
+            try:
+                float(prop_str)
+                if prop.lower().endswith("id"):
+                    prop_type = "key"
+
+            except ValueError:
+                prop_type = "str"
+
+            if prop in field_types:
+                if field_types[prop] in ["number", "key"] and prop_type == "str":
+                    # "str" overrides everything: if one string is among the values
+                    # of a property, all values become type "str"
+                    field_types[prop] = prop_type
+            else:
+                field_types[prop] = prop_type
+
+    if not field_types:
+        raise NoFieldTypes()
+
+    return field_types
+
+
 def get_value(str_val):
     try:
         val = float(str_val)
@@ -884,6 +929,15 @@ def get_value(str_val):
     except ValueError:
         val = str_val
     return val
+
+
+def isnumber(x):
+    """Returns True, if x is a number (i.e. can be converted to float)."""
+    try:
+        float(x)
+        return True
+    except:
+        return False
 
 
 def b64_img(mol):

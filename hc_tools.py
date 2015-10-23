@@ -101,10 +101,11 @@ class ColorScale():
 
 
 class Chart():
-    """Available Chart types: scatter, column.
+    """Available Chart kinds: scatter, column.
 
-    Args:
-        radius (int): Size of the points. Alias: *r*"""
+    Parameters:
+        radius (int): Size of the points. Alias: *r*
+        y_title (str): Used in the column plot as title of the y axis, default: ""."""
 
     def __init__(self, kind="scatter", **kwargs):
         if not kind in CHART_KINDS:
@@ -114,6 +115,7 @@ class Chart():
         self.height= kwargs.get("height", 450)
         radius = kwargs.get("r", kwargs.get("radius", 5)) # accept "r" or "radius" for this option
         self.legend = kwargs.get("legend", None)
+        self.y_title = kwargs.get("y_title", "")
         self.chart_id = time.strftime("%y%m%d%H%M%S")
         self.chart = {}
         self.chart["title"] = {"text": kwargs.get("title", "{} plot".format(self.kind))}
@@ -121,6 +123,7 @@ class Chart():
         self.chart["series"] = []
         self.chart["plotOptions"] = {"scatter": {"marker": {"radius": radius}}}
         self.chart["credits"] = {'enabled': False}
+        self.chart["yAxis"] = {"title": {"enabled": True, "text": self.y_title}}
 
 
     def _structure_tooltip(self, i):
@@ -298,12 +301,13 @@ class Chart():
             self.arg_pid = None
 
         self.chart["xAxis"] = {"title": {"enabled": True, "text": self.arg_x}}
-        self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
 
         #########################
         # plot-specific options #
         #########################
         if self.kind in ["scatter"]:
+            if not self.y_title:
+                self.chart["yAxis"] = {"title": {"enabled": True, "text": self.arg_y}}
             self.arg_tooltip = kwargs.get("tooltip", "")
             if self.arg_tooltip not in TOOLTIP_OPTIONS:
                 print("- unknown tooltip option {}, setting to empty.".format(self.arg_tooltip))
