@@ -10,7 +10,6 @@ Tools
 A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
 """
 
-# TODO: jsme: check for local installation, and use internet when not found
 # TODO: Mol_List remove duplicate entries (by id, by structure)
 
 from __future__ import print_function, division
@@ -176,6 +175,8 @@ class Mol_List(list):
         super().__init__(*args, **kwargs)
         self.order = None
         self.ia = False
+        self.recalc_needed = {}
+        self._set_recalc_needed()
 
 
     def __getitem__(self, item):
@@ -191,6 +192,15 @@ class Mol_List(list):
     def _repr_html_(self):
         id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         return mol_table(self, id_prop=id_prop, order=self.order)
+
+
+    def _set_recalc_needed(self):
+        """Make sure, that the expensive calculations are not done too often."""
+
+        self.len = len(self)
+        keys = ["d", "fields", "field_types"]
+        for k in keys:
+            self.recalc_needed[k] = True
 
 
     def _key_get_prop(self, mol, field):
@@ -258,6 +268,18 @@ class Mol_List(list):
                     self._d[prop].append(None)
 
 
+    def append(self, other):
+        print("appended...") # for debugging
+        self._set_recalc_needed()
+        super().append(other)
+
+
+    def extend(self, other):
+        print("extended...") # for debugging
+        self._set_recalc_needed()
+        super().extend(other)
+
+
     def align(self, mol_or_smiles=None):
         """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
@@ -268,10 +290,7 @@ class Mol_List(list):
 
         align(self, mol_or_smiles)
 
-        # only recalc the molecule dictionary if it is already present, e.g. after a plot
-        if hasattr(self, "_d"):
-            self._calc_d()
-
+        self.recalc_needed["d"] = True
 
 
     def write_sdf(self, fn, conf_id=-1):
@@ -542,9 +561,7 @@ class Mol_List(list):
                 mol.SetProp("tpsa", str(int(Desc.TPSA(mol))))
                 calculated_props.add("tpsa")
 
-        # only recalc the molecule dictionary if it is already present, e.g. after a plot
-        if hasattr(self, "_d"):
-            self._calc_d()
+        self._set_recalc_needed()
 
         not_calculated = set(props) - calculated_props
         if not_calculated:
@@ -559,9 +576,7 @@ class Mol_List(list):
             if mol:
                 remove_props_from_mol(mol, props)
 
-        # only recalc the molecule dictionary if it is already present, e.g. after a plot
-        if hasattr(self, "_d"):
-            self._calc_d()
+        self._set_recalc_needed()
 
 
     def copy_prop(self, prop_orig, prop_copy, move=False):
@@ -573,9 +588,7 @@ class Mol_List(list):
             if move:
                 mol.ClearProp(prop_orig)
 
-        # only recalc the molecule dictionary if it is already present, e.g. after a plot
-        if hasattr(self, "_d"):
-            self._calc_d()
+        self.recalc_needed()
 
 
     def rename_prop(self, prop_orig, prop_new):
@@ -646,9 +659,8 @@ class Mol_List(list):
                     if eval("""{} {}""".format(mol.GetProp(prop), condition)):
                         mol.SetProp(prop, str(def_val))
 
-        # only recalc the molecule dictionary if it is already present, e.g. after a plot
-        if hasattr(self, "_d"):
-            self._calc_d()
+        self.recalc_needed["d"] = True
+        self.recalc_needed["field_types"] = True
 
 
     def table(self, id_prop=None, highlight=None, show_hidden=False, raw=False):
@@ -703,27 +715,36 @@ class Mol_List(list):
     def fields(self):
         """A List of properties that are present in the Mol_List (property)."""
 
-        self._fields = list_fields(self)
+        if self.len != len(self):
+            self._set_recalc_needed()
+        if self.recalc_needed["fields"]:
+            self._fields = list_fields(self)
+            self.recalc_needed["fields"] = False
         return self._fields
 
 
     @property
     def field_types(self):
+        """A dictionary of properties and their derived types (property)."""
+
+        if self.len != len(self):
+            self._set_recalc_needed()
         if self.recalc_needed["field_types"]:
-            pass
+            self._field_types = get_field_types(self)
+            self.recalc_needed["field_types"] = False
+        return self._field_types
 
 
     @property
     def d(self):
         """Representation of the Mol_List as a dictionary for plotting (property)."""
 
-        try:
-            if len(self) != len(self._d["mol"]):
-                self._calc_d()
-            return self._d
-        except AttributeError:
-            self._calc_d()
-            return self._d
+        if self.len != len(self):
+            self._set_recalc_needed()
+        if self.recalc_needed["d"]:
+            self._d = self._calc_d()
+            self.recalc_needed["d"] = False
+        return self._d
 
 
 
