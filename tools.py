@@ -66,6 +66,13 @@ if AP_TOOLS:
 else:
     print("{:45s} ({})".format(__name__, time.strftime("%y%m%d-%H:%M", time.localtime(op.getmtime(__file__)))))
 
+if op.isfile("lib/jsme/jsme.nocache.js"):
+    JSME_LOCATION = "lib"
+else:
+    print("- no local installation of JSME found, using web version.")
+    JSME_LOCATION = "http://peter-ertl.com/jsme/JSME_2015-06-14"
+
+
 BGCOLOR = "#94CAEF"
 
 JSME_OPTIONS = {"css": ["css/style.css", "css/collapsible_list.css"],
@@ -123,7 +130,7 @@ ID_LIST = """<br><b><a name="SelectionList">Selection:</a></b>
 </form>
 """
 
-JSME_FORM = '''<script type="text/javascript" src="lib/jsme/jsme.nocache.js"></script>
+JSME_FORM = '''<script type="text/javascript" src="{jsme_loc}/jsme/jsme.nocache.js"></script>
 <script type="text/javascript">
 
 function jsmeOnLoad() {{
@@ -1185,7 +1192,7 @@ def jsme(name="mol"):
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
 
-    return HTML(JSME_FORM.format(ts=time_stamp, var_name=name))
+    return HTML(JSME_FORM.format(jsme_loc=JSME_LOCATION, ts=time_stamp, var_name=name))
 
 
 def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
