@@ -1,24 +1,30 @@
 ## RDKit IPython Tools
 by Axel Pahl
 
-#### development branch
-* working on continuous coloring (26-Aug-2015)
+### Work in progress
+*(5-Nov-2015)*  
+In the past months, this set of tools based on the [RDKit](http.//www.rdkit.org) has evolved quite a bit.  
 
-#### module tools
-The toolkit currently contains two functions to use with [RDKit](http://rdkit.org) in the IPython notebook:
-- *show_table*: Display a list of molecules in a table with molecule properties as columns.
-When an ID property is given, the table becomes interactive and compounds can be selected.
-When a highlight dictionary is passed (e.g. highlight={"activity": "< 50"}), the cell for the property with the name "activity" will be highlighted when its value is less than 50. To apply the highlight criteria to all cells except for the ID property, use the special key "\*all\*" (as in highlight={"\*all\*": "< 50"}).
 
+#### Module tools
+
+A Mol_List class was introduced, which is a subclass of a Python list for holding lists of RDKit molecule objects and allows direct access to a lot of the RDKit functionality.  
+It is meant to be used with the JuPyTer Notebook and includes a.o.:
+* display of the Mol_List
+    * as HTML table
+    * as HTML grid
+  (both display types include the option to select molecules by clicking)
+* display of a summary
+* methods for sorting, searching (by property or substructure) and filtering the Mol_List
+* methods for renaming, reordering and calculating properties
+* direct plotting of properties as publication-grade [Highcharts](http://www.highcharts.com/) plots with **structure tooltips** (!).
+
+
+
+##### Other functions in the tools module:
 - *jsme*: Display Peter Ertl's Javascript Molecule Editor to enter a molecule directly in the IPython notebook (*how cool is that??*)
 
-#### module hc_tools
-Display [Highcharts](http://www.highcharts.com) plots in the Notebook
-This is still work in progress. Currently the tools included here produce scatter plots from dictionaries. The plan is to combine this functionality with the mol lists from RDKit.
+plus many others
 
-
-A demonstration is worth a thousand words, so please have a look at the example notebooks
-* [rdkit_ipynb_tools_1.ipynb](http://nbviewer.ipython.org/github/apahl/rdkit_ipynb_tools/blob/master/rdkit_ipynb_tools_1.ipynb).
-* [highcharts.ipynb](http://nbviewer.ipython.org/github/apahl/rdkit_ipynb_tools/blob/master/highcharts.ipynb)
-
-The toolkit was written with and for Python3.
+### ToDo
+This README is meant as a teaser. I urgently need to prepare a proper example notebook to show all the functionality, this is high on my ToDo list.
