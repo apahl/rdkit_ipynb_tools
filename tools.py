@@ -709,7 +709,7 @@ class Mol_List(list):
         return hct.cpd_scatter(self._d, x, y, r=r, pid=id_prop, series_by=series_by, tooltip=tooltip)
 
 
-    def summary(self, text_only=True):
+    def summary(self, text_only=False):
         """Output a summary of the Mol_List.
         If `text_only`is True only a text version is printed."""
 
@@ -745,7 +745,7 @@ class Mol_List(list):
             rows = []
             cells = []
             cell_options = {"align": "center", "bgcolor": "#94CAEF"}
-            for cell in ["Prop", "Type", "Num Values", "Min", "Max", "Mean", "Median"]:
+            for cell in ["Property", "Type", "Num Values", "Min", "Max", "Mean", "Median"]:
                 cells.extend(html.td(html.b(cell), options=cell_options))
             rows.extend(html.tr(cells))
             cell_options = {"align": "center"}
