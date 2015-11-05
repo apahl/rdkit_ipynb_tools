@@ -28,7 +28,7 @@ import random
 
 from PIL import Image, ImageChops
 
-import pandas as pd
+import numpy as np
 
 from . import html_templates as html
 from . import hc_tools as hct
@@ -269,13 +269,11 @@ class Mol_List(list):
 
 
     def append(self, other):
-        print("appended...") # for debugging
         self._set_recalc_needed()
         super().append(other)
 
 
     def extend(self, other):
-        print("extended...") # for debugging
         self._set_recalc_needed()
         super().extend(other)
 
@@ -588,7 +586,7 @@ class Mol_List(list):
             if move:
                 mol.ClearProp(prop_orig)
 
-        self.recalc_needed()
+        self._set_recalc_needed()
 
 
     def rename_prop(self, prop_orig, prop_new):
@@ -709,6 +707,63 @@ class Mol_List(list):
             self._calc_d() # calc _d for the first time
 
         return hct.cpd_scatter(self._d, x, y, r=r, pid=id_prop, series_by=series_by, tooltip=tooltip)
+
+
+    def summary(self, text_only=True):
+        """Output a summary of the Mol_List.
+        If `text_only`is True only a text version is printed."""
+
+        field_types = self.field_types
+        l = len(self)
+        max_max = 0
+        sum_d = {}
+        for prop in field_types:
+            value_list = [get_value(mol.GetProp(prop)) for mol in self.mols_with_prop(prop)]
+            num_val = len(value_list)
+            sum_d[prop] = {"num_values": num_val}
+            sum_d[prop]["type"] = field_types[prop]
+            if field_types[prop] == "number":
+                sum_d[prop]["min"] = min(value_list)
+                sum_d[prop]["max"] = max(value_list)
+                if sum_d[prop]["max"] > max_max:
+                    max_max = sum_d[prop]["max"]
+                sum_d[prop]["mean"] = np.mean(value_list)
+                sum_d[prop]["median"] = np.median(value_list)
+
+        n_digits = str(np.floor(np.log10(max_max)) + 5.3) + "f"  # digits for formatting
+
+        print("number of records:", l)
+
+        if text_only:
+            for prop in sum_d:
+                print("\n{} ({}, {}):".format(prop, sum_d[prop]["type"], sum_d[prop]["num_values"]))
+                if field_types[prop] == "number":
+                    for sum_item in ["min", "max", "mean", "median"]:
+                        print("{:6s}: {:{digits}}".format(sum_item, sum_d[prop][sum_item], digits=n_digits), end="   |   ")
+                    print()
+        else:
+            rows = []
+            cells = []
+            cell_options = {"align": "center", "bgcolor": "#94CAEF"}
+            for cell in ["Prop", "Type", "Num Values", "Min", "Max", "Mean", "Median"]:
+                cells.extend(html.td(html.b(cell), options=cell_options))
+            rows.extend(html.tr(cells))
+            cell_options = {"align": "center"}
+            for prop in sum_d:
+                cells = []
+                cells.extend(html.td(prop, options=cell_options))
+                cells.extend(html.td(sum_d[prop]["type"], options=cell_options))
+                cells.extend(html.td(str(sum_d[prop]["num_values"]), options=cell_options))
+                if field_types[prop] == "number":
+                    for sum_item in ["min", "max", "mean", "median"]:
+                        cells.extend(html.td("{:.3f}".format(sum_d[prop][sum_item]), options=cell_options))
+                else:
+                    for i in range(4): # insert empty cells
+                        cells.extend(html.td("", options=cell_options))
+                rows.extend(html.tr(cells))
+
+            table = html.table(rows)
+            return HTML("".join(table))
 
 
     @property
@@ -1245,7 +1300,7 @@ def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
             if prop in mol_props:
                 df_dict[prop].append(get_value(mol.GetProp(prop)))
             else:
-                df_dict[prop].append(pd.np.NaN)
+                df_dict[prop].append(np.NaN)
 
     return df_dict
 
