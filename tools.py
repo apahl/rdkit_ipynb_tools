@@ -273,13 +273,13 @@ class Mol_List(list):
         n = len(number_fields)
         pair_format = str(max(len(i) for i in number_fields) * 2 + 7) + "s"
         corr_d = {}
+        l = len(self)
         for left in range(n):
             left_values = [get_prop_val(mol, number_fields[left]) for mol in self]
             for right in range(left+1, n):
                 right_values = [get_prop_val(mol, number_fields[right]) for mol in self]
                 both_y = []
                 both_x = []
-                l = len(self)
                 for i in range(l):
                     if left_values[i] == None or right_values[i] == None:
                         continue
@@ -340,6 +340,14 @@ class Mol_List(list):
         align(self, mol_or_smiles)
 
         self.recalc_needed["d"] = True
+
+
+    def add_id(self, id_prop="molid"):
+        """Add an Id property `id_prop` to the Mol_List.
+        By default, "molid" is used."""
+
+        for idx, mol in enumerate(self, 1):  # start at index 1
+            mol.SetProp(id_prop, str(idx))
 
 
     def write_sdf(self, fn, conf_id=-1):
