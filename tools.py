@@ -761,7 +761,8 @@ class Mol_List(list):
 
 
     def summary(self, text_only=False):
-        """Output a summary of the Mol_List.
+        """Output a summary of the Mol_List and its properties.
+        Includes the output from self.correlate()
         If `text_only`is True only a text version is printed."""
 
         field_types = self.field_types
@@ -824,6 +825,9 @@ class Mol_List(list):
 
 
     def correlate(self, text_only = False):
+        """Display correlations between the properties in the Mol_List.
+        Calculated by np.corrcoef, only abs. values are used, higher value means higer correlation.
+        If `text_only`is True only a text version is printed."""
         if text_only:
             self._correlate(True)
         else:
