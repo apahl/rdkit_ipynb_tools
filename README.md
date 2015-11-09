@@ -2,7 +2,7 @@
 by Axel Pahl
 
 ### Work in progress
-*(5-Nov-2015)*  
+*(9-Nov-2015)*  
 In the past months, this set of tools based on the [RDKit](http.//www.rdkit.org) has evolved quite a bit.  
 
 
@@ -15,10 +15,12 @@ It is meant to be used with the JuPyTer Notebook and includes a.o.:
     * as HTML grid
   (both display types include the option to select molecules by clicking)
 * display of a summary
+* display of correlations between the Mol_List's properties  
+  (using np.corrcoef, this allows getting a quick overview on which properties correlate with each other)
 * methods for sorting, searching (by property or substructure) and filtering the Mol_List
 * methods for renaming, reordering and calculating properties
 * direct plotting of properties as publication-grade [Highcharts](http://www.highcharts.com/) plots with **structure tooltips** (!).
-
+    * the highcharts plotting functionality resides in its own module and can also be used for plotting Pandas dataframes and Python dicts. Scatter and column plots are currently supported.
 
 
 ##### Other functions in the tools module:

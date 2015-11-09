@@ -268,57 +268,6 @@ class Mol_List(list):
                     self._d[prop].append(None)
 
 
-    def _correlate(self, text_only=False):
-        number_fields = [f for f in self.field_types if self.field_types[f] == "number"]
-        n = len(number_fields)
-        pair_format = str(max(len(i) for i in number_fields) * 2 + 7) + "s"
-        corr_d = {}
-        l = len(self)
-        for left in range(n):
-            left_values = [get_prop_val(mol, number_fields[left]) for mol in self]
-            for right in range(left+1, n):
-                right_values = [get_prop_val(mol, number_fields[right]) for mol in self]
-                both_y = []
-                both_x = []
-                for i in range(l):
-                    if left_values[i] == None or right_values[i] == None:
-                        continue
-                    both_y.append(left_values[i])
-                    both_x.append(right_values[i])
-                corr = np.corrcoef(both_y, both_x)
-                k = "{} vs. {}".format(number_fields[left], number_fields[right])
-                corr_d[k] = abs(corr[0][1])
-
-        if text_only:
-            print("Property Correlation:")
-            for pair in sorted(corr_d, key=corr_d.get, reverse=True):
-                print("{pair:{pair_format}}: {corr:.3f}".format(pair=pair,
-                      pair_format=pair_format, corr=corr_d[pair]))
-
-        else:
-            rows = []
-            cells = []
-            opt1 = {"align": "center", "bgcolor": "#94CAEF"}
-            opt2 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 2}
-            opt3 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 3}
-            cell = html.td(html.b("Property Correlation"), options=opt3)
-            rows.extend(html.tr(cell))
-            cells.extend(html.td(html.b("vs."), options=opt2))
-            cells.extend(html.td(html.b("correlation"), options=opt1))
-            rows.extend(html.tr(cells))
-
-            opt1 = {"align": "center"}
-            for pair in sorted(corr_d, key=corr_d.get, reverse=True):
-                cells = []
-                cells.extend(html.td(pair.split(" vs. ")[0], options=opt1))
-                cells.extend(html.td(pair.split(" vs. ")[1], options=opt1))
-                cells.extend(html.td("{:.3f}".format(corr_d[pair]), options=opt1))
-                rows.extend(html.tr(cells))
-
-            table = html.table(rows)
-            return "".join(table)
-
-
     def append(self, other):
         self._set_recalc_needed()
         super().append(other)
@@ -801,9 +750,6 @@ class Mol_List(list):
                         print("{:6s}: {:{digits}}".format(sum_item, sum_d[prop][sum_item], digits=n_digits), end="   |   ")
                     print()
 
-            print()
-            self.correlate(True)
-
         else:
             rows = []
             cells = []
@@ -829,17 +775,69 @@ class Mol_List(list):
                 rows.extend(html.tr(cells))
 
             table = html.table(rows)
-            return HTML("".join(table) + self._correlate())
+            return HTML("".join(table))
 
 
     def correlate(self, text_only = False):
         """Display correlations between the properties in the Mol_List.
         Calculated by np.corrcoef, only abs. values are used, higher value means higer correlation.
         If `text_only`is True only a text version is printed."""
+
+        number_fields = [f for f in self.field_types if self.field_types[f] == "number"]
+        n = len(number_fields)
+        pair_format = str(max(len(i) for i in number_fields) * 2 + 7) + "s"
+        corr_d = {}
+        l = len(self)
+        for left in range(n):
+            left_values = [get_prop_val(mol, number_fields[left]) for mol in self]
+            for right in range(left+1, n):
+                right_values = [get_prop_val(mol, number_fields[right]) for mol in self]
+                both_y = []
+                both_x = []
+                for i in range(l):
+                    if left_values[i] == None or right_values[i] == None:
+                        continue
+                    both_y.append(left_values[i])
+                    both_x.append(right_values[i])
+                corr = np.corrcoef(both_y, both_x)
+                k = "{} vs. {}".format(number_fields[left], number_fields[right])
+                corr_d[k] = abs(corr[0][1])
+
         if text_only:
-            self._correlate(True)
+            print("Property Correlation:")
+            for pair in sorted(corr_d, key=corr_d.get, reverse=True):
+                print("{pair:{pair_format}}: {corr:.3f}".format(pair=pair,
+                      pair_format=pair_format, corr=corr_d[pair]))
+
         else:
-            return HTML(self._correlate())
+            rows = []
+            cells = []
+            opt1 = {"align": "center", "bgcolor": "#94CAEF"}
+            opt2 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 2}
+            opt3 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 3}
+            cell = html.td(html.b("Property Correlation"), options=opt3)
+            rows.extend(html.tr(cell))
+            cells.extend(html.td(html.b("vs."), options=opt2))
+            cells.extend(html.td(html.b("correlation"), options=opt1))
+            rows.extend(html.tr(cells))
+
+            opt1 = {"align": "center"}
+            for pair in sorted(corr_d, key=corr_d.get, reverse=True):
+                cells = []
+                cells.extend(html.td(pair.split(" vs. ")[0], options=opt1))
+                cells.extend(html.td(pair.split(" vs. ")[1], options=opt1))
+                cells.extend(html.td("{:.3f}".format(corr_d[pair]), options=opt1))
+                rows.extend(html.tr(cells))
+
+            table = html.table(rows)
+            return HTML("".join(table))
+
+
+
+
+
+
+
 
 
     @property
