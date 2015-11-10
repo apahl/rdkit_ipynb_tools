@@ -292,7 +292,7 @@ class Mol_List(list):
 
 
     def add_id(self, id_prop="molid"):
-        """Add an Id property `id_prop` to the Mol_List.
+        """Add an Id property ``id_prop`` to the Mol_List.
         By default, "molid" is used."""
 
         for idx, mol in enumerate(self, 1):  # start at index 1
@@ -351,7 +351,7 @@ class Mol_List(list):
         mol_counter_out = 0
 
         if not field_types:
-            field_types = self.get_field_types()
+            field_types = self.field_types
 
         if not field_types:
             print("  # no field type information available! -aborted.")
@@ -492,7 +492,7 @@ class Mol_List(list):
 
 
     def calc_props(self, props):
-        """Remove properties from the Mol_List.
+        """Calculate properties from the Mol_List.
         props can be a single property or a list of properties.
 
         Calculable properties:
@@ -707,20 +707,29 @@ class Mol_List(list):
                              mols_per_row=mols_per_row, size=size, raw=True), header=header, summary=summary), fn=fn)
 
 
-    def scatter(self, x, y, r=7, id_prop=None, series_by=None, tooltip="struct"):
+    def scatter(self, x, y, r=7, id_prop=None, series_by=None, tooltip=None):
         """Displays a Highcharts plot in the IPython Notebook.
-        Requires the Highcharts javascript library."""
+        Uses the Highcharts javascript library, either locally under lib/ relative to the Notebook
+        or the web version at http://code.highcharts.com.
+        If ``tooltip`` is *None*, then structure ttooltips will be shown for Mol_Lists with
+        less than or equal 150 records, if the Mol_List has more records, no structure tooltips
+        will be shown. The bevaviour can be forced by either providing ``tooltip="struct"`` for tooltips
+        or ``tooltip=""`` for no tooltips."""
 
-        if not hasattr(self, "_d"):
-            self._calc_d() # calc _d for the first time
+        if tooltip == None:
+            if len(self) > 150:
+                tooltip = ""
+            else:
+                tooltip = "struct"
 
-        return hct.cpd_scatter(self._d, x, y, r=r, pid=id_prop, series_by=series_by, tooltip=tooltip)
+
+        return hct.cpd_scatter(self.d, x, y, r=r, pid=id_prop, series_by=series_by, tooltip=tooltip)
 
 
     def summary(self, text_only=False):
         """Output a summary of the Mol_List and its properties.
-        Includes the output from self.correlate()
-        If `text_only`is True only a text version is printed."""
+        If ``text_only``is True only a text version is printed.
+        ``mean`` and ``median`` are calculated with numpy."""
 
         field_types = self.field_types
         l = len(self)
@@ -778,10 +787,11 @@ class Mol_List(list):
             return HTML("".join(table))
 
 
-    def correlate(self, text_only = False):
+    def correlate(self, min_corr=0.4, text_only = False):
         """Display correlations between the properties in the Mol_List.
         Calculated by np.corrcoef, only abs. values are used, higher value means higer correlation.
-        If `text_only`is True only a text version is printed."""
+        Only correlations greater or to equal to ``min_corr`` are shown (default=0.4).
+        If ``text_only``is True only a text version is printed."""
 
         number_fields = [f for f in self.field_types if self.field_types[f] == "number"]
         n = len(number_fields)
@@ -800,11 +810,13 @@ class Mol_List(list):
                     both_y.append(left_values[i])
                     both_x.append(right_values[i])
                 corr = np.corrcoef(both_y, both_x)
-                k = "{} vs. {}".format(number_fields[left], number_fields[right])
-                corr_d[k] = abs(corr[0][1])
+                corr_val = abs(corr[0][1])
+                if corr_val >= min_corr:
+                    k = "{} vs. {}".format(number_fields[left], number_fields[right])
+                    corr_d[k] = corr_val
 
         if text_only:
-            print("Property Correlation:")
+            print("Property Correlation Coefficients:")
             for pair in sorted(corr_d, key=corr_d.get, reverse=True):
                 print("{pair:{pair_format}}: {corr:.3f}".format(pair=pair,
                       pair_format=pair_format, corr=corr_d[pair]))
@@ -815,10 +827,10 @@ class Mol_List(list):
             opt1 = {"align": "center", "bgcolor": "#94CAEF"}
             opt2 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 2}
             opt3 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 3}
-            cell = html.td(html.b("Property Correlation"), options=opt3)
+            cell = html.td(html.b("Property Correlation Coefficients"), options=opt3)
             rows.extend(html.tr(cell))
-            cells.extend(html.td(html.b("vs."), options=opt2))
-            cells.extend(html.td(html.b("correlation"), options=opt1))
+            cells.extend(html.td(html.b("A vs. B"), options=opt2))
+            cells.extend(html.td(html.b("Correlation"), options=opt1))
             rows.extend(html.tr(cells))
 
             opt1 = {"align": "center"}
@@ -871,7 +883,7 @@ class Mol_List(list):
         if self.len != len(self):
             self._set_recalc_needed()
         if self.recalc_needed["d"]:
-            self._d = self._calc_d()
+            self._calc_d()
             self.recalc_needed["d"] = False
         return self._d
 
@@ -1000,7 +1012,7 @@ def ia_keep_props(mol_list):
 def align(mol_list, mol_or_smiles=None):
     """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
-    Args:
+    Parameters:
         mol_list: A list of RDKit molecules.
         mol_or_smiles (bool): The substructure to which to align.
             If None, then the method uses rdFMCS to determine the MCSS
@@ -1029,6 +1041,11 @@ def align(mol_list, mol_or_smiles=None):
 
     for mol in mol_list:
         if mol:
+            try:
+                mol.GetConformer()
+            except ValueError: # no 2D coords... calculate them
+                mol.Compute2DCoords()
+
             Chem.GenerateDepictionMatching2DStructure(mol, mol_or_smiles)
 
 

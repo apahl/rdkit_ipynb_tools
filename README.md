@@ -14,7 +14,7 @@ It is meant to be used with the JuPyTer Notebook and includes a.o.:
     * as HTML table
     * as HTML grid
   (both display types include the option to select molecules by clicking)
-* display of a summary
+* display of a summary including number of records and min, max, mean, median for numeric properties
 * display of correlations between the Mol_List's properties  
   (using np.corrcoef, this allows getting a quick overview on which properties correlate with each other)
 * methods for sorting, searching (by property or substructure) and filtering the Mol_List
