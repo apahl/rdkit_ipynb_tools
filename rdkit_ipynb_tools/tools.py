@@ -791,7 +791,7 @@ class Mol_List(list):
         """Display correlations between the properties in the Mol_List.
         Calculated by np.corrcoef, only abs. values are used, higher value means higer correlation.
         Only correlations greater or to equal to ``min_corr`` are shown (default=0.4).
-        If ``text_only``is True only a text version is printed."""
+        If ``text_only`` is True only a text version is printed."""
 
         number_fields = [f for f in self.field_types if self.field_types[f] == "number"]
         n = len(number_fields)
