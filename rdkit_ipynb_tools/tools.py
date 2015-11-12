@@ -10,7 +10,6 @@ Tools
 A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
 """
 
-# TODO: Mol_List remove duplicate entries (by id, by structure)
 
 from __future__ import print_function, division
 
