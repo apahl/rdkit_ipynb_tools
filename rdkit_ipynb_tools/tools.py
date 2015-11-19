@@ -183,6 +183,7 @@ class Mol_List(list):
         try:
             new_list = Mol_List(result)
             new_list.order = self.order
+            new_list.ia = self.ia
             return new_list
         except TypeError:
             return result
@@ -417,9 +418,9 @@ class Mol_List(list):
             print("* ERROR: could not generate query from SMARTS.")
             return None
 
-        if not add_h and "[H]" in smarts:
+        if "H" in smarts or "#1" in smarts:
             add_h = True
-            print("  > explicit hydrogens turned on (add_h = True)")
+            print("> explicit hydrogens turned on (add_h = True)")
 
         for mol_counter_in, mol in enumerate(self):
             if not mol: continue
@@ -442,7 +443,7 @@ class Mol_List(list):
                 mol_counter_out += 1
                 result_list.append(mol)
 
-        print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
+        print("> processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
 
         return result_list
 
@@ -1315,7 +1316,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
                 if mol.HasProp(prop):
                     prop_values.append(mol.GetProp(prop))
                 else:
-                    prop_values.append("n.d.")
+                    prop_values.append(" ")
             prop_str = "_".join(prop_values)
             prop_cells.extend(html.td(prop_str, prop_opt))
 
