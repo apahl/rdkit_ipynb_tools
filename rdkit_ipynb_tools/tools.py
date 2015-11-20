@@ -348,6 +348,10 @@ class Mol_List(list):
     def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None):
         """Return a new Mol_List based on the property filtering"""
         result_list = Mol_List()
+        if self.order:
+            result_list.order = self.order.copy
+        result_list.ia = self.ia
+
         mol_counter_out = 0
 
         if not field_types:
@@ -411,6 +415,9 @@ class Mol_List(list):
     def mol_filter(self, smarts, invert=False, add_h=False):
         """Returns a new Mol_List containing the substructure matches"""
         result_list = Mol_List()
+        if self.order:
+            result_list.order = self.order.copy
+        result_list.ia = self.ia
 
         mol_counter_out = 0
         query = Chem.MolFromSmarts(smarts)
@@ -481,6 +488,10 @@ class Mol_List(list):
             print("  not found:", id_not_found)
 
         new_list = Mol_List()
+        if self.order:
+            new_list.order = self.order.copy
+        new_list.ia = self.ia
+
         for mol in self:
             if mol:
                 if mol.HasProp(self.id_prop):
@@ -613,6 +624,10 @@ class Mol_List(list):
             new Mol_list without the duplicate Ids."""
 
         new_list = Mol_List()
+        if self.order:
+            new_list.order = self.order.copy
+        new_list.ia = self.ia
+
         id_list = []
         if not id_prop:
             id_prop = guess_id_prop(list_fields(self))
@@ -637,6 +652,10 @@ class Mol_List(list):
             new Mol_List without the duplicate structures."""
 
         new_list = Mol_List()
+        if self.order:
+            new_list.order = self.order.copy
+        new_list.ia = self.ia
+
         smiles_list = []
         for mol in self:
             if not mol: continue
