@@ -24,6 +24,7 @@ import sys
 import base64
 import os.path as op
 import random
+from copy import deepcopy
 
 from PIL import Image, ImageChops
 
@@ -345,8 +346,9 @@ class Mol_List(list):
                 yield mol
 
 
-    def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None):
-        """Return a new Mol_List based on the property filtering"""
+    def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None, make_copy=True):
+        """Return a new Mol_List based on the property filtering.
+        By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
         if self.order:
             result_list.order = self.order.copy
@@ -402,6 +404,8 @@ class Mol_List(list):
 
                 if hit:
                     mol_counter_out += 1
+                    if make_copy:
+                        mol = deepcopy(mol)
                     result_list.append(mol)
 
         print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
@@ -412,8 +416,9 @@ class Mol_List(list):
         return result_list
 
 
-    def mol_filter(self, smarts, invert=False, add_h=False):
-        """Returns a new Mol_List containing the substructure matches"""
+    def mol_filter(self, smarts, invert=False, add_h=False, make_copy=True):
+        """Returns a new Mol_List containing the substructure matches.
+        By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
         if self.order:
             result_list.order = self.order.copy
@@ -448,6 +453,8 @@ class Mol_List(list):
 
             if hit:
                 mol_counter_out += 1
+                if make_copy:
+                    mol = deepcopy(mol)
                 result_list.append(mol)
 
         print("> processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
@@ -456,7 +463,13 @@ class Mol_List(list):
 
 
     def get_ids(self, id_prop=None):
-        """Return a list of compound ids"""
+        """Get the list of Compound IDs in th Mol_List
+
+        Parameters:
+            id_prop (None, str): (optional) The name of the id_prop, if None, it will be guessed."
+
+        Returns:
+            A list of compound ids"""
         prop_list = list_fields(self)
 
         if id_prop:
@@ -479,7 +492,17 @@ class Mol_List(list):
         return id_list
 
 
-    def new_list_from_ids(self, id_list, id_prop=None):
+    def new_list_from_ids(self, id_list, id_prop=None, make_copy=True):
+        """Creates a new Mol_List out of the given IDs.
+
+        Parameters:
+            id_list (list): The list of IDs
+            id_prop (None, str): (optional) The name of the id_prop, if None, it will be guessed.
+
+        Returns:
+            A new Mol_List from a list of Ids.
+            By default it creates an independent copy of the mol objects."""
+
         id_all = set(self.get_ids(id_prop))
         id_set = set(id_list)
         id_found = id_set.intersection(id_all)
@@ -497,6 +520,9 @@ class Mol_List(list):
                 if mol.HasProp(self.id_prop):
                     val = get_value(mol.GetProp(self.id_prop))
                     if val in id_found:
+                        if make_copy:
+                            mol = deepcopy(mol)
+
                         new_list.append(mol)
 
         return new_list
@@ -614,14 +640,15 @@ class Mol_List(list):
         self.copy_prop(prop_orig, prop_new, move=True)
 
 
-    def remove_dups_by_id(self, id_prop=None):
+    def remove_dups_by_id(self, id_prop=None, make_copy=True):
         """Remove duplicate records by Compound Id.
 
         Parameters:
             id_prop (None, str): The name of the Id property, if *None*, it will be guessed.
 
         Returns:
-            new Mol_list without the duplicate Ids."""
+            new Mol_list without the duplicate Ids.
+            By default it creates an independent copy of the mol objects."""
 
         new_list = Mol_List()
         if self.order:
@@ -640,6 +667,9 @@ class Mol_List(list):
             mol_id = mol.GetProp(id_prop)
             if mol_id in id_list: continue
             id_list.append(mol_id)
+            if make_copy:
+                mol = deepcopy(mol)
+
             new_list.append(mol)
 
         return new_list
@@ -649,7 +679,8 @@ class Mol_List(list):
         """Remove duplicates by structure. Duplicates are determined by Smiles.
 
         Returns:
-            new Mol_List without the duplicate structures."""
+            new Mol_List without the duplicate structures.
+            By default it creates an independent copy of the mol objects. """
 
         new_list = Mol_List()
         if self.order:
@@ -662,6 +693,9 @@ class Mol_List(list):
             smiles = Chem.MolToSmiles(mol)
             if smiles in smiles_list: continue
             smiles_list.append(smiles)
+            if make_copy:
+                mol = deepcopy(mol)
+
             new_list.append(mol)
 
         return new_list
@@ -1028,6 +1062,15 @@ def ia_keep_props(mol_list):
     display(w_hb)
 
 
+def check_2d_coords(mol):
+    """Check if a mol has 2D coordinates and if not, calculate them."""
+    try:
+        mol.GetConformer()
+    except ValueError: # no 2D coords... calculate them
+        mol.Compute2DCoords()
+
+
+
 def align(mol_list, mol_or_smiles=None):
     """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
@@ -1053,17 +1096,11 @@ def align(mol_list, mol_or_smiles=None):
     elif isinstance(mol_or_smiles, str):
         mol_or_smiles = Chem.MolFromSmiles(mol_or_smiles)
 
-    try:
-        mol_or_smiles.GetConformer()
-    except ValueError: # no 2D coords... calculate them
-        mol_or_smiles.Compute2DCoords()
+    check_2d_coords(mol_or_smiles)
 
     for mol in mol_list:
         if mol:
-            try:
-                mol.GetConformer()
-            except ValueError: # no 2D coords... calculate them
-                mol.Compute2DCoords()
+            check_2d_coords(mol)
 
             Chem.GenerateDepictionMatching2DStructure(mol, mol_or_smiles)
 
