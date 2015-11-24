@@ -215,7 +215,10 @@ class Mol_List(list):
 
 
     def _get_field_types(self):
-        """detect all the property field types and return as dict"""
+        """Detect all the property field types.
+
+        Returns:
+            Dict with the property names as keys and the types as values."""
 
         print("  > detecting field types...")
         field_types = {}
@@ -351,7 +354,7 @@ class Mol_List(list):
         By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
         if self.order:
-            result_list.order = self.order.copy
+            result_list.order = self.order.copy()
         result_list.ia = self.ia
 
         mol_counter_out = 0
@@ -370,7 +373,7 @@ class Mol_List(list):
                 break
 
         if not field:
-            print("  # field could be extracted from query! -aborted.")
+            print("  # field could not be extracted from query! -aborted.")
             return None
 
         print("  > field {} extracted from query: {}.".format(field, query))
@@ -421,7 +424,7 @@ class Mol_List(list):
         By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
         if self.order:
-            result_list.order = self.order.copy
+            result_list.order = self.order.copy()
         result_list.ia = self.ia
 
         mol_counter_out = 0
@@ -512,7 +515,7 @@ class Mol_List(list):
 
         new_list = Mol_List()
         if self.order:
-            new_list.order = self.order.copy
+            new_list.order = self.order.copy()
         new_list.ia = self.ia
 
         for mol in self:
@@ -652,7 +655,7 @@ class Mol_List(list):
 
         new_list = Mol_List()
         if self.order:
-            new_list.order = self.order.copy
+            new_list.order = self.order.copy()
         new_list.ia = self.ia
 
         id_list = []
@@ -675,7 +678,7 @@ class Mol_List(list):
         return new_list
 
 
-    def remove_dups_by_struct(self):
+    def remove_dups_by_struct(self, make_copy=True):
         """Remove duplicates by structure. Duplicates are determined by Smiles.
 
         Returns:
@@ -684,7 +687,7 @@ class Mol_List(list):
 
         new_list = Mol_List()
         if self.order:
-            new_list.order = self.order.copy
+            new_list.order = self.order.copy()
         new_list.ia = self.ia
 
         smiles_list = []
@@ -705,6 +708,7 @@ class Mol_List(list):
         """Set a default value in all mols, in which ``prop`` is either not defined (``condition`` == None) or
         is evaluating ``condition`` to true."""
 
+        failed = 0
         if condition and not isinstance(condition, str):
             raise TypeError("condition needs to be of type str.")
 
@@ -715,11 +719,24 @@ class Mol_List(list):
                     mol.SetProp(prop, str(def_val))
             else:
                 if mol.HasProp(prop):
-                    if eval("""{} {}""".format(mol.GetProp(prop), condition)):
-                        mol.SetProp(prop, str(def_val))
+                    prop_val = get_value(mol.GetProp(prop))
+                    if isinstance(prop_val, str):
+                        eval_templ = """'{}' {}"""
+                    else:
+                        eval_templ = """{} {}"""
+
+                    try:
+                        if eval(eval_templ.format(prop_val, condition)):
+                            mol.SetProp(prop, str(def_val))
+
+                    except SyntaxError:
+                        failed += 1
 
         self.recalc_needed["d"] = True
         self.recalc_needed["field_types"] = True
+
+        if failed > 0:
+            print("# {} records could not be processed.".format(failed))
 
 
     def table(self, id_prop=None, highlight=None, show_hidden=False, raw=False):
@@ -1497,7 +1514,7 @@ def o3da(input_list, ref, fn="aligned.sdf"):
     """Takes a list of molecules and align them to ref.
     Writes the result as SD file to fn."""
     ref_pymp = Chem.MMFFGetMoleculeProperties(ref)
-    mol_list = input_list[:]
+    mol_list = deepcopy(input_list)
     writer = Chem.SDWriter(fn)
 
     print("N\t\tscore\t\trmsd")
