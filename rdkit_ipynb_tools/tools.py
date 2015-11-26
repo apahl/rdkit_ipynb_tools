@@ -531,7 +531,7 @@ class Mol_List(list):
         return new_list
 
 
-    def calc_props(self, props):
+    def calc_props(self, props, force2d=False):
         """Calculate properties from the Mol_List.
         props can be a single property or a list of properties.
 
@@ -556,13 +556,15 @@ class Mol_List(list):
             if not mol: continue
 
             if "2d" in props:
-                mol.Compute2DCoords()
-                calculated_props.add("2d")
-            else:
-                try:
-                    mol.GetConformer()
-                except ValueError: # no 2D coords... calculate them
+                if force2d:
                     mol.Compute2DCoords()
+                else:
+                    try:
+                        mol.GetConformer()
+                    except ValueError: # no 2D coords... calculate them
+                        mol.Compute2DCoords()
+
+                calculated_props.add("2d")
 
             if "date" in props:
                 mol.SetProp("date", time.strftime("%Y%m%d"))
@@ -756,8 +758,12 @@ class Mol_List(list):
 
 
     def grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, raw=False):
-        """Return the Mol_List as HTML grid table.
-        Either as raw HTML (raw==True) or as HTML object for display in IPython notebook"""
+        """Returns:
+            The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
+
+        Parameters:
+            props: A property or a list of properties to include in the display."""
+
         if not id_prop:
             id_prop = guess_id_prop(list_fields(self)) if self.ia else None
         if raw:
