@@ -705,9 +705,12 @@ class Mol_List(list):
         return new_list
 
 
-    def join_data_from_file(self, fn, id_prop=None):
+    def join_data_from_file(self, fn, id_prop=None, decimals=2):
         """Joins data from a file with name ``fn`` by Id property ``id_prop``. If no Id property is given, it will be guessed.
-        CAUTION: The records from the file are loaded into memory!"""
+        CAUTION: The records from the file are loaded into memory!
+
+        Parameters:
+            decimals (int): number of decimal places for floating point values."""
 
         if not id_prop:
             id_prop = guess_id_prop(self.field_types)
@@ -723,10 +726,10 @@ class Mol_List(list):
                 records = file_d[mol_id]
                 for rec in records:
                     val = get_value(records[rec])
-                    if not val: continue
+                    if val == None: continue
 
                     if isinstance(val, float):
-                        mol.SetProp(rec, "{:.3f}".format(val))
+                        mol.SetProp(rec, "{val:.{decimals}f}".format(val=val, decimals=decimals))
                     else:
                         mol.SetProp(rec, str(val))
 
@@ -1221,7 +1224,7 @@ def get_value(str_val):
 
     try:
         val = float(str_val)
-        if val == int(val):
+        if not "." in str_val:
             val = int(val)
     except ValueError:
         val = str_val
