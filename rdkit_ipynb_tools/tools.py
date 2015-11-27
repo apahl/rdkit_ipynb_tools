@@ -24,6 +24,8 @@ import sys
 import base64
 import os.path as op
 import random
+import csv
+import gzip
 from copy import deepcopy
 
 from PIL import Image, ImageChops
@@ -196,7 +198,7 @@ class Mol_List(list):
 
 
     def _set_recalc_needed(self):
-        """Make sure, that the expensive calculations are not done too often."""
+        """Make sure that the expensive calculations are not done too often."""
 
         self.len = len(self)
         keys = ["d", "fields", "field_types"]
@@ -559,10 +561,7 @@ class Mol_List(list):
                 if force2d:
                     mol.Compute2DCoords()
                 else:
-                    try:
-                        mol.GetConformer()
-                    except ValueError: # no 2D coords... calculate them
-                        mol.Compute2DCoords()
+                    check_2d_coords(mol)
 
                 calculated_props.add("2d")
 
@@ -704,6 +703,34 @@ class Mol_List(list):
             new_list.append(mol)
 
         return new_list
+
+
+    def join_data_from_file(self, fn, id_prop=None):
+        """Joins data from a file with name ``fn`` by Id property ``id_prop``. If no Id property is given, it will be guessed.
+        CAUTION: The records from the file are loaded into memory!"""
+
+        if not id_prop:
+            id_prop = guess_id_prop(self.field_types)
+
+        file_d = {}
+        for line in csv_supplier(fn):
+            rec_id = get_value(line.pop(id_prop))
+            file_d[rec_id] = line
+
+        for mol in self:
+            mol_id = get_prop_val(mol, id_prop)
+            if mol_id in file_d:
+                records = file_d[mol_id]
+                for rec in records:
+                    val = get_value(records[rec])
+                    if not val: continue
+
+                    if isinstance(val, float):
+                        mol.SetProp(rec, "{:.3f}".format(val))
+                    else:
+                        mol.SetProp(rec, str(val))
+
+        self._set_recalc_needed()
 
 
     def set_default(self, prop, def_val, condition=None):
@@ -1031,6 +1058,20 @@ def load_sdf(file_name_or_obj="testset.sdf"):
     return sdf_list
 
 
+def csv_supplier(fn):
+    """Returns a dictionary generator."""
+
+    if ".gz" in fn:
+        f = gzip.open(fn, mode="rt")
+    else:
+        f = open(fn)
+    reader = csv.DictReader(f, dialect="excel-tab")
+    for row_dict in reader:
+        yield row_dict
+
+    f.close()
+
+
 def remove_props_from_mol(mol, prop_or_propslist):
     if not isinstance(prop_or_propslist, list):
         prop_or_propslist = [prop_or_propslist]
@@ -1175,12 +1216,16 @@ def get_field_types(mol_list):
 
 
 def get_value(str_val):
+    if not str_val:
+        return None
+
     try:
         val = float(str_val)
         if val == int(val):
             val = int(val)
     except ValueError:
         val = str_val
+
     return val
 
 
