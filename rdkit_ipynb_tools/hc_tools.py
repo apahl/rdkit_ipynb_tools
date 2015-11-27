@@ -16,6 +16,7 @@ import string
 import json
 import colorsys
 import os.path as op
+import random
 
 # 2. third-party imports
 try:
@@ -282,10 +283,24 @@ class Chart():
         self.arg_include_in_tooltip = kwargs.get("include_in_tooltip", kwargs.get("include", "xxx"))
         if not isinstance(self.arg_include_in_tooltip, list):
             self.arg_include_in_tooltip = [self.arg_include_in_tooltip]
+        self.arg_jitter = kwargs.get("jitter", None)
+        self.jitter_mag = kwargs.get("mag", 0.2)
+
+
 
         self.dx = list(d[x])
         self.dy = list(d[y])
         self.dlen = len(self.dx)
+
+        if self.arg_jitter:
+            for j in self.arg_jitter:
+                if j == x:
+                    for i, val in enumerate(self.dx):
+                        self.dx[i] = val + self.jitter_mag * random.random() * 2 - self.jitter_mag
+
+                if j == y:
+                    for i, val in enumerate(self.dy):
+                        self.dy[i] = val + self.jitter_mag * random.random() * 2 - self.jitter_mag
 
         if self.arg_pid:
             # pandas data series and pid == index
@@ -423,7 +438,7 @@ def guess_id_prop(prop_list):  # try to guess an id_prop
 
 
 # Quick Predefined Plots
-def cpd_scatter(df, x, y, r=7, pid=None, series_by=None, tooltip="struct"):
+def cpd_scatter(df, x, y, r=7, pid=None, series_by=None, jitter=None, mag=0.2, tooltip="struct"):
     """Predefined Plot #1.
     Quickly plot an RDKit Pandas dataframe or a molecule dictionary with structure tooltips."""
 
@@ -437,7 +452,7 @@ def cpd_scatter(df, x, y, r=7, pid=None, series_by=None, tooltip="struct"):
         pid = guess_id_prop(prop_list)
 
     scatter = Chart(title="Compound Scatter Plot", r=r)
-    scatter.add_data(df, x, y, pid=pid, series_by=series_by, tooltip=tooltip)
+    scatter.add_data(df, x, y, pid=pid, series_by=series_by, jitter=jitter, mag=mag, tooltip=tooltip)
     return scatter.show()
 
 

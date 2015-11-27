@@ -813,14 +813,15 @@ class Mol_List(list):
                              mols_per_row=mols_per_row, size=size, raw=True), header=header, summary=summary), fn=fn)
 
 
-    def scatter(self, x, y, r=7, id_prop=None, series_by=None, tooltip=None):
+    def scatter(self, x, y, r=7, id_prop=None, series_by=None, jitter=None, mag=0.2, tooltip=None):
         """Displays a Highcharts plot in the IPython Notebook.
         Uses the Highcharts javascript library, either locally under lib/ relative to the Notebook
         or the web version at http://code.highcharts.com.
         If ``tooltip`` is *None*, then structure ttooltips will be shown for Mol_Lists with
         less than or equal 150 records, if the Mol_List has more records, no structure tooltips
         will be shown. The bevaviour can be forced by either providing ``tooltip="struct"`` for tooltips
-        or ``tooltip=""`` for no tooltips."""
+        or ``tooltip=""`` for no tooltips. Properties in the ``jitter`` list (only when used for x or y)
+        will be jittered by a magnitude of ``mag``."""
 
         if tooltip == None:
             if len(self) > 150:
@@ -829,7 +830,7 @@ class Mol_List(list):
                 tooltip = "struct"
 
 
-        return hct.cpd_scatter(self.d, x, y, r=r, pid=id_prop, series_by=series_by, tooltip=tooltip)
+        return hct.cpd_scatter(self.d, x, y, r=r, pid=id_prop, series_by=series_by, jitter=jitter, mag=mag, tooltip=tooltip)
 
 
     def summary(self, text_only=False):
