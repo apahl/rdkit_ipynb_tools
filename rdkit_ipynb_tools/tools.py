@@ -16,7 +16,7 @@ from __future__ import print_function, division
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw, rdFMCS
 import rdkit.Chem.Descriptors as Desc
-Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
+# Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
 import time
@@ -813,7 +813,7 @@ class Mol_List(list):
                              mols_per_row=mols_per_row, size=size, raw=True), header=header, summary=summary), fn=fn)
 
 
-    def scatter(self, x, y, r=7, id_prop=None, series_by=None, jitter=None, mag=0.2, tooltip=None):
+    def scatter(self, x, y, r=7, tooltip=None, **kwargs):
         """Displays a Highcharts plot in the IPython Notebook.
         Uses the Highcharts javascript library, either locally under lib/ relative to the Notebook
         or the web version at http://code.highcharts.com.
@@ -830,7 +830,7 @@ class Mol_List(list):
                 tooltip = "struct"
 
 
-        return hct.cpd_scatter(self.d, x, y, r=r, pid=id_prop, series_by=series_by, jitter=jitter, mag=mag, tooltip=tooltip)
+        return hct.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
 
 
     def summary(self, text_only=False):

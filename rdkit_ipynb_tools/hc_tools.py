@@ -438,7 +438,7 @@ def guess_id_prop(prop_list):  # try to guess an id_prop
 
 
 # Quick Predefined Plots
-def cpd_scatter(df, x, y, r=7, pid=None, series_by=None, jitter=None, mag=0.2, tooltip="struct"):
+def cpd_scatter(df, x, y, r=7, pid=None, **kwargs):
     """Predefined Plot #1.
     Quickly plot an RDKit Pandas dataframe or a molecule dictionary with structure tooltips."""
 
@@ -451,8 +451,9 @@ def cpd_scatter(df, x, y, r=7, pid=None, series_by=None, jitter=None, mag=0.2, t
 
         pid = guess_id_prop(prop_list)
 
-    scatter = Chart(title="Compound Scatter Plot", r=r)
-    scatter.add_data(df, x, y, pid=pid, series_by=series_by, jitter=jitter, mag=mag, tooltip=tooltip)
+    title = kwargs.get("title", "Compound Scatter Plot")
+    scatter = Chart(title=title, r=r)
+    scatter.add_data(df, x, y, pid=pid, **kwargs)
     return scatter.show()
 
 
