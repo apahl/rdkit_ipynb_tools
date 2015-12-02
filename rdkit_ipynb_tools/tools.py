@@ -13,12 +13,6 @@ A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython noteb
 
 from __future__ import print_function, division
 
-from rdkit.Chem import AllChem as Chem
-from rdkit.Chem import Draw, rdFMCS
-import rdkit.Chem.Descriptors as Desc
-# Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
-Draw.DrawingOptions.atomLabelFontSize = 18
-
 import time
 import sys
 import base64
@@ -27,6 +21,13 @@ import random
 import csv
 import gzip
 from copy import deepcopy
+
+from rdkit.Chem import AllChem as Chem
+from rdkit.Chem import Draw, rdFMCS
+import rdkit.Chem.Descriptors as Desc
+Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
+Draw.DrawingOptions.atomLabelFontSize = 18
+
 
 from PIL import Image, ImageChops
 
@@ -139,7 +140,7 @@ function jsmeOnLoad() {{
     jsmeApplet{ts} = new JSApplet.JSME("appletContainer{ts}", "380px", "340px", {{
                      //optional parameters
                      "options" : "query,hydrogens"
-	}});
+    }});
 }}
 
 function onSubmit() {{
@@ -209,7 +210,7 @@ class Mol_List(list):
     def _key_get_prop(self, mol, field):
         try:
             val = float(mol.GetProp(field))
-        except ValueError: # GetProp value could not be converted to float
+        except ValueError:  # GetProp value could not be converted to float
             val = mol.GetProp(field)
         except KeyError:   # field is not present in the mol properties
             val = 10000000.0
@@ -226,7 +227,7 @@ class Mol_List(list):
         field_types = {}
 
         if len(self) > 100:
-            sdf_sample = random.sample(self, len(self)//2)
+            sdf_sample = random.sample(self, len(self) // 2)
         else:
             sdf_sample = self
 
@@ -324,7 +325,7 @@ class Mol_List(list):
 
             try:
                 mol.GetConformer()
-            except ValueError: # no 2D coords... calculate them
+            except ValueError:  # no 2D coords... calculate them
                 mol.Compute2DCoords()
 
             writer.write(mol, confId=conf_id)
@@ -413,7 +414,7 @@ class Mol_List(list):
                         mol = deepcopy(mol)
                     result_list.append(mol)
 
-        print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
+        print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
         if sorted:
             result_list.sort_list(field, reverse=reverse)
@@ -462,7 +463,7 @@ class Mol_List(list):
                     mol = deepcopy(mol)
                 result_list.append(mol)
 
-        print("> processed: {:7d}   found: {:6d}".format(mol_counter_in+1, mol_counter_out))
+        print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
         return result_list
 
@@ -478,9 +479,9 @@ class Mol_List(list):
         prop_list = list_fields(self)
 
         if id_prop:
-            if not id_prop in prop_list:
+            if id_prop not in prop_list:
                 raise LookupError("id_prop not found in data set.")
-        else: # try to guess an id_prop
+        else:  # try to guess an id_prop
             id_prop = guess_id_prop(prop_list)
 
         if not id_prop:
@@ -726,7 +727,7 @@ class Mol_List(list):
                 records = file_d[mol_id]
                 for rec in records:
                     val = get_value(records[rec])
-                    if val == None: continue
+                    if val is None: continue
 
                     if isinstance(val, float):
                         mol.SetProp(rec, "{val:.{decimals}f}".format(val=val, decimals=decimals))
@@ -801,7 +802,7 @@ class Mol_List(list):
                              mols_per_row=mols_per_row, size=size)
         else:
             return HTML(mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
-                             mols_per_row=mols_per_row, size=size))
+                                  mols_per_row=mols_per_row, size=size))
 
 
     def write_table(self, id_prop=None, highlight=None, header=None, summary=None, fn="mol_table.html"):
@@ -823,7 +824,7 @@ class Mol_List(list):
         or ``tooltip=""`` for no tooltips. Properties in the ``jitter`` list (only when used for x or y)
         will be jittered by a magnitude of ``mag``."""
 
-        if tooltip == None:
+        if tooltip is None:
             if len(self) > 150:
                 tooltip = ""
             else:
@@ -886,7 +887,7 @@ class Mol_List(list):
                     for sum_item in ["min", "max", "mean", "median"]:
                         cells.extend(html.td("{:.3f}".format(sum_d[prop][sum_item]), options=opt1))
                 else:
-                    for i in range(4): # insert empty cells
+                    for i in range(4):  # insert empty cells
                         cells.extend(html.td("", options=opt1))
                 rows.extend(html.tr(cells))
 
@@ -894,7 +895,7 @@ class Mol_List(list):
             return HTML("".join(table))
 
 
-    def correlate(self, min_corr=0.4, text_only = False):
+    def correlate(self, min_corr=0.4, text_only=False):
         """Display correlations between the properties in the Mol_List.
         Calculated by np.corrcoef, only abs. values are used, higher value means higer correlation.
         Only correlations greater or to equal to ``min_corr`` are shown (default=0.4).
@@ -907,7 +908,7 @@ class Mol_List(list):
         l = len(self)
         for left in range(n):
             left_values = [get_prop_val(mol, number_fields[left]) for mol in self]
-            for right in range(left+1, n):
+            for right in range(left + 1, n):
                 right_values = [get_prop_val(mol, number_fields[right]) for mol in self]
                 both_y = []
                 both_x = []
@@ -1003,8 +1004,8 @@ def autocrop(im, bgcolor="white"):
     diff = ImageChops.difference(im, bg)
     bbox = diff.getbbox()
     if bbox:
-         return im.crop(bbox)
-    return None # no contents
+        return im.crop(bbox)
+    return None  # no contents
 
 
 def list_fields(sdf_list):
@@ -1134,7 +1135,7 @@ def check_2d_coords(mol):
     """Check if a mol has 2D coordinates and if not, calculate them."""
     try:
         mol.GetConformer()
-    except ValueError: # no 2D coords... calculate them
+    except ValueError:  # no 2D coords... calculate them
         mol.Compute2DCoords()
 
 
@@ -1149,7 +1150,7 @@ def align(mol_list, mol_or_smiles=None):
             of the mol_list."""
 
 
-    if mol_or_smiles == None:
+    if mol_or_smiles is None:
         # determine the MCSS
         mcs = rdFMCS.FindMCS(mol_list)
         if mcs.canceled:
@@ -1186,7 +1187,7 @@ def get_field_types(mol_list):
     field_types = {}
 
     if len(mol_list) > 100:
-        sdf_sample = random.sample(mol_list, len(mol_list)//5)
+        sdf_sample = random.sample(mol_list, len(mol_list) // 5)
     else:
         sdf_sample = mol_list
 
@@ -1225,7 +1226,7 @@ def get_value(str_val):
 
     try:
         val = float(str_val)
-        if not "." in str_val:
+        if "." not in str_val:
             val = int(val)
     except ValueError:
         val = str_val
@@ -1290,10 +1291,10 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
 
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor="transparent"))
-        if not id_prop in prop_list:
+        if id_prop not in prop_list:
             raise LookupError("id_prop not found in data set.")
         guessed_id = id_prop
-    else: # try to guess an id_prop
+    else:  # try to guess an id_prop
         guessed_id = guess_id_prop(prop_list)
 
     if guessed_id:
@@ -1389,7 +1390,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     if id_prop:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor=BGCOLOR))
         guessed_id = id_prop
-    else: # try to guess an id_prop
+    else:  # try to guess an id_prop
         guessed_id = guess_id_prop(prop_list)
 
     rows = []
@@ -1409,7 +1410,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
 
         else:
             img_file = IO()
-            img = autocrop(Draw.MolToImage(mol, size=(size,size)))
+            img = autocrop(Draw.MolToImage(mol, size=(size, size)))
             img.save(img_file, format='PNG')
 
             b64 = base64.b64encode(img_file.getvalue())
@@ -1472,7 +1473,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     table_list.extend(html.table(rows))
 
     if props:
-        table_list.extend(["<p>properties shown: ", "["+"] _ [".join(props)+"]", "</p>"])
+        table_list.extend(["<p>properties shown: ", "[" + "] _ [".join(props) + "]", "</p>"])
 
     if id_prop:
         table_list.append(ID_LIST.format(ts=time_stamp))
@@ -1508,7 +1509,7 @@ def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
         prop_list = list_fields(sdf_list)
 
     if id_prop:
-        if not id_prop in prop_list:
+        if id_prop not in prop_list:
             raise LookupError("id_prop not found in data set.")
         guessed_id = id_prop
     else:
@@ -1516,7 +1517,7 @@ def dict_from_sdf_list(sdf_list, id_prop=None, props=None, prop_list=None):
 
     if not props:
         props = prop_list
-    if guessed_id and not guessed_id in props:
+    if guessed_id and guessed_id not in props:
         props.append(guessed_id)
 
     df_dict = {prop: [] for prop in props}
@@ -1576,7 +1577,7 @@ def o3da(input_list, ref, fn="aligned.sdf"):
     for ctr, mol in enumerate(mol_list, 1):
         mol_pymp = Chem.MMFFGetMoleculeProperties(mol)
         o3a = Chem.GetO3A(mol, ref, mol_pymp, ref_pymp)
-        print("{}\t\t{:.2f}\t\t{:.2f}".format(ctr, o3a.Score(),o3a.Align()))
+        print("{}\t\t{:.2f}\t\t{:.2f}".format(ctr, o3a.Score(), o3a.Align()))
         writer.write(mol)
 
     writer.close()
