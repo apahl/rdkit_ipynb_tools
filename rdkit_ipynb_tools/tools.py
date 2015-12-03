@@ -1145,7 +1145,7 @@ def align(mol_list, mol_or_smiles=None):
 
     Parameters:
         mol_list: A list of RDKit molecules.
-        mol_or_smiles (bool): The substructure to which to align.
+        mol_or_smiles (None, str, mol or list thereof): The substructure(s) to which to align.
             If None, then the method uses rdFMCS to determine the MCSS
             of the mol_list."""
 
@@ -1162,16 +1162,29 @@ def align(mol_list, mol_or_smiles=None):
             print("* Could not find MCSS. Please provide a mol_or_smiles to align to.")
             return
 
-    elif isinstance(mol_or_smiles, str):
-        mol_or_smiles = Chem.MolFromSmiles(mol_or_smiles)
+    if not isinstance(mol_or_smiles, list):
+        mol_or_smiles = [mol_or_smiles]
 
-    check_2d_coords(mol_or_smiles)
+    align_mols = []
+    for el in mol_or_smiles:
+        if isinstance(el, str):
+            mol = Chem.MolFromSmiles(el)
+            check_2d_coords(mol)
+            align_mols.append(mol)
+        else:
+            mol = deepcopy(el)
+            check_2d_coords(el)
+            align_mols.append(el)
+
 
     for mol in mol_list:
         if mol:
             check_2d_coords(mol)
 
-            Chem.GenerateDepictionMatching2DStructure(mol, mol_or_smiles)
+        for align_mol in align_mols:
+                if mol.HasSubstructMatch(align_mol):
+                    Chem.GenerateDepictionMatching2DStructure(mol, align_mol)
+                    break
 
 
 def guess_id_prop(prop_list):  # try to guess an id_prop
