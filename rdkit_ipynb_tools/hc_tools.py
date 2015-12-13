@@ -85,10 +85,10 @@ class ColorScale():
         self.value_max = val_max
         self.value_range = self.value_max - self.value_min
         self.color_scale = []
-        hsv_tuples = [(0.35 + ((x*0.65)/(self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
+        hsv_tuples = [(0.35 + ((x * 0.65) / (self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
         rgb_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)
         for rgb in rgb_tuples:
-            rgb_int = [int(255*x) for x in rgb]
+            rgb_int = [int(255 * x) for x in rgb]
             self.color_scale.append('#{:02x}{:02x}{:02x}'.format(*rgb_int))
 
     def __call__(self, value, reverse=False):
@@ -109,12 +109,12 @@ class Chart():
         y_title (str): Used in the column plot as title of the y axis, default: ""."""
 
     def __init__(self, kind="scatter", **kwargs):
-        if not kind in CHART_KINDS:
+        if kind not in CHART_KINDS:
             raise ValueError("{} is not a supported chart kind ({})".format(kind, CHART_KINDS))
 
         self.kind = kind
-        self.height= kwargs.get("height", 450)
-        radius = kwargs.get("r", kwargs.get("radius", 5)) # accept "r" or "radius" for this option
+        self.height = kwargs.get("height", 450)
+        radius = kwargs.get("r", kwargs.get("radius", 5))  # accept "r" or "radius" for this option
         self.legend = kwargs.get("legend", None)
         self.y_title = kwargs.get("y_title", "")
         self.chart_id = time.strftime("%y%m%d%H%M%S")
@@ -132,7 +132,7 @@ class Chart():
         if self.arg_pid:
             tooltip.extend([str(self.dpid[i]), "<br>"])
         tooltip.extend(['<div style="width: 200px; height: 200px;">',
-                   str(self.dmol[i]), "</div>"])
+                       str(self.dmol[i]), "</div>"])
         return "".join(tooltip)
 
 
@@ -266,7 +266,7 @@ class Chart():
             reverse (bool): Reverse the ColorScale. Defaults to *False*.
         """
 
-        if not x in d or not y in d:
+        if x not in d or y not in d:
             raise KeyError("'{x}' and '{y}' are required parameters for scatter plot, but could not all be found in dict.".format(x=x, y=y))
 
         if len(d[x]) != len(d[y]):
@@ -275,7 +275,7 @@ class Chart():
         self.arg_x = x
         self.arg_y = y
         self.arg_z = z
-        self.arg_series_by= kwargs.get("series_by", None)
+        self.arg_series_by = kwargs.get("series_by", None)
         self.arg_color_by = kwargs.get("color_by", None)
         self.arg_pid = kwargs.get("pid", None)
         self.arg_color_discrete = "disc" in kwargs.get("color_mode", kwargs.get("mode", "discrete"))
@@ -392,7 +392,7 @@ class Chart():
 
 
             if self.arg_series_by:
-                if self.legend != False:
+                if self.legend is not False:
                     self.chart["legend"] = {'enabled': True, "title": {"text": self.arg_series_by},
                                             "align": "right"}
                     self.chart["tooltip"]["headerFormat"] = '<b>{series_by}: {{series.name}}</b><br>'.format(series_by=self.arg_series_by)
@@ -404,7 +404,7 @@ class Chart():
                     tmp_d["id"] = [self._structure_tooltip(i) for i in range(self.dlen)]
                 elif self.arg_pid:
                     tmp_d["id"] = self.dpid
-                if self.arg_color_by: # continuous values
+                if self.arg_color_by:  # continuous values
                     tmp_d["color_by"] = self.dcolor_by
 
                 data = self._data_tuples(tmp_d)
