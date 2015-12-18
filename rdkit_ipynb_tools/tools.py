@@ -265,7 +265,8 @@ class Mol_List(list):
         self._d["mol"] = []
         for mol in self:
             if not mol: continue
-            img_tag = '<img src="data:image/png;base64,{}" alt="Mol"/>'.format(b64_img(mol))
+            # img_tag = '<img src="data:image/png;base64,{}" alt="Mol"/>'.format(b64_img(mol))
+            img_tag = b64_img(mol)
             self._d["mol"].append(img_tag)
 
             for prop in self.fields:
@@ -951,13 +952,6 @@ class Mol_List(list):
 
             table = html.table(rows)
             return HTML("".join(table))
-
-
-
-
-
-
-
 
 
     @property

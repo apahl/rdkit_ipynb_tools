@@ -21,16 +21,22 @@ class Chart():
     """A Bokeh Plot."""
 
     def __init__(self, kind="scatter", **kwargs):
+        self.plot = None
         self.kind = kind
         self.height = kwargs.get("height", 450)
         self.title = kwargs.get("title", "Bokeh Plot")
-        self.tooltip = get_tooltip(kwargs.get("tooltip", None))
-
-        self.plot = figure(plot_height=self.height, tools=[self.tooltip])
 
 
     def add_data(self, d, x, y, **kwargs):
-        self.plot.circle('x', 'y', size=20, source=ColumnDataSource(d))
+        self.tooltip = get_tooltip(x, y, kwargs.get("tooltip", None))
+        self.radius = kwargs.get("radius", kwargs.get("r", 10))
+
+        if self.plot is None:
+            self.plot = figure(plot_height=self.height, tools=[self.tooltip])
+
+        d["x"] = d[x]
+        d["y"] = d[y]
+        self.plot.circle(x, y, size=self.radius, source=ColumnDataSource(d))
 
     def show(self):
         show(self.plot)
@@ -41,11 +47,11 @@ def get_tooltip(x, y, tooltip):
         templ = HoverTool(
             tooltips="""
             <div>
-                <div>
+                <div style="width: 200px; height: 200px;">
                     <img
-                        src="@mol" height="200" width="200"
-                        style="float: left; margin: 0px 15px 15px 0px;"
-                        border="2"
+                        src="data:image/png;base64,@mol"
+
+                        border="2" alt="Mol"
                     ></img>
                 </div>
                 <div>
