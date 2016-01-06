@@ -47,6 +47,14 @@ else:
     from cStringIO import StringIO as IO
 
 try:
+    from . import bokeh_tools as bkt
+    PLOT_TOOL = "bokeh"
+
+except ImportError:
+    print("  * could not import Bokeh, plotting with Highcharts instead.")
+    PLOT_TOOL = "highcharts"
+
+try:
     from misc_tools import apl_tools as apt
     AP_TOOLS = True
 except ImportError:
@@ -177,7 +185,8 @@ class Mol_List(list):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.order = None
-        self.ia = False
+        self.ia = False  # wether the table and grid views are interactive or no
+        self.plot_tool = PLOT_TOOL
         self.recalc_needed = {}
         self._set_recalc_needed()
 
@@ -186,8 +195,11 @@ class Mol_List(list):
         result = list.__getitem__(self, item)
         try:
             new_list = Mol_List(result)
+
+            # pass on properties
             new_list.order = self.order
             new_list.ia = self.ia
+            new_list.plot_tool = self.plot_tool
             return new_list
         except TypeError:
             return result
@@ -202,6 +214,7 @@ class Mol_List(list):
         """Make sure that the expensive calculations are not done too often."""
 
         self.len = len(self)
+        self.recalc_needed["plot_tool"] = PLOT_TOOL
         keys = ["d", "fields", "field_types"]
         for k in keys:
             self.recalc_needed[k] = True
@@ -265,8 +278,11 @@ class Mol_List(list):
         self._d["mol"] = []
         for mol in self:
             if not mol: continue
-            # img_tag = '<img src="data:image/png;base64,{}" alt="Mol"/>'.format(b64_img(mol))
-            img_tag = b64_img(mol)
+            if self.plot_tool == "bokeh":
+                img_tag = b64_img(mol)
+            else:
+                img_tag = '<img src="data:image/png;base64,{}" alt="Mol"/>'.format(b64_img(mol))
+
             self._d["mol"].append(img_tag)
 
             for prop in self.fields:
@@ -831,8 +847,10 @@ class Mol_List(list):
             else:
                 tooltip = "struct"
 
-
-        return hct.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
+        if self.plot_tool == "bokeh":
+            return bkt.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
+        else:
+            return hct.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
 
 
     def summary(self, text_only=False):
@@ -984,9 +1002,10 @@ class Mol_List(list):
 
         if self.len != len(self):
             self._set_recalc_needed()
-        if self.recalc_needed["d"]:
+        if self.recalc_needed["d"] or self.plot_tool != self.recalc_needed["plot_tool"]:
             self._calc_d()
             self.recalc_needed["d"] = False
+            self.recalc_needed["plot_tool"] = self.plot_tool
         return self._d
 
 
