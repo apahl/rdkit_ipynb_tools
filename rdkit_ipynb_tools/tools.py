@@ -289,7 +289,7 @@ class Mol_List(list):
                 if mol.HasProp(prop):
                     self._d[prop].append(get_value(mol.GetProp(prop)))
                 else:
-                    self._d[prop].append(None)
+                    self._d[prop].append(np.nan)
 
 
     def append(self, other):

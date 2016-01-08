@@ -10,11 +10,44 @@ Tools
 Bokeh plotting functionality for Mol_lists.
 """
 
+import colorsys
+
+import numpy as np
+
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.io import output_notebook, show
 from bokeh.models import HoverTool
 
+AVAIL_COLORS = ["cornflowerblue", "firebrick", "goldenrod", "aqua", "brown", "chartreuse", "darkmagenta"
+                "aquamarine", "blue", "red", "blueviolet", "darkorange", "forestgreen", "lime"]
+
 output_notebook()
+
+
+class ColorScale():
+    """Used for continuous coloring."""
+
+    def __init__(self, num_values, val_min, val_max):
+        self.num_values = num_values
+        self.num_val_1 = num_values - 1
+        self.value_min = val_min
+        self.value_max = val_max
+        self.value_range = self.value_max - self.value_min
+        self.color_scale = []
+        hsv_tuples = [(0.35 + ((x * 0.65) / (self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
+        rgb_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)
+        for rgb in rgb_tuples:
+            rgb_int = [int(255 * x) for x in rgb]
+            self.color_scale.append('#{:02x}{:02x}{:02x}'.format(*rgb_int))
+
+    def __call__(self, value, reverse=False):
+        """return the color from the scale corresponding to the place in the value_min ..  value_max range"""
+        pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
+
+        if reverse:
+            pos = self.num_val_1 - pos
+
+        return self.color_scale[pos]
 
 
 class Chart():
@@ -29,34 +62,71 @@ class Chart():
 
 
     def add_data(self, d, x, y, **kwargs):
-        self.tooltip = get_tooltip(x, y,
-                                   kwargs.get("pid", None),
-                                   kwargs.get("series", None),
-                                   kwargs.get("tooltip", None))
+        colors = "cornflowerblue"
+        series_by = kwargs.get("series_by", None)
+        color_by = kwargs.get("color_by", None)
+        tooltip = get_tooltip(x, y,
+                              kwargs.get("pid", None),
+                              series_by,
+                              color_by,
+                              kwargs.get("tooltip", None))
 
-        self.plot.add_tools(self.tooltip)
+        self.plot.add_tools(tooltip)
         self.plot.xaxis.axis_label = x
         self.plot.yaxis.axis_label = y
 
-        self.radius = kwargs.get("radius", kwargs.get("r", 10))
+        radius = kwargs.get("radius", kwargs.get("r", 10))
+
+        if series_by:
+            avail_colors = AVAIL_COLORS
+            series_colors = {item: 0 for item in d[series_by] if item is not None and item != np.nan}
+            if len(series_colors) > len(avail_colors):
+                raise LookupError("Too many series values (more than available colors {}).".format(len(avail_colors)))
+
+            for idx, series_item in enumerate(series_colors):
+                series_colors[series_item] = avail_colors[idx]
+
+            colors = []
+            for val in d[series_by]:
+                colors.append(series_colors.get(val, "black"))
+
+            d["colors"] = colors
+
+        elif color_by:
+            color_by_min = min(d[color_by])
+            color_by_max = max(d[color_by])
+            color_scale = ColorScale(20, color_by_min, color_by_max)
+            colors = []
+            for val in d[color_by]:
+                if val is not None and val != np.nan:
+                    colors.append(color_scale(val))
+                else:
+                    colors.append("black")
+
+            d["colors"] = colors
 
         d["x"] = d[x]
         d["y"] = d[y]
-        self.plot.circle(x, y, size=self.radius, source=ColumnDataSource(d))
+        self.plot.circle(x, y, size=radius, color=colors, source=ColumnDataSource(d))
 
     def show(self):
         show(self.plot)
 
 
-def get_tooltip(x, y, pid=None, series=None, tooltip=None):
+def get_tooltip(x, y, pid=None, series_by=None, color_by=None, tooltip=None):
     if pid:
-        pid_tag = '<span style="font-size: 12px; color: #000000;">{pid}: @{pid}<br>'.format(pid=pid)
+        pid_tag = '<span style="font-size: 13px; color: #000000;">{pid}: @{pid}</span><br>'.format(pid=pid)
     else:
         pid_tag = ""
 
-    if series:
-        series_tag = '<span style="font-size: 12px; color: #000000;"><b>series: {series}</b><br>'.format(series)
+    if series_by:
+        series_tag = '<span style="font-size: 13px; color: #000000;"><b>{series_by}: @{series_by}</b>&nbsp;&nbsp;</span><span style="font-size: 14px; color: @colors;">&#9899</span><br>'.format(series_by=series_by)
+        color_tag = ""
+    elif color_by:
+        series_tag = ""
+        color_tag = '<span style="font-size: 13px; color: #000000;"><br>{color_by}: @{color_by}&nbsp;&nbsp;</span><span style="font-size: 14px; color: @colors;">&#9899</span>'.format(color_by=color_by)
     else:
+        color_tag = ""
         series_tag = ""
 
     if tooltip == "struct":
@@ -72,8 +142,8 @@ def get_tooltip(x, y, pid=None, series=None, tooltip=None):
                 </div>
                 <div>
                     {series_tag}{pid_tag}
-                    <span style="font-size: 12px; color: #000000;">{x}: @x<br>
-                    {y}: @y</span>
+                    <span style="font-size: 13px; color: #000000;">{x}: @x<br>
+                    {y}: @y</span>{color_tag}
                 </div>
             </div>
             """.format(pid_tag=pid_tag, series_tag=series_tag, x=x, y=y)
@@ -83,10 +153,10 @@ def get_tooltip(x, y, pid=None, series=None, tooltip=None):
             tooltips="""
             <div>
                 {series_tag}{pid_tag}
-                <span style="font-size: 12px; color: #000000;">{x}: @x<br>
-                {y}: @y</span>
+                <span style="font-size: 13px; color: #000000;">{x}: @x<br>
+                {y}: @y</span>{color_tag}
             </div>
-            """.format(pid_tag=pid_tag, series_tag=series_tag, x=x, y=y)
+            """.format(pid_tag=pid_tag, series_tag=series_tag, color_tag=color_tag, x=x, y=y)
         )
         # templ = HoverTool(tooltips=[(x, "@x"), (y, "@y")])
 
