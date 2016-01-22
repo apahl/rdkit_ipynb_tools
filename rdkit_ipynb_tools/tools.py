@@ -36,7 +36,7 @@ import numpy as np
 from . import html_templates as html
 from . import hc_tools as hct
 
-from IPython.html import widgets
+from ipywidgets import widgets
 from IPython.core.display import HTML, display
 
 if sys.version_info[0] > 2:

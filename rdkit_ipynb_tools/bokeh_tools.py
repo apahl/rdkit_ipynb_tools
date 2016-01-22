@@ -18,8 +18,10 @@ from bokeh.plotting import figure, ColumnDataSource
 from bokeh.io import output_notebook, show
 from bokeh.models import HoverTool
 
-AVAIL_COLORS = ["cornflowerblue", "firebrick", "goldenrod", "aqua", "brown", "chartreuse", "darkmagenta"
+AVAIL_COLORS = ["#1F77B4", "firebrick", "goldenrod", "aqua", "brown", "chartreuse", "darkmagenta"
                 "aquamarine", "blue", "red", "blueviolet", "darkorange", "forestgreen", "lime"]
+# AVAIL_MARKERS: circle, diamond, triangle, square, inverted_triangle, asterisk,
+#                circle_cross, circle_x, cross, diamond_cross, square_cross, square_x, asterisk, diamond
 
 output_notebook()
 
@@ -54,43 +56,94 @@ class Chart():
     """A Bokeh Plot."""
 
     def __init__(self, kind="scatter", **kwargs):
+        self.data = {}
         self.kind = kind
         self.height = kwargs.get("height", 450)
         self.title = kwargs.get("title", "Bokeh Plot")
+        self.position = kwargs.get("position", kwargs.get("pos", "top_left"))
+
+        self.series_counter = 0
+        self.tools_added = False
 
         self.plot = figure(plot_height=self.height, title=self.title, tools="pan,wheel_zoom,box_zoom,reset,resize")
 
 
+    def _add_series(self, x, y, series, size, source=None):
+        color = AVAIL_COLORS[self.series_counter]
+
+        if self.series_counter == 0:
+            self.plot_type = self.plot.circle
+
+        elif self.series_counter == 1:
+            self.plot_type = self.plot.diamond
+            size += 3  # diamonds appear smaller than circles of the same size
+        elif self.series_counter == 2:
+            self.plot_type = self.plot.triangle
+
+        self.plot_type(x, y, legend=series, size=size, color=color, source=source)
+        self.plot.legend.orientation = self.position
+
+        self.series_counter += 1
+        if self.series_counter >= len(AVAIL_COLORS):
+            print("* series overflow, starting again.")
+            self._add_series = 0
+
+
     def add_data(self, d, x, y, **kwargs):
-        colors = "cornflowerblue"
-        series_by = kwargs.get("series_by", None)
+        colors = "#1F77B4"
+        series = kwargs.get("series", None)
+        if series is not None:
+            series_by = "Series"
+        else:
+            series_by = kwargs.get("series_by", None)
+
         color_by = kwargs.get("color_by", None)
+
+        self.plot.xaxis.axis_label = x
+        self.plot.yaxis.axis_label = y
+
         tooltip = get_tooltip(x, y,
                               kwargs.get("pid", None),
+                              series,
                               series_by,
                               color_by,
                               kwargs.get("tooltip", None))
 
         self.plot.add_tools(tooltip)
-        self.plot.xaxis.axis_label = x
-        self.plot.yaxis.axis_label = y
 
-        radius = kwargs.get("radius", kwargs.get("r", 10))
 
-        if series_by:
-            avail_colors = AVAIL_COLORS
-            series_colors = {item: 0 for item in d[series_by] if item is not None and item != np.nan}
-            if len(series_colors) > len(avail_colors):
-                raise LookupError("Too many series values (more than available colors {}).".format(len(avail_colors)))
+        size = kwargs.get("radius", kwargs.get("r", kwargs.get("size", kwargs.get("s", 10))))
 
-            for idx, series_item in enumerate(series_colors):
-                series_colors[series_item] = avail_colors[idx]
+        if series:
+            d["x"] = d[x]
+            d["y"] = d[y]
+            d["series"] = [series] * len(d[x])
 
-            colors = []
-            for val in d[series_by]:
-                colors.append(series_colors.get(val, "black"))
+            self._add_series(x, y, series, size=size, source=ColumnDataSource(d))
 
-            d["colors"] = colors
+        elif series_by:
+            series_keys = set()
+            for idx, item in enumerate(d[series_by]):
+                if item is None:
+                    d[series_by][idx] = "None"
+                elif item is np.nan:
+                    d[series_by][idx] = "NaN"
+
+                series_keys.add(d[series_by][idx])
+
+            for series in series_keys:
+                d_series = {x: [], y: [], "series": []}
+                for idx, el in enumerate(d[x]):
+                    if d[series_by][idx] == series:
+                        d_series[x].append(d[x][idx])
+                        d_series[y].append(d[y][idx])
+                        d_series["series"].append(d[series_by][idx])
+
+                d_series["x"] = d_series[x]
+                d_series["y"] = d_series[y]
+
+                self._add_series(x, y, series, size=size, source=ColumnDataSource(d_series))
+
 
         elif color_by:
             color_by_min = min(d[color_by])
@@ -104,23 +157,28 @@ class Chart():
                     colors.append("black")
 
             d["colors"] = colors
+            d["x"] = d[x]
+            d["y"] = d[y]
+            self.plot.circle(x, y, size=size, color=colors, source=ColumnDataSource(d))
 
-        d["x"] = d[x]
-        d["y"] = d[y]
-        self.plot.circle(x, y, size=radius, color=colors, source=ColumnDataSource(d))
+        else:
+            d["x"] = d[x]
+            d["y"] = d[y]
+            self.plot.circle(x, y, size=size, source=ColumnDataSource(d))
+
 
     def show(self):
         show(self.plot)
 
 
-def get_tooltip(x, y, pid=None, series_by=None, color_by=None, tooltip=None):
+def get_tooltip(x, y, pid=None, series=None, series_by=None, color_by=None, tooltip=None):
     if pid:
         pid_tag = '<span style="font-size: 13px; color: #000000;">{pid}: @{pid}</span><br>'.format(pid=pid)
     else:
         pid_tag = ""
 
     if series_by:
-        series_tag = '<span style="font-size: 13px; color: #000000;"><b>{series_by}: @{series_by}</b>&nbsp;&nbsp;</span><span style="font-size: 14px; color: @colors;">&#9899</span><br>'.format(series_by=series_by)
+        series_tag = '<span style="font-size: 13px; color: #000000;"><b>{series_by}: @series</b>&nbsp;&nbsp;</span><br>'.format(series_by=series_by)
         color_tag = ""
     elif color_by:
         series_tag = ""
