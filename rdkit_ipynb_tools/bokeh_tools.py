@@ -79,6 +79,24 @@ class Chart():
             size += 3  # diamonds appear smaller than circles of the same size
         elif self.series_counter == 2:
             self.plot_type = self.plot.triangle
+        elif self.series_counter == 4:
+            self.plot_type = self.plot.inverted_triangle
+        elif self.series_counter == 5:
+            self.plot_type = self.plot.asterisk
+        elif self.series_counter == 6:
+            self.plot_type = self.plot.circle_cross
+        elif self.series_counter == 7:
+            self.plot_type = self.plot.circle_x
+        elif self.series_counter == 8:
+            self.plot_type = self.plot.cross
+        elif self.series_counter == 9:
+            self.plot_type = self.plot.diamond_cross
+        elif self.series_counter == 10:
+            self.plot_type = self.plot.square_cross
+        elif self.series_counter == 11:
+            self.plot_type = self.plot.square_x
+        else:
+            self.plot_type = self.plot.asterisk
 
         self.plot_type(x, y, legend=series, size=size, color=color, source=source)
         self.plot.legend.orientation = self.position
@@ -204,7 +222,7 @@ def get_tooltip(x, y, pid=None, series=None, series_by=None, color_by=None, tool
                     {y}: @y</span>{color_tag}
                 </div>
             </div>
-            """.format(pid_tag=pid_tag, series_tag=series_tag, x=x, y=y)
+            """.format(pid_tag=pid_tag, series_tag=series_tag, color_tag=color_tag, x=x, y=y)
         )
     else:
         templ = HoverTool(
