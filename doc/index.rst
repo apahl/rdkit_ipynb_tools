@@ -18,12 +18,22 @@ Indices and tables
    :private-members:
    :special-members:
 
-.. automodule:: rdkit_ipynb_tools.pandas_tools
+.. automodule:: rdkit_ipynb_tools.pipeline
+   :members:
+   :private-members:
+   :special-members:
+
+.. automodule:: rdkit_ipynb_tools.bokeh_tools
    :members:
    :private-members:
    :special-members:
 
 .. automodule:: rdkit_ipynb_tools.hc_tools
+   :members:
+   :private-members:
+   :special-members:
+
+.. automodule:: rdkit_ipynb_tools.pandas_tools
    :members:
    :private-members:
    :special-members:

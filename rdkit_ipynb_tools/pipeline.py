@@ -10,12 +10,12 @@ Pipeline
 A Pipelining Workflow using Python Generators, mainly for RDKit and large compound sets.
 
 Example use:
->>> import pipeline as p
->>> s = p.Summary()
->>> rd = p.start_csv_reader("/home/pahl/data_b64.csv.gz", summary=s)
->>> b64 = p.pipe_mol_from_b64(rd, summary=s)
->>> filt = p.pipe_mol_filter(b64, "[H]c2c([H])c1ncoc1c([H])c2C(N)=O", summary=s)
->>> p.stop_sdf_writer(filt, "test.sdf", summary=s)
+    >>> import pipeline as p
+    >>> s = p.Summary()
+    >>> rd = p.start_csv_reader("/home/pahl/data_b64.csv.gz", summary=s)
+    >>> b64 = p.pipe_mol_from_b64(rd, summary=s)
+    >>> filt = p.pipe_mol_filter(b64, "[H]c2c([H])c1ncoc1c([H])c2C(N)=O", summary=s)
+    >>> p.stop_sdf_writer(filt, "test.sdf", summary=s)
 
 The progress of the pipeline can be followed in a terminal with: tail -f pipeline.log
 """
@@ -120,8 +120,10 @@ class Summary(Counter):
 
 def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"):
     """A reader for csv files.
+
     Returns:
         An iterator with the fields as dict
+
     Parameters:
         fn (str): filename
         max_records (int): maximum number of records to read, 0 means all
@@ -160,8 +162,10 @@ def start_cache_reader(name, summary=None, comp_id="start_cache_reader"):
 
 def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"):
     """A reader for SD files.
+
     Returns:
         An iterator with the fields as dict, including the molecule in the "mol" key
+
     Parameters:
         fn (str): filename
         max_records (int): maximum number of records to read, 0 means all
@@ -211,6 +215,7 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
 
 def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
     """Write CSV file from the incoming stream.
+
     Parameters:
         fn (str): filename
         summary (Summary): a Counter class to collect runtime statistics
@@ -554,6 +559,7 @@ def pipe_remove_props(stream, props, summary=None, comp_id="pipe_remove_props"):
 
 def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_rename_prop"):
     """Rename a property on the stream.
+
     Parameters:
         prop_old (str): old name of the property
         prop_new (str): newname of the property"""
