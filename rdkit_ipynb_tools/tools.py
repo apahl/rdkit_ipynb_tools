@@ -486,7 +486,7 @@ class Mol_List(list):
 
 
     def get_ids(self, id_prop=None):
-        """Get the list of Compound IDs in th Mol_List
+        """Get the list of Compound IDs in the Mol_List
 
         Parameters:
             id_prop (None, str): (optional) The name of the id_prop, if None, it will be guessed."
@@ -712,7 +712,7 @@ class Mol_List(list):
         smiles_list = []
         for mol in self:
             if not mol: continue
-            smiles = Chem.MolToSmiles(mol)
+            smiles = Chem.MolToSmiles(mol, isomericSmiles=True)  # needed to distinguish between stereoisomers
             if smiles in smiles_list: continue
             smiles_list.append(smiles)
             if make_copy:
@@ -932,7 +932,7 @@ class Mol_List(list):
                 both_y = []
                 both_x = []
                 for i in range(l):
-                    if left_values[i] == None or right_values[i] == None:
+                    if left_values[i] is None or right_values[i] is None:
                         continue
                     both_y.append(left_values[i])
                     both_x.append(right_values[i])
