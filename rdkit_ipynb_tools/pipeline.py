@@ -10,7 +10,7 @@ Pipeline
 A Pipelining Workflow using Python Generators, mainly for RDKit and large compound sets.
 
 Example use:
-    >>> import pipeline as p
+    >>> from rdkit_ipynb_tools import pipeline as p
     >>> s = p.Summary()
     >>> rd = p.start_csv_reader("/home/pahl/data_b64.csv.gz", summary=s)
     >>> b64 = p.pipe_mol_from_b64(rd, summary=s)
@@ -56,6 +56,20 @@ def format_seconds(seconds):
     h, m = divmod(m, 60)
     t_str = "{:02.0f}h {:02.0f}m {:02.2f}s".format(h, m, s)
     return t_str
+
+
+def get_value(str_val):
+    if not str_val:
+        return None
+
+    try:
+        val = float(str_val)
+        if "." not in str_val:
+            val = int(val)
+    except ValueError:
+        val = str_val
+
+    return val
 
 
 class Summary(Counter):
@@ -130,9 +144,6 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
         summary (Summary): a Counter class to collect runtime statistics
         comp_id: (str): the component Id to use for the summary"""
 
-    if fn.lower() == "comas":
-        fn = "/home/pahl/comas/share/export_data_b64.csv.gz"
-
     if ".gz" in fn:
         f = gzip.open(fn, mode="rt")
     else:
@@ -142,12 +153,17 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
     prev_time = time.time()
     for rec_counter, row_dict in enumerate(reader, 1):
         if max_records > 0 and rec_counter > max_records: break
+        # for item in row_dict:
+        #     if row_dict[item] != "":
+        #         row_dict[item] = get_value(row_dict[item])
+
         if summary is not None:
             summary[comp_id] = rec_counter
             curr_time = time.time()
             if curr_time - prev_time > 2.0:  # write the log only every two seconds
                 prev_time = curr_time
                 print(summary, file=open("pipeline.log", "w"))
+        if rec_counter < 3: print(row_dict)
         yield row_dict
 
     f.close()
@@ -188,7 +204,7 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
         rec_counter += 1
         if mol:
             for prop in mol.GetPropNames():
-                rec[prop] = mol.GetProp(prop)
+                rec[prop] = get_value(mol.GetProp(prop))
                 mol.ClearProp(prop)
 
             rec["mol"] = mol
@@ -576,5 +592,48 @@ def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_ren
         yield rec
 
 
-def pipe_join_from_file(stream, join_on):
-    pass
+def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp_id="pipe_join_data_from_file"):
+    """Joins data from a csv or SD file.
+    CAUTION: The input stream will be held in memory by this component!
+
+    Parameters:
+        stream (dict iterator): stream of input compounds.
+        fn (str): name of the file (type is determined by having "sdf" in the name or not).
+        join_on (str): property to join on
+        decimals (int): number of decimal places for floating point values. Default: 2."""
+
+    # collect the records from the stream in a list store the position of the join_on properties in a dict
+    stream_counter = -1
+    stream_list = []
+    stream_dict = {}  # dict to hold the join_on properties and their positions in the stream_list
+    for rec in stream:
+        stream_join_on_val = rec.get(join_on, False)
+        if stream_join_on_val is False: continue
+        stream_counter += 1
+        stream_list.append(rec)
+        stream_dict[stream_join_on_val] = stream_counter
+
+    if "sdf" in fn:
+        rd = start_sdf_reader(fn)
+    else:
+        rd = start_csv_reader(fn)
+
+    rec_counter = 0
+    for rec in rd:
+        rec_join_on_val = rec.get(join_on, False)
+        if not rec_join_on_val: continue
+        stream_join_on_idx = stream_dict.get(rec_join_on_val, False)
+        if stream_join_on_idx is False: continue
+
+        stream_rec = stream_list[stream_join_on_idx]
+        for k in stream_rec:
+            if k == join_on:
+                rec["{}_orig".format(join_on)] = stream_rec[k]
+            else:
+                rec[k] = stream_rec[k]
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+        yield rec
