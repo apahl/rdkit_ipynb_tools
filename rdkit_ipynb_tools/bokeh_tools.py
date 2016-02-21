@@ -27,29 +27,43 @@ output_notebook()
 
 
 class ColorScale():
-    """Used for continuous coloring."""
 
-    def __init__(self, num_values, val_min, val_max):
+    def __init__(self, num_values, val_min, val_max, middle_color="yellow", reverse=False):
         self.num_values = num_values
         self.num_val_1 = num_values - 1
         self.value_min = val_min
         self.value_max = val_max
+        self.reverse = reverse
         self.value_range = self.value_max - self.value_min
         self.color_scale = []
-        hsv_tuples = [(0.35 + ((x * 0.65) / (self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
+        if middle_color.startswith("y"):  # middle color yellow
+            hsv_tuples = [(0.0 + ((x * 0.35) / (self.num_val_1)), 0.99, 0.9) for x in range(self.num_values)]
+            self.reverse = not self.reverse
+        else:  # middle color blue
+            hsv_tuples = [(0.35 + ((x * 0.65) / (self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
         rgb_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)
         for rgb in rgb_tuples:
             rgb_int = [int(255 * x) for x in rgb]
             self.color_scale.append('#{:02x}{:02x}{:02x}'.format(*rgb_int))
 
-    def __call__(self, value, reverse=False):
-        """return the color from the scale corresponding to the place in the value_min ..  value_max range"""
+        if self.reverse:
+            self.color_scale.reverse()
+
+    def __call__(self, value):
+        """return the color from the scale corresponding to the place in the value_min .. value_max range"""
         pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
 
-        if reverse:
-            pos = self.num_val_1 - pos
-
         return self.color_scale[pos]
+
+
+    def legend(self):
+        """Return the value_range and a list of tuples (value, color) to be used in a legend."""
+        legend = []
+        for idx, color in enumerate(self.color_scale):
+            val = self.value_min + idx / self.num_val_1 * self.value_range
+            legend.append((val, color))
+
+        return legend
 
 
 class Chart():
@@ -131,6 +145,7 @@ class Chart():
 
 
         size = kwargs.get("radius", kwargs.get("r", kwargs.get("size", kwargs.get("s", 10))))
+        reverse = kwargs.get("invert", False)
 
         if series:
             d["x"] = d[x]
@@ -166,7 +181,7 @@ class Chart():
         elif color_by:
             color_by_min = min(d[color_by])
             color_by_max = max(d[color_by])
-            color_scale = ColorScale(20, color_by_min, color_by_max)
+            color_scale = ColorScale(20, color_by_min, color_by_max, reverse)
             colors = []
             for val in d[color_by]:
                 if val is not None and val != np.nan:
