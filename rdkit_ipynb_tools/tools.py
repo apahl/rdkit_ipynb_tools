@@ -387,7 +387,7 @@ class Mol_List(list):
             return None
 
         field = None
-        for el in query.split():
+        for el in query.split(" "):
             if el in field_types:
                 field = el
                 break
@@ -419,17 +419,16 @@ class Mol_List(list):
                     else:
                         val = val_float
 
-                if eval(query_mod):
-                    hit = True
+                hit = eval(query_mod)
 
-                if invert:
-                    hit = not hit
+            if invert:
+                hit = not hit
 
-                if hit:
-                    mol_counter_out += 1
-                    if make_copy:
-                        mol = deepcopy(mol)
-                    result_list.append(mol)
+            if hit:
+                mol_counter_out += 1
+                if make_copy:
+                    mol = deepcopy(mol)
+                result_list.append(mol)
 
         print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
@@ -483,6 +482,38 @@ class Mol_List(list):
         print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
         return result_list
+
+
+    def has_prop_filter(self, prop, invert=False, make_copy=True):
+        """Returns a new Mol_list with molecules containing the property `prop`.
+        By default it creates an independent copy of the mol objects."""
+
+        result_list = Mol_List()
+        if self.order:
+            result_list.order = self.order.copy()
+        result_list.ia = self.ia
+
+        mol_counter_out = 0
+        for mol_counter_in, mol in enumerate(self):
+            if not mol: continue
+
+            hit = False
+            if mol.HasProp(prop):
+                hit = True
+
+            if invert:
+                hit = not hit
+
+            if hit:
+                mol_counter_out += 1
+                if make_copy:
+                    mol = deepcopy(mol)
+                result_list.append(mol)
+
+        print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
+
+        return result_list
+
 
 
     def get_ids(self, id_prop=None):

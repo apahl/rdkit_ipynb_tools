@@ -17,18 +17,14 @@ Example use:
     >>> filt = p.pipe_mol_filter(b64, "[H]c2c([H])c1ncoc1c([H])c2C(N)=O", summary=s)
     >>> p.stop_sdf_writer(filt, "test.sdf", summary=s)
 
-The progress of the pipeline can be followed in a terminal with: tail -f pipeline.log
+The progress of the pipeline can be followed in a terminal with: `watch -n 2 less pipeline.log`
 """
 
 
-from __future__ import print_function, division
-
-
 # import sys
-# import base64
 # import os.path as op
 import time
-from collections import Counter
+from collections import OrderedDict
 import csv
 import gzip
 import pickle
@@ -72,24 +68,9 @@ def get_value(str_val):
     return val
 
 
-class Summary(Counter):
-    """A Counter-based class that keeps track of the time since its instantiation.
-    Used for reporting running details of functions, esp. in the IPython notebook.
-
-    Example:
-        >>> s = Summary()
-        >>> # then, in a loop:
-        >>> for ....:
-        ...     s["00 in"] += 1
-        ...     # keeping track of failed entities:
-        ...     if failed:
-        ...         s["10 failed"] += 1
-        ...     s["99 out"] += 1
-        >>> # at the end of the function:
-        >>> s.print()
-
-    For fast-running loops with a lot of iterations, it could be sensible to use int counters
-    and assign to Summary() outside of the loop at the end of the function."""
+class Summary(OrderedDict):
+    """An OrderedDict-based class that keeps track of the time since its instantiation.
+    Used for reporting running details of pipeline functions."""
 
     def __init__(self, timeit=True, **kwargs):
         """Parameters:
@@ -102,12 +83,12 @@ class Summary(Counter):
 
     def __str__(self):
         s_list = []
-        mlen = max(map(len, self.keys()))
-        sorted_keys = sorted(self.keys())
+        keys = self.keys()
+        mlen = max(map(len, keys))
         line_end = "\n"
-        for idx, k in enumerate(sorted_keys, 1):
+        for idx, k in enumerate(keys, 1):
             value = self[k]
-            if self.timeit and idx == len(sorted_keys):
+            if self.timeit and idx == len(keys):
                 line_end = ""
             if type(value) == float:
                 s_list.append("{k:{mlen}s}: {val:10.2f}".format(k=k, mlen=mlen, val=value))
@@ -153,9 +134,8 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
     prev_time = time.time()
     for rec_counter, row_dict in enumerate(reader, 1):
         if max_records > 0 and rec_counter > max_records: break
-        # for item in row_dict:
-        #     if row_dict[item] != "":
-        #         row_dict[item] = get_value(row_dict[item])
+        # make a copy with non-empty values
+        rec = {k: get_value(v) for k, v in row_dict.items() if v != ""}  # make a copy with non-empty values
 
         if summary is not None:
             summary[comp_id] = rec_counter
@@ -163,12 +143,12 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
             if curr_time - prev_time > 2.0:  # write the log only every two seconds
                 prev_time = curr_time
                 print(summary, file=open("pipeline.log", "w"))
-        if rec_counter < 3: print(row_dict)
-        yield row_dict
+        yield rec
 
     f.close()
     if summary:
         print(summary, file=open("pipeline.log", "w"))
+        print(summary)
 
 
 def start_cache_reader(name, summary=None, comp_id="start_cache_reader"):
@@ -227,6 +207,7 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
     f.close()
     if summary:
         print(summary, file=open("pipeline.log", "w"))
+        print(summary)
 
 
 def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
@@ -237,7 +218,7 @@ def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
         summary (Summary): a Counter class to collect runtime statistics
         comp_id: (str): the component Id to use for the summary"""
 
-    fields = []
+    fields = OrderedDict()
     rec_counter = 0
     f = open(fn, "w")
 
@@ -387,6 +368,24 @@ def pipe_mol_from_b64(stream, in_b64="Mol_b64", remove=True, summary=None, comp_
                 yield rec
 
 
+def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", summary=None, comp_id="start_mol_csv_reader"):
+    """A reader for csv files containing molecules in binary b64 format.
+
+    Returns:
+        An iterator with the fields and the molecule as dict
+
+    Parameters:
+        fn (str): filename
+        max_records (int): maximum number of records to read, 0 means all
+        summary (Summary): a Counter class to collect runtime statistics
+        comp_id: (str): the component Id to use for the summary"""
+
+    rd = start_csv_reader(fn, max_records, summary, comp_id)
+    mol = pipe_mol_from_b64(rd, in_b64)
+
+    return mol
+
+
 def pipe_mol_to_smiles(stream, out_smiles="Smiles", summary=None, comp_id="pipe_mol_to_smiles"):
     """Calculate Smiles from the mol object onthe stram."""
     rec_counter = 0
@@ -492,10 +491,12 @@ def pipe_custom_filter(stream, run_code, start_code=None, summary=None, comp_id=
     """If the evaluation of run_code is true, the respective record will be put on the stream."""
     rec_counter = 0
     if start_code:
-        eval(start_code)
+        exec(start_code)
 
+    # pre-compile the run_code statement for performance reasons
+    byte_code = compile(run_code, '<string>', 'eval')
     for rec in stream:
-        if eval(run_code):
+        if eval(byte_code):
             rec_counter += 1
             if summary is not None:
                 summary[comp_id] = rec_counter
@@ -506,24 +507,46 @@ def pipe_custom_filter(stream, run_code, start_code=None, summary=None, comp_id=
 def pipe_custom_man(stream, run_code, start_code=None, stop_code=None, summary=None, comp_id="pipe_custom_man"):
     """If the evaluation of run_code is true, the respective record will be put on the stream."""
     if start_code:
-        eval(start_code)
+        exec(start_code)
 
+    byte_code = compile(run_code, '<string>', 'exec')
     for rec in stream:
-        eval(run_code)
+        exec(byte_code)
 
         yield rec
 
-    eval(stop_code)
+    if stop_code:
+        exec(stop_code)
 
 
-def pipe_mol_filter(stream, smarts, invert=False, add_h=False, summary=None, comp_id="pipe_mol_filter"):
+def pipe_has_prop_filter(stream, prop, invert=False, summary=None, comp_id="pipe_has_prop_filter"):
     rec_counter = 0
-    query = Chem.MolFromSmarts(smarts)
-    if not query:
+
+    for rec in stream:
+
+        hit = prop in rec
+
+        if invert:
+            # reverse logic
+            hit = not hit
+
+        if hit:
+            rec_counter += 1
+
+            if summary is not None:
+                summary[comp_id] = rec_counter
+
+            yield rec
+
+
+def pipe_mol_filter(stream, query, smarts=False, invert=False, add_h=False, summary=None, comp_id="pipe_mol_filter"):
+    rec_counter = 0
+    query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
+    if not query_mol:
         print("* {} ERROR: could not generate query from SMARTS.".format(comp_id))
         return None
 
-    if "H" in smarts or "#1" in smarts:
+    if "H" in query or "#1" in query:
         add_h = True
 
     for rec in stream:
@@ -534,11 +557,11 @@ def pipe_mol_filter(stream, smarts, invert=False, add_h=False, summary=None, com
         hit = False
         if add_h:
             mol_with_h = Chem.AddHs(mol)
-            if mol_with_h.HasSubstructMatch(query):
+            if mol_with_h.HasSubstructMatch(query_mol):
                 hit = True
 
         else:
-            if mol.HasSubstructMatch(query):
+            if mol.HasSubstructMatch(query_mol):
                 hit = True
 
         if invert:
