@@ -421,14 +421,14 @@ class Mol_List(list):
 
                 hit = eval(query_mod)
 
-            if invert:
-                hit = not hit
+                if invert:
+                    hit = not hit
 
-            if hit:
-                mol_counter_out += 1
-                if make_copy:
-                    mol = deepcopy(mol)
-                result_list.append(mol)
+                if hit:
+                    mol_counter_out += 1
+                    if make_copy:
+                        mol = deepcopy(mol)
+                    result_list.append(mol)
 
         print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
