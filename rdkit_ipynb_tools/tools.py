@@ -675,6 +675,17 @@ class Mol_List(list):
         self._set_recalc_needed()
 
 
+    def keep_props(self, props):
+        """Keep properties in the Mol_List.
+        props can be a single property or a list of properties."""
+
+        for mol in self:
+            if mol:
+                keep_props_in_mol(mol, props)
+
+        self._set_recalc_needed()
+
+
     def copy_prop(self, prop_orig, prop_copy, move=False):
         """Copy or rename a property in the Mol_List."""
 
@@ -1119,6 +1130,16 @@ def csv_supplier(fn):
         yield row_dict
 
     f.close()
+
+
+def keep_props_in_mol(mol, prop_or_propslist):
+    if not isinstance(prop_or_propslist, list):
+        prop_or_propslist = [prop_or_propslist]
+
+    mol_props = mol.GetPropNames()
+    for prop in mol_props:
+        if prop not in prop_or_propslist:
+            mol.ClearProp(prop)
 
 
 def remove_props_from_mol(mol, prop_or_propslist):

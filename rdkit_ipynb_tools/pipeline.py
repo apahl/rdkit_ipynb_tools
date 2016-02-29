@@ -29,6 +29,7 @@ import csv
 import gzip
 import pickle
 import base64 as b64
+import tempfile
 # from copy import deepcopy
 
 from rdkit.Chem import AllChem as Chem
@@ -135,7 +136,7 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
     for rec_counter, row_dict in enumerate(reader, 1):
         if max_records > 0 and rec_counter > max_records: break
         # make a copy with non-empty values
-        rec = {k: get_value(v) for k, v in row_dict.items() if v != ""}  # make a copy with non-empty values
+        rec = {k: get_value(v) for k, v in row_dict.items() if v is not None and v != ""}  # make a copy with non-empty values
 
         if summary is not None:
             summary[comp_id] = rec_counter
@@ -149,6 +150,7 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
     if summary:
         print(summary, file=open("pipeline.log", "w"))
         print(summary)
+
 
 
 def start_cache_reader(name, summary=None, comp_id="start_cache_reader"):
@@ -220,28 +222,59 @@ def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
 
     fields = OrderedDict()
     rec_counter = 0
-    f = open(fn, "w")
+    tmp = tempfile.TemporaryFile("w+")
 
     for rec in stream:
         if "mol" in rec:  # molecule object can not be written to CSV
             rec.pop("mol")
 
-        if not fields:  # first record has to contain all fields of the pipeline.
-            fields = list(rec.keys())
-            writer = csv.DictWriter(f, fieldnames=fields, dialect="excel-tab")
-            writer.writeheader()
+        line = []
+        cp = rec.copy()
 
-        for key in rec.keys():  # remove keys that were not present in the first record
-            if key not in fields:
-                rec.pop(key)
+        # first write the records whose keys are already in fields:
+        for key in fields:
+            if key in cp:
+                val = cp[key]
+                if val is None: val = ""
+                line.append(str(val))
+                cp.pop(key)
+            else:
+                line.append("")
 
+        # now collect the additional records (and add them to fields)
+        for key in cp:
+            fields[key] = 0  # dummy value
+            val = cp[key]
+            if val is None: val = ""
+            line.append(str(val))
+
+        tmp.write("\t".join(line) + "\n")
         rec_counter += 1
         if summary is not None:
             summary[comp_id] = rec_counter
 
-        writer.writerow(rec)
+    f = open(fn, "w")
+    num_columns = len(fields)
+    first_line = True
+    tmp.seek(0)
+    for line_str in tmp:
+        if first_line:  # write the final header
+            first_line = False
+            line = list(fields.keys())
+            f.write("\t".join(line) + "\n")
+
+        line = line_str.rstrip("\n").split("\t")
+
+        # fill up all lines with empty records to the number of columns
+        num_fill_records = num_columns - len(line)
+        fill = [""] * num_fill_records
+        line.extend(fill)
+
+        line.append("\n")
+        f.write("\t".join(line))
 
     f.close()
+    tmp.close()
     print("* {}: {} records written.".format(comp_id, rec_counter))
 
 
@@ -444,7 +477,6 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
         if "mol" in rec:
 
             mol = rec["mol"]
-
             if "2d" in props:
                 if force2d:
                     mol.Compute2DCoords()
@@ -596,6 +628,28 @@ def pipe_remove_props(stream, props, summary=None, comp_id="pipe_remove_props"):
         yield rec
 
 
+def pipe_keep_props(stream, props, summary=None, comp_id="pipe_keep_props"):
+    """Keep only the listed properties on the stream. "mol" is always kept by this component.
+    props can be a single property name or a list of property names."""
+
+    if not isinstance(props, list):
+        props = [props]
+
+    if "mol" not in props:
+        props.append("mol")
+
+    rec_counter = 0
+    for rec_counter, rec in enumerate(stream, 1):
+        for prop in rec.copy().keys():
+            if prop not in props:
+                rec.pop(prop)
+
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+        yield rec
+
+
 def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_rename_prop"):
     """Rename a property on the stream.
 
@@ -625,7 +679,7 @@ def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp
         join_on (str): property to join on
         decimals (int): number of decimal places for floating point values. Default: 2."""
 
-    # collect the records from the stream in a list store the position of the join_on properties in a dict
+    # collect the records from the stream in a list, store the position of the join_on properties in a dict
     stream_counter = -1
     stream_list = []
     stream_dict = {}  # dict to hold the join_on properties and their positions in the stream_list

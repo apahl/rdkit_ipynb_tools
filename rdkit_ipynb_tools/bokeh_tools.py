@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 #####
-Tools
+Bokeh Tools
 #####
 
 *Created on 2015-12-12 by A. Pahl*
@@ -79,7 +79,7 @@ class Chart():
         self.series_counter = 0
         self.tools_added = False
 
-        self.plot = figure(plot_height=self.height, title=self.title, tools="pan,wheel_zoom,box_zoom,reset,resize")
+        self.plot = figure(plot_height=self.height, title=self.title, tools="pan,wheel_zoom,box_zoom,reset,resize,save")
 
 
     def _add_series(self, x, y, series, size, source=None):
