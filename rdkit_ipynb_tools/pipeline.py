@@ -165,48 +165,84 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
         An iterator with the fields as dict, including the molecule in the "mol" key
 
     Parameters:
-        fn (str): filename
+        fn (str, list): filename or list of filenames
         max_records (int): maximum number of records to read, 0 means all
         summary (Summary): a Counter class to collect runtime statistics
         comp_id: (str): the component Id to use for the summary"""
 
     rec_counter = 0
     no_mol_counter = 0
+    # also open lists of files
+    if not isinstance(fn, list):
+        fn = [fn]
 
-    if ".gz" in fn:
-        f = gzip.open(fn, mode="rt")
-    else:
-        f = open(fn, "rb")
-
-    reader = Chem.ForwardSDMolSupplier(f)
-    prev_time = time.time()
-    for mol in reader:
-        if max_records > 0 and rec_counter > max_records: break
-        rec = {}
-        rec_counter += 1
-        if mol:
-            for prop in mol.GetPropNames():
-                rec[prop] = get_value(mol.GetProp(prop))
-                mol.ClearProp(prop)
-
-            rec["mol"] = mol
-
-            if summary is not None:
-                summary[comp_id] = rec_counter
-                curr_time = time.time()
-                if curr_time - prev_time > 2.0:  # write the log only every two seconds
-                    prev_time = curr_time
-                    print(summary)
-                    print(summary, file=open("pipeline.log", "w"))
-
-            yield rec
-
+    for filen in fn:
+        if ".gz" in filen:
+            f = gzip.open(filen, mode="rt")
         else:
-            no_mol_counter += 1
-            if summary is not None:
-                summary["{}_no_mol".format(comp_id)] = no_mol_counter
+            f = open(filen, "rb")
 
-    f.close()
+        reader = Chem.ForwardSDMolSupplier(f)
+        prev_time = time.time()
+        for mol in reader:
+            if max_records > 0 and rec_counter > max_records: break
+            rec = {}
+            rec_counter += 1
+            if mol:
+                for prop in mol.GetPropNames():
+                    rec[prop] = get_value(mol.GetProp(prop))
+                    mol.ClearProp(prop)
+
+                rec["mol"] = mol
+
+                if summary is not None:
+                    summary[comp_id] = rec_counter
+                    curr_time = time.time()
+                    if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                        prev_time = curr_time
+                        print(summary, file=open("pipeline.log", "w"))
+
+                yield rec
+
+            else:
+                no_mol_counter += 1
+                if summary is not None:
+                    summary["{}_no_mol".format(comp_id)] = no_mol_counter
+
+        f.close()
+
+    if summary:
+        print(summary, file=open("pipeline.log", "w"))
+        print(summary)
+
+
+def start_stream_from_mol_list(mol_list, summary=None, comp_id="start_stream_from_mol_list"):
+    """Provide a data stream from a Mol_List."""
+    prev_time = time.time()
+    rec_counter = 0
+    for mol in mol_list:
+        if not mol: continue
+        rec = {}
+        props = mol.GetPropNames()
+        for prop in props:
+            val = get_value(mol.GetProp(prop))
+            mol.ClearProp(prop)
+            if val is not None:
+                rec[prop] = val
+
+        rec["mol"] = mol
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+            curr_time = time.time()
+            if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                prev_time = curr_time
+                print(summary)
+                print(summary, file=open("pipeline.log", "w"))
+
+        yield rec
+
     if summary:
         print(summary, file=open("pipeline.log", "w"))
         print(summary)
@@ -270,8 +306,8 @@ def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
         fill = [""] * num_fill_records
         line.extend(fill)
 
-        line.append("\n")
-        f.write("\t".join(line))
+
+        f.write("\t".join(line) + "\n")
 
     f.close()
     tmp.close()
@@ -355,6 +391,19 @@ def stop_mol_list_from_stream(stream, max=250, summary=None, comp_id="stop_mol_l
             break
 
     return mol_list
+
+
+def stop_count_records(stream, summary=None, comp_id="stop_count_records"):
+    """Only count the records from the incoming stream."""
+    rec_counter = 0
+
+    for rec in stream:
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+    return rec_counter
 
 
 def stop_cache_writer(stream, name, summary=None, comp_id="stop_cache_writer"):
@@ -458,7 +507,7 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
     props can be a single property or a list of properties.
 
     Calculable properties:
-        2d, date, formula, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa
+        2d, date, formula, hba, hbd, logp, molid, mw, smiles, rotb, sa (synthetic accessibility), tpsa
 
     Synthetic Accessibility (normalized):
         0: hard to synthesize; 1: easy access
@@ -474,6 +523,9 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
         if not isinstance(props, list):
             props = [props]
 
+        # make all props lower-case:
+        props = list(map(lambda x: x.lower(), props))
+
         if "mol" in rec:
 
             mol = rec["mol"]
@@ -484,33 +536,36 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
                     check_2d_coords(mol)
 
             if "date" in props:
-                rec["date"] = time.strftime("%Y%m%d")
+                rec["Date"] = time.strftime("%Y%m%d")
 
             if "formula" in props:
-                rec["formula"] = Chem.CalcMolFormula(mol)
+                rec["Formula"] = Chem.CalcMolFormula(mol)
 
             if "hba" in props:
-                rec["hba"] = str(Desc.NOCount(mol))
+                rec["HBA"] = str(Desc.NOCount(mol))
 
             if "hbd" in props:
-                rec["hbd"] = str(Desc.NHOHCount(mol))
+                rec["HBD"] = str(Desc.NHOHCount(mol))
 
             if "logp" in props:
-                rec["logp"] = "{:.2f}".format(Desc.MolLogP(mol))
+                rec["LogP"] = "{:.2f}".format(Desc.MolLogP(mol))
 
             if "mw" in props:
-                rec["mw"] = "{:.2f}".format(Desc.MolWt(mol))
+                rec["MW"] = "{:.2f}".format(Desc.MolWt(mol))
 
             if "rotb" in props:
-                mol.SetProp("rotb", str(Desc.NumRotatableBonds(mol)))
+                mol.SetProp("RotB", str(Desc.NumRotatableBonds(mol)))
+
+            if "smiles" in props:
+                mol.SetProp("Smiles", Chem.MolToSmiles(mol))
 
             if SASCORER and "sa" in props:
                 score = sascorer.calculateScore(mol)
                 norm_score = 1 - (score / 10)
-                rec["sa"] = "{:.2f}".format(norm_score)
+                rec["SA"] = "{:.2f}".format(norm_score)
 
             if "tpsa" in props:
-                rec["tpsa"] = str(int(Desc.TPSA(mol)))
+                rec["TPSA"] = str(int(Desc.TPSA(mol)))
 
             rec_counter += 1
             if summary is not None:
@@ -712,5 +767,86 @@ def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp
         rec_counter += 1
         if summary is not None:
             summary[comp_id] = rec_counter
+
+        yield rec
+
+
+
+def pipe_keep_largest_fragment(stream, summary=None, comp_id="pipe_keep_largest_frag"):
+    rec_counter = 0
+    frag_counter = 0
+    for rec in stream:
+        if "mol" not in rec: continue
+        mol = rec["mol"]
+        if not mol: continue
+
+        mols = Chem.GetMolFrags(mol, asMols=True)
+        if len(mols) > 1:
+            frag_counter += 1
+            mols = sorted(mols, key=Desc.HeavyAtomCount, reverse=True)
+            if summary is not None:
+                summary["{}_has_frags".format(comp_id)] = frag_counter
+
+        mol = mols[0]
+
+        rec["mol"] = mol
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+        yield rec
+
+
+def pipe_neutralize_mol(stream, summary=None, comp_id="pipe_neutralize_mol"):
+    pattern = (
+        # Imidazoles
+        ('[n+;H]', 'n'),
+        # Amines
+        ('[N+;!H0]', 'N'),
+        # Carboxylic acids and alcohols
+        ('[$([O-]);!$([O-][#7])]', 'O'),
+        # Thiols
+        ('[S-;X1]', 'S'),
+        # Sulfonamides
+        ('[$([N-;X2]S(=O)=O)]', 'N'),
+        # Enamines
+        ('[$([N-;X2][C,N]=C)]', 'N'),
+        # Tetrazoles
+        ('[n-]', '[nH]'),
+        # Sulfoxides
+        ('[$([S-]=O)]', 'S'),
+        # Amides
+        ('[$([N-]C=O)]', 'N'),
+    )
+
+    reactions = [(Chem.MolFromSmarts(x), Chem.MolFromSmiles(y, False)) for x, y in pattern]
+
+    rec_counter = 0
+    neutr_counter = 0
+    for rec in stream:
+        if "mol" not in rec: continue
+        mol = rec["mol"]
+        if not mol: continue
+
+        replaced = False
+        for reactant, product in reactions:
+            while mol.HasSubstructMatch(reactant):
+                replaced = True
+                rms = Chem.ReplaceSubstructs(mol, reactant, product)
+                mol = rms[0]
+
+        if replaced:
+            Chem.SanitizeMol(mol)
+            mol.Compute2DCoords()
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+            if replaced:
+                neutr_counter += 1
+                summary["{}_neutralized".format(comp_id)] = neutr_counter
+
+        rec["mol"] = mol
 
         yield rec

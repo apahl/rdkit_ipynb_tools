@@ -73,7 +73,7 @@ class Chart():
         self.data = {}
         self.kind = kind
         self.height = kwargs.get("height", 450)
-        self.title = kwargs.get("title", "Bokeh Plot")
+        self.title = kwargs.get("title", "Scatter Plot")
         self.position = kwargs.get("position", kwargs.get("pos", "top_left"))
 
         self.series_counter = 0
@@ -204,6 +204,55 @@ class Chart():
         show(self.plot)
 
 
+class Hist():
+    """A Bokeh histogram. from numpy histogram and a Bokeh quad plot.
+    The highlevel Bokeh Chart Histogram class gave false results on the y axis for me (as of 9-Mar-2016)."""
+
+    def __init__(self, title="Histogram", xlabel="Values", ylabel="Occurrence", **kwargs):
+        """Generates a histogram.
+        Possible useful additional kwargs include: plot_width, plot_height, y_axis_type="log"."""
+        self.colors = ["#FF596A", "#0066FF", "#00CC88", "#FFDD00"]
+        self.plot_no = -1
+        self.kwargs = kwargs
+        self.pos = "top_left"
+        for arg in ["pos", "position"]:
+            if arg in self.kwargs:
+                self.pos = self.kwargs[arg]
+                self.kwargs.pop(arg)
+
+        self.plot = figure(title=title, **kwargs)
+        self.plot.xaxis.axis_label = xlabel
+        self.plot.yaxis.axis_label = ylabel
+
+
+    def add_data(self, data, bins=10, series=None, color=None, normed=False, **kwargs):
+        """Add actual data to the plot."""
+        # manage colors
+        self.plot_no += 1
+        if self.plot_no > len(self.colors) - 1:
+            self.plot_no = 0
+        if color is None:
+            color = self.colors[self.plot_no]
+
+        hist, edges = np.histogram(data, bins=bins)
+        if normed:
+            hist = normalize_largest_bin_to_one(hist)
+        self.source = ColumnDataSource(data=dict(top=hist, left=edges[:-1], right=edges[1:]))
+
+        if series is not None:
+            self.plot.quad(top="top", bottom=0, left="left", right="right",
+                           color=color, line_color="black", alpha=0.5, legend=series,
+                           source=self.source)
+
+        else:
+            self.plot.quad(top="top", bottom=0, left="left", right="right", color=color, line_color="black", alpha=0.8, source=self.source)
+
+
+    def show(self):
+        self.plot.legend.location = self.pos
+        show(self.plot)
+
+
 def get_tooltip(x, y, pid=None, series=None, series_by=None, color_by=None, tooltip=None):
     if pid:
         pid_tag = '<span style="font-size: 13px; color: #000000;">{pid}: @{pid}</span><br>'.format(pid=pid)
@@ -259,6 +308,27 @@ def guess_id_prop(prop_list):  # try to guess an id_prop
         if prop.lower().endswith("id"):
             return prop
     return None
+
+
+def normalize_largest_bin_to_one(hist):
+    """Takes a Numpy histogram list and normalizes all values, so that the highest value becomes 1.0.
+    Returns a new list."""
+    max_bin = max(hist)
+    norm_hist = [b / max_bin for b in hist]
+    return norm_hist
+
+
+def get_bin_centers(edges):
+    """Returns a list of bin centers from a list of np.histogram edges.
+    The returned centers are one element shorter than the provided edges list."""
+    l = len(edges)
+    centers = []
+    for idx in range(l - 1):
+        center = (edges[idx] + edges[idx + 1]) / 2
+        center = float("{:.3f}".format(center))  # limit to three decimals
+        centers.append(center)
+
+    return centers
 
 
 def cpd_scatter(df, x, y, r=7, pid=None, **kwargs):

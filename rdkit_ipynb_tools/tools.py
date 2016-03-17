@@ -220,13 +220,17 @@ class Mol_List(list):
             self.recalc_needed[k] = True
 
 
-    def _key_get_prop(self, mol, field):
+    def _key_get_prop(self, mol, field, reverse=False):
+        if reverse:
+            not_found = -1000000.0
+        else:
+            not_found = 1000000.0
         try:
             val = float(mol.GetProp(field))
         except ValueError:  # GetProp value could not be converted to float
             val = mol.GetProp(field)
         except KeyError:   # field is not present in the mol properties
-            val = 10000000.0
+            val = not_found
         return val
 
 
@@ -357,7 +361,7 @@ class Mol_List(list):
 
     def sort_list(self, field, reverse=True):
         """Sort the Mol_List according to <field>."""
-        self.sort(key=lambda x: self._key_get_prop(x, field), reverse=reverse)
+        self.sort(key=lambda x: self._key_get_prop(x, field, reverse=reverse), reverse=reverse)
 
 
     def mols_with_prop(self, prop):
@@ -438,7 +442,7 @@ class Mol_List(list):
         return result_list
 
 
-    def mol_filter(self, smarts, invert=False, add_h=False, make_copy=True):
+    def mol_filter(self, query, smarts=False, invert=False, add_h=False, make_copy=True):
         """Returns a new Mol_List containing the substructure matches.
         By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
@@ -447,12 +451,12 @@ class Mol_List(list):
         result_list.ia = self.ia
 
         mol_counter_out = 0
-        query = Chem.MolFromSmarts(smarts)
-        if not query:
+        query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
+        if not query_mol:
             print("* ERROR: could not generate query from SMARTS.")
             return None
 
-        if "H" in smarts or "#1" in smarts:
+        if "H" in query or "#1" in query:
             add_h = True
             print("> explicit hydrogens turned on (add_h = True)")
 
@@ -462,11 +466,11 @@ class Mol_List(list):
             hit = False
             if add_h:
                 mol_with_h = Chem.AddHs(mol)
-                if mol_with_h.HasSubstructMatch(query):
+                if mol_with_h.HasSubstructMatch(query_mol):
                     hit = True
 
             else:
-                if mol.HasSubstructMatch(query):
+                if mol.HasSubstructMatch(query_mol):
                     hit = True
 
             if invert:
@@ -546,7 +550,7 @@ class Mol_List(list):
         return id_list
 
 
-    def new_list_from_ids(self, id_list, id_prop=None, make_copy=True):
+    def new_list_from_ids(self, id_list, invert=False, id_prop=None, make_copy=True):
         """Creates a new Mol_List out of the given IDs.
 
         Parameters:
@@ -559,10 +563,14 @@ class Mol_List(list):
 
         id_all = set(self.get_ids(id_prop))
         id_set = set(id_list)
-        id_found = id_set.intersection(id_all)
-        id_not_found = id_set - id_all
-        if id_not_found:
-            print("  not found:", id_not_found)
+        if invert:
+            id_keep = id_all - id_set
+        else:
+            id_keep = id_set.intersection(id_all)
+
+        # id_not_found = id_set - id_all
+        # if id_not_found:
+        #     print("  not found:", id_not_found)
 
         new_list = Mol_List()
         if self.order:
@@ -573,7 +581,7 @@ class Mol_List(list):
             if mol:
                 if mol.HasProp(self.id_prop):
                     val = get_value(mol.GetProp(self.id_prop))
-                    if val in id_found:
+                    if val in id_keep:
                         if make_copy:
                             mol = deepcopy(mol)
 
@@ -587,7 +595,7 @@ class Mol_List(list):
         props can be a single property or a list of properties.
 
         Calculable properties:
-            2d, date, formula, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa
+            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa
 
         Synthetic Accessibility (normalized):
             0: hard to synthesize; 1: easy access
@@ -600,6 +608,9 @@ class Mol_List(list):
 
         if not isinstance(props, list):
             props = [props]
+
+        # make all props lower-case:
+        props = list(map(lambda x: x.lower(), props))
 
         ctr = 0
         calculated_props = set()
@@ -615,46 +626,50 @@ class Mol_List(list):
                 calculated_props.add("2d")
 
             if "date" in props:
-                mol.SetProp("date", time.strftime("%Y%m%d"))
+                mol.SetProp("Date", time.strftime("%Y%m%d"))
                 calculated_props.add("date")
 
             if "formula" in props:
-                mol.SetProp("formula", Chem.CalcMolFormula(mol))
+                mol.SetProp("Formula", Chem.CalcMolFormula(mol))
                 calculated_props.add("formula")
 
+            if "smiles" in props:
+                mol.SetProp("Smiles", Chem.MolToSmiles(mol, isomericSmiles=True))
+                calculated_props.add("smiles")
+
             if "hba" in props:
-                mol.SetProp("hba", str(Desc.NOCount(mol)))
+                mol.SetProp("HBA", str(Desc.NOCount(mol)))
                 calculated_props.add("hba")
 
             if "hbd" in props:
-                mol.SetProp("hbd", str(Desc.NHOHCount(mol)))
+                mol.SetProp("HBD", str(Desc.NHOHCount(mol)))
                 calculated_props.add("hbd")
 
             if "logp" in props:
-                mol.SetProp("logp", "{:.2f}".format(Desc.MolLogP(mol)))
+                mol.SetProp("LogP", "{:.2f}".format(Desc.MolLogP(mol)))
                 calculated_props.add("logp")
 
             if "molid" in props:
-                mol.SetProp("molid", str(ctr))
                 ctr += 1
+                mol.SetProp("Mol_Id", str(ctr))
                 calculated_props.add("molid")
 
             if "mw" in props:
-                mol.SetProp("mw", "{:.2f}".format(Desc.MolWt(mol)))
+                mol.SetProp("MW", "{:.2f}".format(Desc.MolWt(mol)))
                 calculated_props.add("mw")
 
             if "rotb" in props:
-                mol.SetProp("rotb", str(Desc.NumRotatableBonds(mol)))
+                mol.SetProp("RotB", str(Desc.NumRotatableBonds(mol)))
                 calculated_props.add("rotb")
 
             if SASCORER and "sa" in props:
                 score = sascorer.calculateScore(mol)
                 norm_score = 1 - (score / 10)
-                mol.SetProp("sa", "{:.2f}".format(norm_score))
+                mol.SetProp("SA", "{:.2f}".format(norm_score))
                 calculated_props.add("sa")
 
             if "tpsa" in props:
-                mol.SetProp("tpsa", str(int(Desc.TPSA(mol))))
+                mol.SetProp("TPSA", str(int(Desc.TPSA(mol))))
                 calculated_props.add("tpsa")
 
         self._set_recalc_needed()
@@ -893,6 +908,16 @@ class Mol_List(list):
             return bkt.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
         else:
             return hct.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
+
+
+    def hist(self, field, bins=10, title="Distribution", xlabel=None, ylabel="Occurrence", normed=False, **kwargs):
+        """Displays a Bokeh histogram. See bokeh_tools for documentation.
+        Possible useful additional kwargs include: plot_width, plot_height, y_axis_type="log"."""
+        if xlabel is None:
+            xlabel = field
+        hist = bkt.Hist(title=title, xlabel=xlabel, ylabel=ylabel, **kwargs)
+        hist.add_data(self.d[field], bins=bins, normed=normed)
+        return hist.show()
 
 
     def summary(self, text_only=False):
@@ -1183,7 +1208,7 @@ def ia_keep_props(mol_list):
 
     all_props = list_fields(mol_list)
 
-    def on_btn_clicked(b):
+    def on_btn_clicked():
         props_to_remove = list(set(all_props) - set(w_sm.selected_labels))
         remove_props(mol_list, props=props_to_remove)
 
@@ -1204,6 +1229,29 @@ def check_2d_coords(mol):
         mol.Compute2DCoords()
 
 
+def find_mcs(mol_list):
+    """Returns the MCS molecule object for a set of molecule or None if not found."""
+    mcs = rdFMCS.FindMCS(mol_list, maximizeBonds=True, matchValences=True,
+                         ringMatchesRingOnly=True, completeRingsOnly=True)
+
+    if mcs.canceled:
+        print("* MCSS function timed out. Please provide a mol_or_smiles to align to.")
+        return None
+
+    if mcs.smartsString:
+        mol = Chem.MolFromSmarts(mcs.smartsString)
+        if not mol:
+            return None
+
+        mol.UpdatePropertyCache(False)
+        Chem.SanitizeMol(mol, sanitizeOps=Chem.SANITIZE_SYMMRINGS | Chem.SANITIZE_SETCONJUGATION | Chem.SANITIZE_SETHYBRIDIZATION)
+
+        return mol
+
+    else:
+        print("* Could not find MCSS. Please provide a mol_or_smiles to align to.")
+        return None
+
 
 def align(mol_list, mol_or_smiles=None):
     """Align the Mol_list to the common substructure provided as Mol or Smiles.
@@ -1217,14 +1265,8 @@ def align(mol_list, mol_or_smiles=None):
 
     if mol_or_smiles is None:
         # determine the MCSS
-        mcs = rdFMCS.FindMCS(mol_list)
-        if mcs.canceled:
-            print("* MCSS function timed out. Please provide a mol_or_smiles to align to.")
-            return
-        if mcs.smartsString:
-            mol_or_smiles = Chem.MolFromSmarts(mcs.smartsString)
-        else:
-            print("* Could not find MCSS. Please provide a mol_or_smiles to align to.")
+        mol_or_smiles = find_mcs(mol_list)
+        if mol_or_smiles is None:
             return
 
     if not isinstance(mol_or_smiles, list):
@@ -1238,8 +1280,8 @@ def align(mol_list, mol_or_smiles=None):
             align_mols.append(mol)
         else:
             mol = deepcopy(el)
-            check_2d_coords(el)
-            align_mols.append(el)
+            check_2d_coords(mol)
+            align_mols.append(mol)
 
 
     for mol in mol_list:
@@ -1350,6 +1392,8 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
             e.g. {"activity": "< 50"}
         show_hidden (bool): Whether to show hidden properties (name starts with _) or not.
             Defaults to *False*.
+        link (str): column used for linking out
+        target (str): column used as link target
         order (list): A list of substrings to match with the field names for ordering in the table header
 
     Returns:
@@ -1398,6 +1442,7 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
             cell_opt = {"id": "{}_{}".format(id_prop_val, time_stamp)}
         else:
             cell_opt = {"id": str(idx)}
+
         cell = html.td(str(idx), cell_opt)
         cells.extend(cell)
 
@@ -1405,8 +1450,8 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
             cells.extend(html.td("no structure"))
 
         else:
+            cell_opt = {}
             b64 = b64_img(mol)
-
             if id_prop:
                 img_opt = {"title": "Click to select / unselect",
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
@@ -1414,7 +1459,8 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
                 img_opt = {"title": str(idx)}
 
             img_src = "data:image/png;base64,{}".format(b64)
-            cells.extend(html.td(html.img(img_src, img_opt)))
+            cell = html.img(img_src, img_opt)
+            cells.extend(html.td(cell, cell_opt))
 
         for prop in prop_list:
             td_opt = {"align": "center"}
