@@ -37,36 +37,54 @@ The use of generators allows working with arbitrarily large data sets, the memor
 Example use:
 
     >>> from rdkit_ipynb_tools import pipeline as p
-    >>> s = p.Summary()
-    >>> rd = p.start_csv_reader("/home/pahl/data_b64.csv.gz", summary=s)
-    >>> b64 = p.pipe_mol_from_b64(rd, summary=s)
-    >>> filt = p.pipe_mol_filter(b64, "[H]c2c([H])c1ncoc1c([H])c2C(N)=O", summary=s)
-    >>> p.stop_sdf_writer(filt, "test.sdf", summary=s)
+    >>> s = Summary()
+    >>> rd = start_csv_reader(test_data_b64.csv.gz", summary=s)
+    >>> b64 = pipe_mol_from_b64(rd, summary=s)
+    >>> filt = pipe_mol_filter(b64, "[H]c2c([H])c1ncoc1c([H])c2C(N)=O", summary=s)
+    >>> stop_sdf_writer(filt, "test.sdf", summary=s)
 
-The progress of the pipeline can be followed in a terminal with: tail -f pipeline.log
+or, using the pipe function:
+
+    >>> s = Summary()
+    >>> rd = start_sdf_reader("test.sdf", summary=s)
+    >>> pipe(rd,
+    >>>      pipe_keep_largest_fragment,
+    >>>      (pipe_neutralize_mol, {"summary": s}),
+    >>>      (pipe_keep_props, ["Ordernumber", "NP_Score"]),
+    >>>      (stop_csv_writer, "test.csv", {"summary": s})
+    >>>     )
+
+The progress of the pipeline can be followed in a terminal with: `watch -n 2 less pipeline.log`
 
 Currently available components:
 * starting pipes:
     - start_csv_reader
     - start_sdf_reader
     - start_cache_reader
+    - start_stream_from_mol_list
+    - start_mol_csv_reader
 * pipeline components:
     - pipe_calc_props
     - pipe_custom_filter
     - pipe_custom_man
     - pipe_join_from_file
     - pipe_mol_filter
+    - pipe_has_prop_filter
     - pipe_mol_from_b64
     - pipe_mol_from_smiles
     - pipe_mol_to_b64
     - pipe_mol_to_smiles
     - pipe_remove_props
+    - pipe_keep_props
     - pipe_rename_prop
+    - pipe_keep_largest_fragment
+    - pipe_neutralize_mol
 * stopping pipes:
     - stop_csv_writer
     - stop_sdf_writer
     - stop_mol_list_from_stream
     - stop_cache_writer
+    - stop_count_records
 
 Limitation: unlike in other pipelining tools, because of the nature of Python generators, the pipeline can not be branched.
 

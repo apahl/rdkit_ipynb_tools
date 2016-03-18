@@ -70,7 +70,14 @@ class Chart():
     """A Bokeh Plot."""
 
     def __init__(self, kind="scatter", **kwargs):
+        """Useful Chart kwargs:
+
+        Parameters:
+            xlabel (str): override the automatic x_axis_label. Default is None.
+            ylabel (str): override the automatic y_axis_label. Default is None."""
+
         self.data = {}
+        self.kwargs = kwargs
         self.kind = kind
         self.height = kwargs.get("height", 450)
         self.title = kwargs.get("title", "Scatter Plot")
@@ -83,7 +90,7 @@ class Chart():
 
 
     def _add_series(self, x, y, series, size, source=None):
-        color = AVAIL_COLORS[self.series_counter]
+        color = self.add_data_kwargs.get("color", AVAIL_COLORS[self.series_counter])
 
         if self.series_counter == 0:
             self.plot_type = self.plot.circle
@@ -113,7 +120,9 @@ class Chart():
             self.plot_type = self.plot.asterisk
 
         self.plot_type(x, y, legend=series, size=size, color=color, source=source)
-        self.plot.legend.orientation = self.position
+        if self.add_data_kwargs.get("line", False):
+            self.plot.line(x, y, legend=series, color=color,
+                           line_width=self.add_data_kwargs.get("width", 3), source=source)
 
         self.series_counter += 1
         if self.series_counter >= len(AVAIL_COLORS):
@@ -122,7 +131,14 @@ class Chart():
 
 
     def add_data(self, d, x, y, **kwargs):
+        """Added line option. This does not work with the color_by option.
+
+        Parameters:
+            line (bool): whether to plot a line or not. Default is False.
+            width (int): line width when line is plotted. Defailt is 3."""
+
         colors = "#1F77B4"
+        self.add_data_kwargs = kwargs
         series = kwargs.get("series", None)
         if series is not None:
             series_by = "Series"
@@ -130,9 +146,6 @@ class Chart():
             series_by = kwargs.get("series_by", None)
 
         color_by = kwargs.get("color_by", None)
-
-        self.plot.xaxis.axis_label = x
-        self.plot.yaxis.axis_label = y
 
         tooltip = get_tooltip(x, y,
                               kwargs.get("pid", None),
@@ -143,6 +156,8 @@ class Chart():
 
         self.plot.add_tools(tooltip)
 
+        self.plot.xaxis.axis_label = self.kwargs.get("xlabel", x)
+        self.plot.yaxis.axis_label = self.kwargs.get("ylabel", y)
 
         size = kwargs.get("radius", kwargs.get("r", kwargs.get("size", kwargs.get("s", 10))))
         reverse = kwargs.get("invert", False)
@@ -198,9 +213,13 @@ class Chart():
             d["x"] = d[x]
             d["y"] = d[y]
             self.plot.circle(x, y, size=size, source=ColumnDataSource(d))
+            if self.add_data_kwargs.get("line", False):
+                self.plot.line(x, y, line_width=self.add_data_kwargs.get("width", 3),
+                               source=ColumnDataSource(d))
 
 
     def show(self):
+        self.plot.legend.location = self.position
         show(self.plot)
 
 

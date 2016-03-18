@@ -30,6 +30,7 @@ import gzip
 import pickle
 import base64 as b64
 import tempfile
+# from functools import reduce
 # from copy import deepcopy
 
 from rdkit.Chem import AllChem as Chem
@@ -112,6 +113,43 @@ class Summary(OrderedDict):
     def print(self):
         """print the content of a dict or Counter object in a formatted way"""
         print(self.__str__())
+
+
+def pipe(val, *forms):
+    """Inspired by the thread_first function of the [Toolz](https://pypi.python.org/pypi/toolz) project
+    and adapted to also accept keyword arguments. Removed the discouraged reduce function.
+    If functions of the pipeline nedd additional parameters, the function and
+    the parameters have to be passed as tuples. Keyword arguments have to be
+    passed as dicts in these tuples:
+
+    >>> s = Summary()
+    >>> rd = start_sdf_reader("test.sdf", summary=s)
+    >>> pipe(rd,
+    >>>      pipe_keep_largest_fragment,
+    >>>      (pipe_neutralize_mol, {"summary": s}),
+    >>>      (pipe_keep_props, ["Ordernumber", "NP_Score"]),
+    >>>      (stop_csv_writer, "test.csv", {"summary": s})
+    >>>     )"""
+
+    def evalform_front(val, form):
+        if callable(form):
+            return form(val)
+        if isinstance(form, tuple):
+            args = [val]
+            kwargs = {}
+            func = form[0]
+            for a in form[1:]:
+                if isinstance(a, dict):
+                    kwargs.update(a)
+                else:
+                    args.append(a)
+            return func(*args, **kwargs)
+
+    result = val
+    for form in forms:
+        result = evalform_front(result, form)
+
+    return result
 
 
 def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"):
@@ -419,7 +457,7 @@ def pipe_mol_from_smiles(stream, in_smiles="Smiles", remove=True, summary=None, 
     rec_counter = 0
     for rec in stream:
         if in_smiles in rec:
-            mol = Chem.MolFromSmiles(in_smiles)
+            mol = Chem.MolFromSmiles(rec[in_smiles])
             if remove:
                 rec.pop(in_smiles)
 
@@ -430,6 +468,7 @@ def pipe_mol_from_smiles(stream, in_smiles="Smiles", remove=True, summary=None, 
 
                 rec["mol"] = mol
                 yield rec
+
 
 
 def pipe_mol_from_b64(stream, in_b64="Mol_b64", remove=True, summary=None, comp_id="pipe_mol_from_b64"):
