@@ -116,7 +116,7 @@ class Summary(OrderedDict):
 
 
 def pipe(val, *forms):
-    """Inspired by the thread_first function of the [Toolz](https://pypi.python.org/pypi/toolz) project
+    """Inspired by the thread_first function of the `Toolz <https://pypi.python.org/pypi/toolz>`_ project
     and adapted to also accept keyword arguments. Removed the discouraged reduce function.
     If functions of the pipeline nedd additional parameters, the function and
     the parameters have to be passed as tuples. Keyword arguments have to be
