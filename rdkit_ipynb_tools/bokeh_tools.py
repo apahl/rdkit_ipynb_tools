@@ -12,7 +12,6 @@ Bokeh plotting functionality for Mol_lists.
 
 import colorsys
 import math
-from copy import deepcopy
 
 import numpy as np
 
@@ -143,7 +142,6 @@ class Chart():
             width (int): line width when line is plotted. Default is 3."""
 
         colors = "#1F77B4"
-        d = deepcopy(d)
         self.add_data_kwargs = kwargs
         series = kwargs.get("series", None)
         if series is not None:
