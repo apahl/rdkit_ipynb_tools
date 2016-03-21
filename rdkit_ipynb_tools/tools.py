@@ -1494,12 +1494,17 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
     return "".join(table_list)
 
 
-def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4, size=200):
-    """input:   list of RDKit molecules
-    highlight: dict of properties (a.t.m only one) and values to highlight cells,
-    e.g. {"activity": "< 50"}
-    order: a list of substrings to match with the field names for ordering in the table header
-    returns: HTML table as TEXT with molecules in grid-like layout to embed in IPython or a web page."""
+def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4, size=200, img_dir=None):
+    """Creates a HTML grid out of the Mol_List input.
+
+    Parameters:
+        input (Mol_List): list of RDKit molecules
+        highlight (dict): dict of properties (a.t.m only one) and values to highlight cells, e.g. {"activity": "< 50"}
+        order (list): a list of substrings to match with the field names for ordering in the table header
+        img_dir (str): if None, the molecule images are embedded in the HTML doc. Otherwise the images will be stored in img_dir and linked in the doc.
+
+    Returns:
+        HTML table as TEXT with molecules in grid-like layout to embed in IPython or a web page."""
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
     prop_opt = {"align": "center"}
@@ -1533,14 +1538,21 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
             cell = ["no structure"]
 
         else:
-            img_file = IO()
             img = autocrop(Draw.MolToImage(mol, size=(size, size)))
-            img.save(img_file, format='PNG')
+            if img_dir is None:  # embed the images in the doc
+                img_file = IO()
+                img.save(img_file, format='PNG')
 
-            b64 = base64.b64encode(img_file.getvalue())
-            if PY3:
-                b64 = b64.decode()
-            img_file.close()
+                b64 = base64.b64encode(img_file.getvalue())
+                if PY3:
+                    b64 = b64.decode()
+                img_file.close()
+                img_src = "data:image/png;base64,{}".format(b64)
+
+            else:
+                img_file = op.join(img_dir, "img_{:4d}.png".format(idx))
+                img.save(img_file, format='PNG')
+                img_src = img_file
 
             if id_prop:
                 img_opt = {"title": "Click to select / unselect",
@@ -1548,7 +1560,6 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
             else:
                 img_opt = {"title": str(idx)}
 
-            img_src = "data:image/png;base64,{}".format(b64)
             cell = html.img(img_src, img_opt)
 
         td_opt = {"align": "center"}

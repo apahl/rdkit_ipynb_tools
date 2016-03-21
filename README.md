@@ -92,4 +92,4 @@ Limitation: unlike in other pipelining tools, because of the nature of Python ge
 This README is meant as a teaser. I urgently need to prepare a proper example notebook to show all the functionality, this is high on my ToDo list.
 
 ### Documentation
-The module documentation can be built with sphinx and the extension sphinxcontrib.napoleon using the `make_doc.sh` script
+The module documentation can be built with sphinx using the `make_doc.sh` script
