@@ -7,7 +7,7 @@ Tools
 
 *Created on Thu Jul  2 10:07:56 2015 by A. Pahl*
 
-A set for tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
+A set of tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
 """
 
 
@@ -862,30 +862,41 @@ class Mol_List(list):
             return HTML(mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order))
 
 
-    def grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, raw=False):
+    def grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, img_dir=None, raw=False):
         """Returns:
             The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
         Parameters:
-            props: A property or a list of properties to include in the display."""
+            props: A property or a list of properties to include in the display.
+            raw (bool): If True, return the HTML mol grid as text.
+                If False, return a HTML object, that can be displayed in the Jupyter Notebook.
+                Default is False.
+            img_dir (str or None): The directory, in which the molecule images are written. The directory has to exist.
+                Implies raw=True. If None, then the images are stored in the HTML object. Default is None."""
 
         if not id_prop:
             id_prop = guess_id_prop(list_fields(self)) if self.ia else None
+
+        if img_dir is not None:
+            raw = True
+
         if raw:
             return mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
-                             mols_per_row=mols_per_row, size=size)
+                             mols_per_row=mols_per_row, size=size, img_dir=img_dir)
         else:
             return HTML(mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
                                   mols_per_row=mols_per_row, size=size))
 
 
     def write_table(self, id_prop=None, highlight=None, header=None, summary=None, fn="mol_table.html"):
-        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True), header=header, summary=summary), fn=fn)
+        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True),
+                             header=header, summary=summary), fn=fn)
 
 
-    def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, header=None, summary=None, fn="mol_grid.html"):
+    def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200,
+                   header=None, summary=None, img_dir=None, fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, id_prop=id_prop, highlight=highlight,
-                             mols_per_row=mols_per_row, size=size, raw=True), header=header, summary=summary), fn=fn)
+                             mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary), fn=fn)
 
 
     def scatter(self, x, y, r=7, tooltip=None, **kwargs):
@@ -1385,7 +1396,7 @@ def b64_img(mol):
 
 
 
-def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=None):
+def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=None, img_dir=None):
     """Parameters:
         sdf_list (Mol_List): List of RDKit molecules
         highlight (dict): Dict of properties (special: *all*) and values to highlight cells,
@@ -1395,6 +1406,8 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
         link (str): column used for linking out
         target (str): column used as link target
         order (list): A list of substrings to match with the field names for ordering in the table header
+        img_dir (str): if None, the molecule images are embedded in the HTML doc.
+            Otherwise the images will be stored in img_dir and linked in the doc.
 
     Returns:
         HTML table as TEXT to embed in IPython or a web page."""
@@ -1498,10 +1511,12 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     """Creates a HTML grid out of the Mol_List input.
 
     Parameters:
-        input (Mol_List): list of RDKit molecules
-        highlight (dict): dict of properties (a.t.m only one) and values to highlight cells, e.g. {"activity": "< 50"}
+        sdf_list (Mol_List): list of RDKit molecules
+        highlight (dict): dict of properties (a.t.m only one) and values to highlight cells,
+            e.g. {"activity": "< 50"}
         order (list): a list of substrings to match with the field names for ordering in the table header
-        img_dir (str): if None, the molecule images are embedded in the HTML doc. Otherwise the images will be stored in img_dir and linked in the doc.
+        img_dir (str): if None, the molecule images are embedded in the HTML doc.
+            Otherwise the images will be stored in img_dir and linked in the doc.
 
     Returns:
         HTML table as TEXT with molecules in grid-like layout to embed in IPython or a web page."""
@@ -1550,7 +1565,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:
-                img_file = op.join(img_dir, "img_{:4d}.png".format(idx))
+                img_file = op.join(img_dir, "img_{:04d}.png".format(idx))
                 img.save(img_file, format='PNG')
                 img_src = img_file
 
