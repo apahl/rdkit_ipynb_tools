@@ -846,18 +846,28 @@ class Mol_List(list):
             print("# {} records could not be processed.".format(failed))
 
 
-    def table(self, id_prop=None, highlight=None, show_hidden=False, raw=False):
+    def table(self, id_prop=None, highlight=None, show_hidden=False, img_dir=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
         Parameters:
             show_hidden (bool): Whether to show hidden properties (name starts with _) or not.
-                Defaults to *False*."""
+                Default is False.
+            raw (bool): If True, return the HTML mol grid as text.
+                If False, return a HTML object, that can be displayed in the Jupyter Notebook.
+                Default is False.
+            img_dir (str or None): The directory, in which the molecule images are written. The directory has to exist.
+                Implies raw=True. If None, then the images are stored in the HTML object. Default is None."""
 
         if not id_prop:
             id_prop = guess_id_prop(list_fields(self)) if self.ia else None
+
+        if img_dir is not None:
+            raw = True
+
         if raw:
-            return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order, show_hidden=show_hidden)
+            return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order,
+                             img_dir=img_dir, show_hidden=show_hidden)
         else:
             return HTML(mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order))
 
@@ -888,8 +898,8 @@ class Mol_List(list):
                                   mols_per_row=mols_per_row, size=size))
 
 
-    def write_table(self, id_prop=None, highlight=None, header=None, summary=None, fn="mol_table.html"):
-        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True),
+    def write_table(self, id_prop=None, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
+        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True, img_dir=img_dir),
                              header=header, summary=summary), fn=fn)
 
 
@@ -1382,9 +1392,9 @@ def get_prop_val(mol, prop, default=None):
         return default
 
 
-def b64_img(mol):
+def b64_img(mol, size=300):
     img_file = IO()
-    img = autocrop(Draw.MolToImage(mol))
+    img = autocrop(Draw.MolToImage(mol, size=(size, size)))
     img.save(img_file, format='PNG')
 
     b64 = base64.b64encode(img_file.getvalue())
@@ -1393,7 +1403,6 @@ def b64_img(mol):
     img_file.close()
 
     return b64
-
 
 
 def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=None, img_dir=None):
@@ -1463,15 +1472,23 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
             cells.extend(html.td("no structure"))
 
         else:
+            if img_dir is None:  # embed the images in the doc
+                b64 = b64_img(mol)
+                img_src = "data:image/png;base64,{}".format(b64)
+
+            else:  # write them out to img_dir
+                img_file = op.join(img_dir, "img_{:04d}.png".format(idx))
+                img = autocrop(Draw.MolToImage(mol))
+                img.save(img_file, format='PNG')
+                img_src = img_file
+
             cell_opt = {}
-            b64 = b64_img(mol)
             if id_prop:
                 img_opt = {"title": "Click to select / unselect",
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
                 img_opt = {"title": str(idx)}
 
-            img_src = "data:image/png;base64,{}".format(b64)
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
 
@@ -1553,19 +1570,13 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
             cell = ["no structure"]
 
         else:
-            img = autocrop(Draw.MolToImage(mol, size=(size, size)))
             if img_dir is None:  # embed the images in the doc
-                img_file = IO()
-                img.save(img_file, format='PNG')
-
-                b64 = base64.b64encode(img_file.getvalue())
-                if PY3:
-                    b64 = b64.decode()
-                img_file.close()
+                b64 = b64_img(mol, 200)
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:
                 img_file = op.join(img_dir, "img_{:04d}.png".format(idx))
+                img = autocrop(Draw.MolToImage(mol, size=(size, size)))
                 img.save(img_file, format='PNG')
                 img_src = img_file
 
