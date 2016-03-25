@@ -23,15 +23,16 @@ The progress of the pipeline can be followed in a terminal with: `watch -n 2 les
 
 # import sys
 # import os.path as op
+from copy import deepcopy
 import time
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import csv
 import gzip
 import pickle
 import base64 as b64
 import tempfile
-# from functools import reduce
-# from copy import deepcopy
+
+import numpy as np
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
@@ -630,7 +631,7 @@ def pipe_custom_filter(stream, run_code, start_code=None, summary=None, comp_id=
             yield rec
 
 
-def pipe_custom_man(stream, run_code, start_code=None, stop_code=None, summary=None, comp_id="pipe_custom_man"):
+def pipe_custom_man(stream, run_code, start_code=None, stop_code=None, comp_id="pipe_custom_man"):
     """If the evaluation of run_code is true, the respective record will be put on the stream."""
     if start_code:
         exec(start_code)
@@ -889,3 +890,116 @@ def pipe_neutralize_mol(stream, summary=None, comp_id="pipe_neutralize_mol"):
         rec["mol"] = mol
 
         yield rec
+
+
+def pipe_inspect_stream(stream, fn="pipe_inspect.txt", exclude=None, summary=None):
+    """Write records from the stream into the file `fn` every two seconds.
+    Do not write records from the exclude list."""
+    prev_time = time.time()
+    if exclude is not None:
+        if not isinstance(exclude, list):
+            exclude = [exclude]
+
+    for rec in stream:
+        if exclude is not None:
+            rec = deepcopy(rec)
+            for prop in exclude:
+                rec.pop(prop, None)
+
+            curr_time = time.time()
+            if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                prev_time = curr_time
+                if summary is not None:
+                    print(summary, "\n\n", rec, file=open(fn, "w"))
+                else:
+                    print(rec, file=open(fn, "w"))
+
+        yield rec
+
+
+def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", summary=None, comp_id="pipe_merge_data"):
+    """Merge the data from the stream on the `merge_on` property.
+    WARNING: The stream is collected in memory by this component!
+
+    Parameters:
+        merge_on (str): Name of the property (key) to merge on.
+        str_props (str): Merge behaviour for string properties.
+            Allowed values are: concat ("; "-separated concatenation), keep_first, keep_last.
+        num_props (str): Merge behaviour for numerical values.
+            Allowed values are: mean, median, keep_first, keep_last."""
+
+    def _get_merged_val_from_val_list(val_list, str_props, num_props):
+        if isinstance(val_list[0], str):
+            if "concat" in str_props:
+                return "; ".join(val_list)
+            if "first" in str_props:
+                return val_list[0]
+            if "last" in str_props:
+                return val_list[-1]
+
+            return val_list[0]
+
+        else:
+            if "mean" in num_props:
+                return np.mean(val_list)
+            if "median" in num_props:
+                return np.median(val_list)
+            if "first" in num_props:
+                return val_list[0]
+            if "last" in num_props:
+                return val_list[-1]
+
+            return val_list[0]
+
+
+    merged = defaultdict(lambda: defaultdict(list))  # defaultdict of defaultdict(list)
+    if summary is not None:
+        summary[comp_id] = "collecting..."
+
+    for rec in stream:
+        if merge_on not in rec: continue
+
+        merge_on_val = rec.pop(merge_on)
+        for prop in rec.keys():
+            merged[merge_on_val][prop].append(rec[prop])
+
+    rec_counter = 0
+    for item in merged:
+        rec = {merge_on: item}
+        for prop in merged[item]:
+            val_list = merged[item][prop]
+            rec[prop] = _get_merged_val_from_val_list(val_list)
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+        yield rec
+
+
+def dict_from_csv(fn, max_records=0):
+    """Read a CSV file and return a dict with the headers a keys and the columns as value lists.
+    Empty cells are np.nan."""
+
+    d = defaultdict(list)
+
+    if ".gz" in fn:
+        f = gzip.open(fn, mode="rt")
+    else:
+        f = open(fn)
+
+    reader = csv.DictReader(f, dialect="excel-tab")
+
+    for rec_counter, row_dict in enumerate(reader, 1):
+        for k in row_dict:
+            v = row_dict[k]
+            if v == "" or v is None:
+                d[k].append(np.nan)
+            else:
+                d[k].append(get_value(v))
+
+        if max_records > 0 and rec_counter >= max_records: break
+
+    print("  > {} records read".format(rec_counter))
+
+    return d
