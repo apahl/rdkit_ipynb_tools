@@ -924,7 +924,9 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", summ
     Parameters:
         merge_on (str): Name of the property (key) to merge on.
         str_props (str): Merge behaviour for string properties.
-            Allowed values are: concat ("; "-separated concatenation), keep_first, keep_last.
+            Allowed values are: concat ("; "-separated concatenation),
+            unique ("; "-separated concatenation of the unique values),
+            keep_first, keep_last.
         num_props (str): Merge behaviour for numerical values.
             Allowed values are: mean, median, keep_first, keep_last."""
 
@@ -932,6 +934,8 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", summ
         if isinstance(val_list[0], str):
             if "concat" in str_props:
                 return "; ".join(val_list)
+            if "unique" in str_props:
+                return "; ".join(set(val_list))
             if "first" in str_props:
                 return val_list[0]
             if "last" in str_props:
@@ -968,7 +972,7 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", summ
         rec = {merge_on: item}
         for prop in merged[item]:
             val_list = merged[item][prop]
-            rec[prop] = _get_merged_val_from_val_list(val_list)
+            rec[prop] = _get_merged_val_from_val_list(val_list, str_props, num_props)
 
         rec_counter += 1
         if summary is not None:
@@ -1003,3 +1007,45 @@ def dict_from_csv(fn, max_records=0):
     print("  > {} records read".format(rec_counter))
 
     return d
+
+
+def generate_pipe_from_csv(fn):
+    """Generate a valid pipeline from a formatted csv file (see examples/example_pipe.ods)."""
+
+    f = open(fn)
+    reader = list(csv.DictReader(f, dialect="excel-tab"))
+    num_of_lines = len(reader)
+    pipe_list = ["s = p.Summary()\n"]
+    for line_no, row_dict in enumerate(reader, 1):
+        if row_dict["Summary"]:
+            if row_dict["KWargs"]:
+                row_dict["KWargs"] = row_dict["KWargs"] + ", 'summary': s"
+            else:
+                row_dict["KWargs"] = "'summary': s"
+
+        if line_no == 1:
+            if row_dict["KWargs"]:
+                pipe_list.append("rd = p.{Component}({Args}, **{{{KWargs}}})\n".format(**row_dict))
+            else:
+                pipe_list.append("rd = p.{Component}({Args})\n".format(**row_dict))
+            pipe_list.append("res = p.pipe(\n    rd,\n")
+            continue
+
+        if row_dict["Args"] or row_dict["KWargs"]:
+            pipe_list.append("    (p.{}".format(row_dict["Component"]))
+            if row_dict["Args"]:
+                pipe_list.append(", {}".format(row_dict["Args"]))
+            if row_dict["KWargs"]:
+                pipe_list.append(', {{{}}}'.format(row_dict["KWargs"]))
+            pipe_list.append(')')
+        else:
+            pipe_list.append('    p.{}'.format(row_dict["Component"]))
+
+        if line_no < num_of_lines:
+            pipe_list.append(",\n")
+        else:
+            pipe_list.append("\n")
+
+    pipe_list.append(')')
+
+    return "".join(pipe_list)
