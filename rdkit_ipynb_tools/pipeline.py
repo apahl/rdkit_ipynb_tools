@@ -764,7 +764,7 @@ def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_ren
         yield rec
 
 
-def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp_id="pipe_join_data_from_file"):
+def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only", decimals=2, summary=None, comp_id="pipe_join_data_from_file"):
     """Joins data from a csv or SD file.
     CAUTION: The input stream will be held in memory by this component!
 
@@ -772,12 +772,17 @@ def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp
         stream (dict iterator): stream of input compounds.
         fn (str): name of the file (type is determined by having "sdf" in the name or not).
         join_on (str): property to join on
+        behaviour (str):
+            "joined_only": only put those recored on the stream on which data was joined (default).
+            "keep_all": put all input records on the stream again, including those, on which no data was joined.
         decimals (int): number of decimal places for floating point values. Default: 2."""
 
     # collect the records from the stream in a list, store the position of the join_on properties in a dict
     stream_counter = -1
     stream_list = []
     stream_dict = {}  # dict to hold the join_on properties and their positions in the stream_list
+    joined_stream_list_idx = set()  # hold the indexes in stream_list, on which data was joined
+
     for rec in stream:
         stream_join_on_val = rec.get(join_on, False)
         if stream_join_on_val is False: continue
@@ -797,11 +802,10 @@ def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp
         stream_join_on_idx = stream_dict.get(rec_join_on_val, False)
         if stream_join_on_idx is False: continue
 
+        joined_stream_list_idx.add(stream_join_on_idx)
         stream_rec = stream_list[stream_join_on_idx]
         for k in stream_rec:
-            if k == join_on:
-                rec["{}_orig".format(join_on)] = stream_rec[k]
-            else:
+            if k != join_on:
                 rec[k] = stream_rec[k]
 
         rec_counter += 1
@@ -810,6 +814,16 @@ def pipe_join_data_from_file(stream, fn, join_on, decimals=2, summary=None, comp
 
         yield rec
 
+    # with behaviour="keep_all", now add the records to the stream on which no data was joined.
+    if "all" in behaviour.lower():
+        for idx, rec in enumerate(stream_list):
+            if idx in joined_stream_list_idx: continue  # this record was already output with joined data
+
+            rec_counter += 1
+            if summary is not None:
+                summary[comp_id] = rec_counter
+
+            yield rec
 
 
 def pipe_keep_largest_fragment(stream, summary=None, comp_id="pipe_keep_largest_frag"):
