@@ -16,6 +16,7 @@ from __future__ import print_function, division
 import time
 import sys
 import base64
+import os
 import os.path as op
 import random
 import csv
@@ -1096,6 +1097,12 @@ class Mol_List(list):
             self.recalc_needed["plot_tool"] = self.plot_tool
         return self._d
 
+
+
+def create_dir_if_not_exist(dir_name):
+    if not op.exists(dir_name):
+        print("  * target folder does not exist, creating {}...".format(dir_name))
+        os.makedirs(dir_name)
 
 
 def autocrop(im, bgcolor="white"):

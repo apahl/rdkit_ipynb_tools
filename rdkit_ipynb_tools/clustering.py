@@ -28,7 +28,7 @@ from rdkit.ML.Cluster import Butina
 import numpy as np
 
 # from . import html_templates as html
-from . import tools, html_templates as html
+from . import tools, html_templates as html, file_templ as ft
 
 # from ipywidgets import widgets
 # from IPython.core.display import HTML, display
@@ -349,3 +349,10 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_pr
 
     page = html.page("\n".join(content), title=title)
     html.write(page, fn=fn)
+
+
+def write_cluster_viewer(cluster_list, viewer_dir="cluster_viewer", fn="index.html", title="Cluster Viewer", activity_prop=None):
+    """Write out a HTML file that allows interactive viewing of Clusters.
+    After the report has been written, the javascript has to be generated with: `cd cluster_viewer && transcrypt -b cluster_js.py`"""
+    tools.create_dir_if_not_exist(dir)
+    content = []
