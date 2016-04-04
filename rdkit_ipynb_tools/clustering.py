@@ -128,11 +128,13 @@ def get_members(cluster_list):
 def get_stats_for_cluster(cluster_list, activity_prop):
     stats = {}
     value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
-    stats["num_values"] = len(value_list)
-    stats["min"] = min(value_list) if value_list else None
-    stats["max"] = max(value_list) if value_list else None
-    stats["mean"] = np.mean(value_list) if value_list else None
-    stats["median"] = np.median(value_list) if value_list else None
+    suppliers = set([mol.GetProp("Supplier") for mol in cluster_list.mols_with_prop("Supplier")])
+    stats["Num_Values"] = len(value_list)
+    stats["Min"] = min(value_list) if value_list else None
+    stats["Max"] = max(value_list) if value_list else None
+    stats["Mean"] = np.mean(value_list) if value_list else None
+    stats["Median"] = np.median(value_list) if value_list else None
+    stats["Suppliers"] = "; ".join(suppliers) if suppliers else None
 
     return stats
 
@@ -159,8 +161,8 @@ def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_ac
         cluster = get_clusters_by_no(members_all, cl_id)
         if len(cluster) < min_len: continue
         stats = get_stats_for_cluster(cluster, activity_prop)
-        if stats["num_values"] == 0: continue
-        stats["min"]  # to quiet the linter
+        if stats["Num_Nalues"] == 0: continue
+        stats["Min"]  # to quiet the linter
         keep = True
         if min_act is not None and not eval(min_act_comp):
             keep = False
@@ -210,12 +212,12 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
 
         if activity_prop is not None:
             stats = get_stats_for_cluster(cluster, activity_prop)
-            core_mol.SetProp("num_values", str(stats["num_values"]))
+            core_mol.SetProp("Num_Values", str(stats["Num_Values"]))
 
-            core_mol.SetProp("min", "{:.2f}".format(stats["min"]))
-            core_mol.SetProp("max", "{:.2f}".format(stats["max"]))
-            core_mol.SetProp("mean", "{:.2f}".format(stats["mean"]))
-            core_mol.SetProp("median", "{:.2f}".format(stats["median"]))
+            core_mol.SetProp("Min", "{:.2f}".format(stats["Min"]))
+            core_mol.SetProp("Max", "{:.2f}".format(stats["Max"]))
+            core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
+            core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
 
         if align_to_core:
             # align_mol = MurckoScaffold.GetScaffoldForMol(core_mol)
