@@ -5,7 +5,7 @@
 Clustering
 ##########
 
-*Created on Sun Feb 28 11:00 20165 by A. Pahl*
+*Created on Sun Feb 28 11:00 2016 by A. Pahl*
 
 Clustering molecules.
 """
@@ -38,15 +38,15 @@ def renumber_clusters(cluster_list, start_at=1):
     """Renumber clusters in-place."""
     start_at -= 1
     # get the current individual cluster numbers present in the list
-    id_list = sorted(set(tools.get_value(mol.GetProp("cluster_no"))
-                         for mol in cluster_list.mols_with_prop("cluster_no")))
+    id_list = sorted(set(tools.get_value(mol.GetProp("Cluster_No"))
+                         for mol in cluster_list.mols_with_prop("Cluster_No")))
 
     # assign the new ids as values the old id's keys
     new_ids = {k: v for v, k in enumerate(id_list, 1 + start_at)}
     for mol in cluster_list:
-        if not mol.HasProp("cluster_no"): continue
-        old_id = int(mol.GetProp("cluster_no"))
-        mol.SetProp("cluster_no", str(new_ids[old_id]))
+        if not mol.HasProp("Cluster_No"): continue
+        old_id = int(mol.GetProp("Cluster_No"))
+        mol.SetProp("Cluster_No", str(new_ids[old_id]))
 
 
 def get_clusters_by_no(cluster_list, cl_no, make_copy=True, renumber=False):
@@ -56,7 +56,7 @@ def get_clusters_by_no(cluster_list, cl_no, make_copy=True, renumber=False):
 
     cluster = tools.Mol_List()
     for mol in cluster_list:
-        if mol.HasProp("cluster_no") and int(mol.GetProp("cluster_no")) in cl_no:
+        if mol.HasProp("Cluster_No") and int(mol.GetProp("Cluster_No")) in cl_no:
             if make_copy:
                 mol = deepcopy(mol)
             cluster.append(mol)
@@ -74,7 +74,7 @@ def remove_clusters_by_no(cluster_list, cl_no, make_copy=True, renumber=False):
 
     cluster = tools.Mol_List()
     for mol in cluster_list:
-        if mol.HasProp("cluster_no") and int(mol.GetProp("cluster_no")) not in cl_no:
+        if mol.HasProp("Cluster_No") and int(mol.GetProp("Cluster_No")) not in cl_no:
             if make_copy:
                 mol = deepcopy(mol)
             cluster.append(mol)
@@ -95,15 +95,15 @@ def keep_clusters_by_len(cluster_list, min_len=3, max_len=1000, make_copy=True, 
     for mol in cluster_list:
         if int(mol.GetProp(id_prop)) < 100000: continue  # is a core
 
-        if not mol.HasProp("cluster_no"): continue
-        cl_id = int(mol.GetProp("cluster_no"))
+        if not mol.HasProp("Cluster_No"): continue
+        cl_id = int(mol.GetProp("Cluster_No"))
         ctr[cl_id] += 1
 
     # now, only keep mols which belong to clusters of the desired length,
     # including the cores
     for mol in cluster_list:
-        if not mol.HasProp("cluster_no"): continue
-        cl_id = int(mol.GetProp("cluster_no"))
+        if not mol.HasProp("Cluster_No"): continue
+        cl_id = int(mol.GetProp("Cluster_No"))
         if ctr[cl_id] >= min_len and ctr[cl_id] <= max_len:
             result_list.append(mol)
 
@@ -128,13 +128,13 @@ def get_members(cluster_list):
 def get_stats_for_cluster(cluster_list, activity_prop):
     stats = {}
     value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
-    suppliers = set([mol.GetProp("Supplier") for mol in cluster_list.mols_with_prop("Supplier")])
+    supplier = set([mol.GetProp("Supplier") for mol in cluster_list.mols_with_prop("Supplier")])
     stats["Num_Values"] = len(value_list)
     stats["Min"] = min(value_list) if value_list else None
     stats["Max"] = max(value_list) if value_list else None
     stats["Mean"] = np.mean(value_list) if value_list else None
     stats["Median"] = np.median(value_list) if value_list else None
-    stats["Suppliers"] = "; ".join(suppliers) if suppliers else None
+    stats["Supplier"] = "; ".join(supplier) if supplier else None
 
     return stats
 
@@ -146,17 +146,17 @@ def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_ac
         max_act (str): see above."""
 
     if min_act is not None:
-        min_act_comp = compile('stats["min"] {}'.format(min_act), '<string>', 'eval')
+        min_act_comp = compile('stats["Min"] {}'.format(min_act), '<string>', 'eval')
     if max_act is not None:
-        max_act_comp = compile('stats["max"] {}'.format(max_act), '<string>', 'eval')
+        max_act_comp = compile('stats["Max"] {}'.format(max_act), '<string>', 'eval')
 
     cores_and_members = get_cores(cluster_list)
     if len(cores_and_members) > 0:
-        cores_and_members = cores_and_members.prop_filter('num_members >= {}'.format(min_len))
+        cores_and_members = cores_and_members.prop_filter('Num_Members >= {}'.format(min_len))
     members_all = get_members(cluster_list)
     tmp_list = tools.Mol_List()
 
-    cl_ids = sorted(set(int(mol.GetProp("cluster_no")) for mol in members_all.mols_with_prop("cluster_no")))
+    cl_ids = sorted(set(int(mol.GetProp("Cluster_No")) for mol in members_all.mols_with_prop("Cluster_No")))
     for new_id, cl_id in enumerate(cl_ids, 1):
         cluster = get_clusters_by_no(members_all, cl_id)
         if len(cluster) < min_len: continue
@@ -187,7 +187,7 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
     members_all = get_members(cluster_list)
 
     # find cluster numbers
-    cl_ids = set(tools.get_value(mol.GetProp("cluster_no")) for mol in members_all.mols_with_prop("cluster_no"))
+    cl_ids = set(tools.get_value(mol.GetProp("Cluster_No")) for mol in members_all.mols_with_prop("Cluster_No"))
 
     for cl_id in cl_ids:
         cluster = get_clusters_by_no(members_all, cl_id, make_copy=False)
@@ -207,8 +207,8 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
         id_prop = tools.guess_id_prop(cluster[0].GetPropNames())
         core_mol.SetProp(id_prop, str(cl_id))
         core_mol.SetProp("is_core", "yes")
-        core_mol.SetProp("cluster_no", str(cl_id))
-        core_mol.SetProp("num_members", str(len(cluster)))
+        core_mol.SetProp("Cluster_No", str(cl_id))
+        core_mol.SetProp("Num_Members", str(len(cluster)))
 
         if activity_prop is not None:
             stats = get_stats_for_cluster(cluster, activity_prop)
@@ -233,7 +233,7 @@ def get_mol_list_from_index_list(orig_sdf, index_list, cl_id):
     cluster_list = tools.Mol_List()
     for x in index_list:
         mol = deepcopy(orig_sdf[x])
-        mol.SetProp("cluster_no", str(cl_id))
+        mol.SetProp("Cluster_No", str(cl_id))
         cluster_list.append(mol)
 
     if len(cluster_list) == 2:
@@ -296,11 +296,11 @@ def cluster_from_mol_list(mol_list, cutoff=0.8, activity_prop=None,
 def show_numbers(cluster_list):
     """Show some numbers for the cluster_list."""
     all_members = get_members(cluster_list)
-    ctr_cl_no = Counter([int(mol.GetProp("cluster_no")) for mol in all_members])
+    ctr_cl_no = Counter([int(mol.GetProp("Cluster_No")) for mol in all_members])
     ctr_size = Counter([s for s in ctr_cl_no.values()])
 
     total = 0
-    print("\ncluster size  |  number of clusters")
+    print("\nCluster Size  |  Number of Clusters")
     print("------------- + -------------------")
     for i in sorted(ctr_size, reverse=True):
         print("     {:3d}      |   {:3d}".format(i, ctr_size[i]))
@@ -315,8 +315,8 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_pr
 
     # collect the cluster numbers in the order in which they are in the cluster_list:
     cluster_numbers = OrderedDict()
-    for mol in cluster_list.has_prop_filter("cluster_no"):
-        cluster_numbers[int(mol.GetProp("cluster_no"))] = 0  # dummy value
+    for mol in cluster_list.has_prop_filter("Cluster_No"):
+        cluster_numbers[int(mol.GetProp("Cluster_No"))] = 0  # dummy value
 
     # print(cluster_numbers)
     # return cluster_numbers
@@ -334,8 +334,8 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_pr
         content.append("<h2>Cluster {}</h2>".format(cl_no))
         core = get_cores(cluster)
         if len(core) > 0:
-            core.remove_props(["Compound_Id", "is_core", "num_values"])
-            core.order = ["cluster_no", "num_members", "min", "max", "mean", "median"]
+            core.remove_props(["Compound_Id", "is_core", "Num_Values"])
+            core.order = ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]
             content.append('<h4>Core:</h4>')
             content.append(core.table(raw=True))
             content.append("<h4>Members:</h4>")
