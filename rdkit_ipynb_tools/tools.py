@@ -452,14 +452,17 @@ class Mol_List(list):
         result_list.ia = self.ia
 
         mol_counter_out = 0
-        query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
-        if not query_mol:
-            print("* ERROR: could not generate query from SMARTS.")
-            return None
-
-        if "H" in query or "#1" in query:
+        if "[H]" in query or "#1" in query:
             add_h = True
             print("> explicit hydrogens turned on (add_h = True)")
+
+        if add_h or "#6" in query or "#7" in query:
+            smarts = True
+
+        query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
+        if not query_mol:
+            print("* ERROR: could not generate query molecule. Try smarts=True")
+            return None
 
         for mol_counter_in, mol in enumerate(self):
             if not mol: continue

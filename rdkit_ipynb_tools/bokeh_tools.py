@@ -218,7 +218,7 @@ class Chart():
             color_scale = ColorScale(20, color_by_min, color_by_max, reverse)
             colors = []
             for val in d[color_by]:
-                if val is not None and val != np.nan:
+                if val is not None and val is not np.nan:
                     colors.append(color_scale(val))
                 else:
                     colors.append("black")
@@ -272,6 +272,7 @@ class Hist():
         if color is None:
             color = self.colors[self.plot_no]
 
+        data = remove_nan(data)
         hist, edges = np.histogram(data, bins=bins)
         if normed:
             hist = normalize_largest_bin_to_one(hist)
@@ -344,6 +345,11 @@ def get_tooltip(x, y, pid=None, series=None, series_by=None, color_by=None, size
         # templ = HoverTool(tooltips=[(x, "@x"), (y, "@y")])
 
     return templ
+
+
+def remove_nan(l):
+    """Remove Nans from a list for histograms."""
+    return [x for x in l if x is not np.nan]
 
 
 def guess_id_prop(prop_list):  # try to guess an id_prop

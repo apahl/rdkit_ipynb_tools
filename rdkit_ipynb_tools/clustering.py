@@ -55,6 +55,8 @@ def get_clusters_by_no(cluster_list, cl_no, make_copy=True, renumber=False):
         cl_no = [cl_no]
 
     cluster = tools.Mol_List()
+    if cluster_list.order:
+        cluster.order = cluster_list.order.copy()
     for mol in cluster_list:
         if mol.HasProp("Cluster_No") and int(mol.GetProp("Cluster_No")) in cl_no:
             if make_copy:
@@ -116,6 +118,7 @@ def keep_clusters_by_len(cluster_list, min_len=3, max_len=1000, make_copy=True, 
 def get_cores(cluster_list):
     """Find and return the core molecules in a cluster_list."""
     core_list = cluster_list.has_prop_filter("is_core")
+    core_list.order = ["Compound_Id", "Cluster_No", "Num_Members", "Num_Values", "Min", "Max", "Mean", "Median", "is_core"]
     return core_list
 
 
@@ -161,7 +164,7 @@ def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_ac
         cluster = get_clusters_by_no(members_all, cl_id)
         if len(cluster) < min_len: continue
         stats = get_stats_for_cluster(cluster, activity_prop)
-        if stats["Num_Nalues"] == 0: continue
+        if stats["Num_Values"] == 0: continue
         stats["Min"]  # to quiet the linter
         keep = True
         if min_act is not None and not eval(min_act_comp):
@@ -218,6 +221,8 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
             core_mol.SetProp("Max", "{:.2f}".format(stats["Max"]))
             core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
             core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
+            if stats["Supplier"] is not None:
+                core_mol.SetProp("Supplier", stats["Supplier"])
 
         if align_to_core:
             # align_mol = MurckoScaffold.GetScaffoldForMol(core_mol)
@@ -304,7 +309,7 @@ def show_numbers(cluster_list):
     print("------------- + -------------------")
     for i in sorted(ctr_size, reverse=True):
         print("     {:3d}      |   {:3d}".format(i, ctr_size[i]))
-        total = total + (i * ctr_size[i])
+        total += (i * ctr_size[i])
 
     print()
     print("Number of compounds as sum of members per cluster size:", total)

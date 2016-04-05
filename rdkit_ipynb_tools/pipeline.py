@@ -668,10 +668,10 @@ def pipe_has_prop_filter(stream, prop, invert=False, summary=None, comp_id="pipe
 
 def pipe_mol_filter(stream, query, smarts=False, invert=False, add_h=False, summary=None, comp_id="pipe_mol_filter"):
     rec_counter = 0
-    if "H" in query or "#1" in query:
+    if "[H]" in query or "#1" in query:
         add_h = True
 
-    if add_h:
+    if add_h or "#6" in query or "#7" in query:
         smarts = True
 
     query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
