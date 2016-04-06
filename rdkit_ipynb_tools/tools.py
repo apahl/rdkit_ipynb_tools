@@ -37,7 +37,12 @@ import numpy as np
 from . import html_templates as html
 from . import hc_tools as hct
 
-from ipywidgets import widgets
+try:
+    import ipywidgets as ipyw
+    WIDGETS = True
+except ImportError:
+    WIDGETS = False
+
 from IPython.core.display import HTML, display
 
 if sys.version_info[0] > 2:
@@ -1224,11 +1229,11 @@ def ia_remove_props(mol_list):
     def on_btn_clicked(b):
         remove_props(mol_list, props=list(w_sm.selected_labels))
 
-    w_sm = widgets.SelectMultiple(description="Properties to remove:", options=all_props)
-    w_btn = widgets.Button(description="Done !")
+    w_sm = ipyw.SelectMultiple(description="Properties to remove:", options=all_props)
+    w_btn = ipyw.Button(description="Done !")
     w_btn.on_click(on_btn_clicked)
 
-    w_hb = widgets.HBox(children=[w_sm, w_btn])
+    w_hb = ipyw.HBox(children=[w_sm, w_btn])
 
     display(w_hb)
 
@@ -1243,11 +1248,11 @@ def ia_keep_props(mol_list):
         props_to_remove = list(set(all_props) - set(w_sm.selected_labels))
         remove_props(mol_list, props=props_to_remove)
 
-    w_sm = widgets.SelectMultiple(description="Properties to keep:", options=all_props)
-    w_btn = widgets.Button(description="Done !")
+    w_sm = ipyw.SelectMultiple(description="Properties to keep:", options=all_props)
+    w_btn = ipyw.Button(description="Done !")
     w_btn.on_click(on_btn_clicked)
 
-    w_hb = widgets.HBox(children=[w_sm, w_btn])
+    w_hb = ipyw.HBox(children=[w_sm, w_btn])
 
     display(w_hb)
 
@@ -1752,3 +1757,19 @@ def o3da(input_list, ref, fn="aligned.sdf"):
         writer.write(mol)
 
     writer.close()
+
+# functions depending on ipywidgets:
+if WIDGETS:
+    def chunkviewer(mol_list, chunksize=50, type="table", props=None):
+        l = len(mol_list)
+        if type == "table":
+            return ipyw.interactive(
+                lambda x: mol_list[x:x + chunksize],
+                x=(0, l - 1, chunksize)
+            )
+
+        else:
+            return ipyw.interactive(
+                lambda x: mol_list.grid(props)[x:x + chunksize],
+                x=(0, l - 1, chunksize)
+            )

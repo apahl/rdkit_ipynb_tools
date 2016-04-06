@@ -255,6 +255,28 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
         print(summary)
 
 
+def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict"):
+    """Provide a data stream from a dict."""
+    prev_time = time.time()
+    d_keys = list(d.keys())
+    l = len(d[d_keys[0]])  # length of the stream
+    rec_counter = 0
+    for idx in range(l):
+        rec = {}
+        for k in d_keys:
+            rec[k] = d[k][idx]
+            rec_counter += 1
+            if summary is not None:
+                summary[comp_id] = rec_counter
+                curr_time = time.time()
+                if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                    prev_time = curr_time
+                    print(summary)
+                    print(summary, file=open("pipeline.log", "w"))
+
+        yield rec
+
+
 def start_stream_from_mol_list(mol_list, summary=None, comp_id="start_stream_from_mol_list"):
     """Provide a data stream from a Mol_List."""
     prev_time = time.time()
@@ -1034,6 +1056,14 @@ def generate_pipe_from_csv(fn):
     num_of_lines = len(reader)
     pipe_list = ["s = p.Summary()\n"]
     for line_no, row_dict in enumerate(reader, 1):
+        # clean up the field
+        for k in row_dict:
+            # replace the weird quotation marks that my Libreoffice exports:
+            if "”" in row_dict[k]:
+                row_dict[k] = row_dict[k].replace("”", '"')
+            if "“" in row_dict[k]:
+                row_dict[k] = row_dict[k].replace("“", '"')
+
         if row_dict["Summary"]:
             if row_dict["KWargs"]:
                 row_dict["KWargs"] = row_dict["KWargs"] + ", 'summary': s"
