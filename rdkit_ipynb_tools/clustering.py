@@ -183,8 +183,23 @@ def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_ac
     return cores_and_members
 
 
-def add_cores(cluster_list, activity_prop=None, align_to_core=False):
-    """Find and add cores to the cluster_list in-place."""
+def add_cores(cluster_list, mode="mcs", activity_prop=None, align_to_core=False):
+    """Find and add cores to the cluster_list in-place.
+
+    Parameters:
+        mode (str): "mcs" (default): add the core as MCS of the cluster. This can lead to very small structures.
+            "most active": take the most active compound of the cluster as the core.
+            If activity_prop is None, this option is not available.
+        activity_prop (str): the name of the property for the activity."""
+
+    if activity_prop is None:
+        mode = "mcs"
+
+    if "mcs" not in mode.lower():
+        al = activity_prop.lower()
+        reverse = False
+        if "pic50" in al or "pec500" in al:
+            reverse = True
 
     # first, remove any already existing cores
     members_all = get_members(cluster_list)
@@ -194,17 +209,24 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
 
     for cl_id in cl_ids:
         cluster = get_clusters_by_no(members_all, cl_id, make_copy=False)
-        # determine the cluster core by MCSS
-
-        # do not generate cores for singletons and pairs
         if len(cluster) < 3:
             continue
 
-        core_mol = tools.find_mcs(cluster)
-        if core_mol is None:
-            continue
+        if "mcs" in mode.lower():
+            # determine the cluster core by MCSS
+            # do not generate cores for singletons and pairs
 
-        tools.check_2d_coords(core_mol)
+            core_mol = tools.find_mcs(cluster)
+            if core_mol is None:
+                continue
+
+            tools.check_2d_coords(core_mol)
+
+        else:
+            cluster.sort_list(activity_prop, reverse=reverse)
+            core_mol = deepcopy(cluster[0])
+            for prop in core_mol.GetPropNames():
+                core_mol.ClearProp(prop)
 
         # set a number of properties for the cluster core
         id_prop = tools.guess_id_prop(cluster[0].GetPropNames())
