@@ -193,6 +193,7 @@ class Mol_List(list):
         self.order = None
         self.ia = False  # wether the table and grid views are interactive or no
         self.plot_tool = PLOT_TOOL
+        self.id_prop = None
         self.recalc_needed = {}
         self._set_recalc_needed()
 
@@ -221,7 +222,7 @@ class Mol_List(list):
 
         self.len = len(self)
         self.recalc_needed["plot_tool"] = PLOT_TOOL
-        keys = ["d", "fields", "field_types"]
+        keys = ["d", "fields", "field_types", "id_prop"]
         for k in keys:
             self.recalc_needed[k] = True
 
@@ -529,7 +530,7 @@ class Mol_List(list):
 
 
 
-    def get_ids(self, id_prop=None):
+    def get_ids(self):
         """Get the list of Compound IDs in the Mol_List
 
         Parameters:
@@ -537,29 +538,28 @@ class Mol_List(list):
 
         Returns:
             A list of compound ids"""
-        prop_list = list_fields(self)
+        prop_list = self.fields
 
-        if id_prop:
-            if id_prop not in prop_list:
+        if self.id_prop:
+            if self.id_prop not in prop_list:
                 raise LookupError("id_prop not found in data set.")
         else:  # try to guess an id_prop
-            id_prop = guess_id_prop(prop_list)
+            self.id_prop = guess_id_prop(prop_list)
 
-        if not id_prop:
+        if self.id_prop is None:
             raise LookupError("no id prop could be found in data set.")
 
-        self.id_prop = id_prop
         id_list = []
         for mol in self:
             if mol:
-                if mol.HasProp(id_prop):
-                    val = get_value(mol.GetProp(id_prop))
+                if mol.HasProp(self.id_prop):
+                    val = get_value(mol.GetProp(self.id_prop))
                     id_list.append(val)
 
         return id_list
 
 
-    def new_list_from_ids(self, id_list, invert=False, id_prop=None, make_copy=True):
+    def new_list_from_ids(self, id_list, invert=False, make_copy=True):
         """Creates a new Mol_List out of the given IDs.
 
         Parameters:
@@ -570,16 +570,15 @@ class Mol_List(list):
             A new Mol_List from a list of Ids.
             By default it creates an independent copy of the mol objects."""
 
-        id_all = set(self.get_ids(id_prop))
+        if not isinstance(id_list, list):
+            id_list = [id_list]
+
+        id_all = set(self.get_ids())
         id_set = set(id_list)
         if invert:
             id_keep = id_all - id_set
         else:
             id_keep = id_set.intersection(id_all)
-
-        # id_not_found = id_set - id_all
-        # if id_not_found:
-        #     print("  not found:", id_not_found)
 
         new_list = Mol_List()
         if self.order:
@@ -596,6 +595,42 @@ class Mol_List(list):
 
                         new_list.append(mol)
 
+        return new_list
+
+
+    def show_cpd(self, id_no, is_cpd_id=True):
+        """Display a single compound together with its Smiles.
+        With is_cpd_id == True (default), the given id_no is interpreted as a Compound_Id.
+        Other it is used as index in the list."""
+
+        new_list = Mol_List()
+        if self.order:
+            new_list.order = self.order.copy()
+        new_list.ia = self.ia
+        new_list.id_prop = self.id_prop
+
+        if not is_cpd_id:
+            mol = deepcopy(self[id_no])
+            new_list.append(mol)
+
+        else:
+            if self.id_prop is None:
+                self.id_prop = guess_id_prop(self.fields)
+                if self.id_prop is None:
+                    raise LookupError("no id prop could be found in data set.")
+
+            for mol in self:
+                if mol:
+                    if mol.HasProp(self.id_prop):
+                        val = get_value(mol.GetProp(self.id_prop))
+                        if val == id_no:
+                            mol = deepcopy(mol)
+                            new_list.append(mol)
+
+        if len(new_list) == 0:
+            return None
+
+        print("Smiles:", Chem.MolToSmiles(new_list[0]))
         return new_list
 
 
@@ -703,10 +738,14 @@ class Mol_List(list):
         """Keep properties in the Mol_List.
         props can be a single property or a list of properties."""
 
+        if not isinstance(props, list):
+            props = [props]
+
         for mol in self:
             if mol:
                 keep_props_in_mol(mol, props)
 
+        self.order = props
         self._set_recalc_needed()
 
 
@@ -855,7 +894,7 @@ class Mol_List(list):
             print("# {} records could not be processed.".format(failed))
 
 
-    def table(self, id_prop=None, highlight=None, show_hidden=False, img_dir=None, raw=False):
+    def table(self, pagesize=50, id_prop=None, highlight=None, show_hidden=False, img_dir=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
@@ -878,10 +917,11 @@ class Mol_List(list):
             return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order,
                              img_dir=img_dir, show_hidden=show_hidden)
         else:
-            return HTML(mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order))
+            return table_pager(self, pagesize, id_prop=id_prop, highlight=highlight, order=self.order,
+                               show_hidden=show_hidden)
 
 
-    def grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200, img_dir=None, raw=False):
+    def grid(self, pagesize=16, props=None, id_prop=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
         """Returns:
             The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
@@ -903,8 +943,8 @@ class Mol_List(list):
             return mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, img_dir=img_dir)
         else:
-            return HTML(mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
-                                  mols_per_row=mols_per_row, size=size))
+            return grid_pager(self, pagesize, props=props, id_prop=id_prop, highlight=highlight,
+                              mols_per_row=mols_per_row, size=size)
 
 
     def write_table(self, id_prop=None, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
@@ -940,14 +980,18 @@ class Mol_List(list):
             return hct.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
 
 
-    def hist(self, field, bins=10, title="Distribution", xlabel=None, ylabel="Occurrence", normed=False, **kwargs):
+    def hist(self, field, bins=10, title="Distribution", xlabel=None, ylabel="Occurrence", normed=False, show=True, **kwargs):
         """Displays a Bokeh histogram. See bokeh_tools for documentation.
         Possible useful additional kwargs include: plot_width, plot_height, y_axis_type="log"."""
         if xlabel is None:
             xlabel = field
         hist = bkt.Hist(title=title, xlabel=xlabel, ylabel=ylabel, **kwargs)
         hist.add_data(self.d[field], bins=bins, normed=normed)
-        return hist.show()
+
+        if show:
+            return hist.show()
+        else:
+            return hist.plot
 
 
     def summary(self, text_only=False):
@@ -1586,7 +1630,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
 
         else:
             if img_dir is None:  # embed the images in the doc
-                b64 = b64_img(mol, 200)
+                b64 = b64_img(mol, size)
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:
@@ -1664,6 +1708,31 @@ def show_table(sdf_list, id_prop=None, highlight=None, order=None):
 
 def show_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4):
     return HTML(mol_sheet(sdf_list, props, id_prop, highlight=highlight, mols_per_row=mols_per_row))
+
+
+def table_pager(mol_list, id_prop=None, pagesize=20, highlight=None, order=None, show_hidden=False):
+    l = len(mol_list)
+    if not WIDGETS or l < pagesize:
+        return HTML(mol_table(mol_list, id_prop=id_prop, highlight=highlight,
+                              order=order, show_hidden=show_hidden))
+
+    return ipyw.interactive(
+        lambda x: HTML(mol_table(mol_list[x: x + pagesize], id_prop=id_prop,
+                                 order=order, show_hidden=show_hidden)),
+        x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
+    )
+
+
+def grid_pager(mol_list, pagesize=50, id_prop=None, highlight=None, props=None, mols_per_row=4, size=200):
+    l = len(mol_list)
+    if not WIDGETS or l < pagesize:
+        return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))
+
+    return ipyw.interactive(
+        lambda x: HTML(mol_sheet(mol_list[x:x + pagesize], id_prop=id_prop, highlight=highlight,
+                                 props=props, size=size)),
+        x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
+    )
 
 
 def jsme(name="mol"):
@@ -1757,19 +1826,3 @@ def o3da(input_list, ref, fn="aligned.sdf"):
         writer.write(mol)
 
     writer.close()
-
-# functions depending on ipywidgets:
-if WIDGETS:
-    def chunkviewer(mol_list, chunksize=50, type="table", props=None):
-        l = len(mol_list)
-        if type == "table":
-            return ipyw.interactive(
-                lambda x: mol_list[x:x + chunksize],
-                x=(0, l - 1, chunksize)
-            )
-
-        else:
-            return ipyw.interactive(
-                lambda x: mol_list.grid(props)[x:x + chunksize],
-                x=(0, l - 1, chunksize)
-            )

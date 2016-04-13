@@ -16,7 +16,7 @@ import math
 import numpy as np
 
 from bokeh.plotting import figure, ColumnDataSource
-from bokeh.io import output_notebook, show
+import bokeh.io as io
 from bokeh.models import HoverTool
 
 AVAIL_COLORS = ["#1F77B4", "firebrick", "goldenrod", "aqua", "brown", "chartreuse", "darkmagenta"
@@ -24,7 +24,7 @@ AVAIL_COLORS = ["#1F77B4", "firebrick", "goldenrod", "aqua", "brown", "chartreus
 # AVAIL_MARKERS: circle, diamond, triangle, square, inverted_triangle, asterisk,
 #                circle_cross, circle_x, cross, diamond_cross, square_cross, square_x, asterisk, diamond
 
-output_notebook()
+io.output_notebook()
 
 
 class ColorScale():
@@ -239,7 +239,7 @@ class Chart():
 
     def show(self):
         self.plot.legend.location = self.position
-        show(self.plot)
+        io.show(self.plot)
 
 
 class Hist():
@@ -248,11 +248,15 @@ class Hist():
 
     def __init__(self, title="Histogram", xlabel="Values", ylabel="Occurrence", **kwargs):
         """Generates a histogram.
-        Possible useful additional kwargs include: plot_width, plot_height, y_axis_type="log"."""
+        Possible useful additional kwargs include: plot_width, plot_height, y_axis_type="log",
+        tick_size="14pt"."""
+
         self.colors = ["#FF596A", "#0066FF", "#00CC88", "#FFDD00"]
         self.plot_no = -1
         self.kwargs = kwargs
         self.pos = "top_left"
+        tick_size = self.kwargs.pop("tick_size", "14pt")
+
         for arg in ["pos", "position"]:
             if arg in self.kwargs:
                 self.pos = self.kwargs[arg]
@@ -261,6 +265,7 @@ class Hist():
         self.plot = figure(title=title, **kwargs)
         self.plot.xaxis.axis_label = xlabel
         self.plot.yaxis.axis_label = ylabel
+        self.plot.axis.major_label_text_font_size = tick_size
 
 
     def add_data(self, data, bins=10, series=None, color=None, normed=False, **kwargs):
@@ -289,7 +294,7 @@ class Hist():
 
     def show(self):
         self.plot.legend.location = self.pos
-        show(self.plot)
+        io.show(self.plot)
 
 
 def get_tooltip(x, y, pid=None, series=None, series_by=None, color_by=None, size_by=None, tooltip=None):

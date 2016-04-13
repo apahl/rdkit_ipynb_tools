@@ -10,12 +10,13 @@ Clustering
 Clustering molecules.
 """
 
+import os.path as op
 from copy import deepcopy
 from collections import Counter, OrderedDict
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
-# import rdkit.Chem.Descriptors as Desc
+import rdkit.Chem.Descriptors as Desc
 # import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
@@ -28,7 +29,7 @@ from rdkit.ML.Cluster import Butina
 import numpy as np
 
 # from . import html_templates as html
-from . import tools, html_templates as html, file_templ as ft
+from . import tools, html_templates as html  # , file_templ as ft
 
 # from ipywidgets import widgets
 # from IPython.core.display import HTML, display
@@ -128,16 +129,18 @@ def get_members(cluster_list):
     return member_list
 
 
-def get_stats_for_cluster(cluster_list, activity_prop):
+def get_stats_for_cluster(cluster_list, activity_prop=None):
     stats = {}
-    value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
     supplier = set([mol.GetProp("Supplier") for mol in cluster_list.mols_with_prop("Supplier")])
-    stats["Num_Values"] = len(value_list)
-    stats["Min"] = min(value_list) if value_list else None
-    stats["Max"] = max(value_list) if value_list else None
-    stats["Mean"] = np.mean(value_list) if value_list else None
-    stats["Median"] = np.median(value_list) if value_list else None
     stats["Supplier"] = "; ".join(supplier) if supplier else None
+
+    if activity_prop is not None:
+        value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
+        stats["Num_Values"] = len(value_list)
+        stats["Min"] = min(value_list) if value_list else None
+        stats["Max"] = max(value_list) if value_list else None
+        stats["Mean"] = np.mean(value_list) if value_list else None
+        stats["Median"] = np.median(value_list) if value_list else None
 
     return stats
 
@@ -183,23 +186,12 @@ def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_ac
     return cores_and_members
 
 
-def add_cores(cluster_list, mode="mcs", activity_prop=None, align_to_core=False):
+def add_cores(cluster_list, activity_prop=None, align_to_core=False):
     """Find and add cores to the cluster_list in-place.
 
     Parameters:
         mode (str): "mcs" (default): add the core as MCS of the cluster. This can lead to very small structures.
-            "most active": take the most active compound of the cluster as the core.
-            If activity_prop is None, this option is not available.
         activity_prop (str): the name of the property for the activity."""
-
-    if activity_prop is None:
-        mode = "mcs"
-
-    if "mcs" not in mode.lower():
-        al = activity_prop.lower()
-        reverse = False
-        if "pic50" in al or "pec500" in al:
-            reverse = True
 
     # first, remove any already existing cores
     members_all = get_members(cluster_list)
@@ -212,21 +204,14 @@ def add_cores(cluster_list, mode="mcs", activity_prop=None, align_to_core=False)
         if len(cluster) < 3:
             continue
 
-        if "mcs" in mode.lower():
-            # determine the cluster core by MCSS
-            # do not generate cores for singletons and pairs
+        # determine the cluster core by MCSS
+        # do not generate cores for singletons and pairs
 
-            core_mol = tools.find_mcs(cluster)
-            if core_mol is None:
-                continue
+        core_mol = tools.find_mcs(cluster)
+        if core_mol is None:
+            continue
 
-            tools.check_2d_coords(core_mol)
-
-        else:
-            cluster.sort_list(activity_prop, reverse=reverse)
-            core_mol = deepcopy(cluster[0])
-            for prop in core_mol.GetPropNames():
-                core_mol.ClearProp(prop)
+        tools.check_2d_coords(core_mol)
 
         # set a number of properties for the cluster core
         id_prop = tools.guess_id_prop(cluster[0].GetPropNames())
@@ -235,16 +220,17 @@ def add_cores(cluster_list, mode="mcs", activity_prop=None, align_to_core=False)
         core_mol.SetProp("Cluster_No", str(cl_id))
         core_mol.SetProp("Num_Members", str(len(cluster)))
 
+        stats = get_stats_for_cluster(cluster, activity_prop)
         if activity_prop is not None:
-            stats = get_stats_for_cluster(cluster, activity_prop)
             core_mol.SetProp("Num_Values", str(stats["Num_Values"]))
 
             core_mol.SetProp("Min", "{:.2f}".format(stats["Min"]))
             core_mol.SetProp("Max", "{:.2f}".format(stats["Max"]))
             core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
             core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
-            if stats["Supplier"] is not None:
-                core_mol.SetProp("Supplier", stats["Supplier"])
+
+        if stats["Supplier"] is not None:
+            core_mol.SetProp("Supplier", stats["Supplier"])
 
         if align_to_core:
             # align_mol = MurckoScaffold.GetScaffoldForMol(core_mol)
@@ -253,6 +239,74 @@ def add_cores(cluster_list, mode="mcs", activity_prop=None, align_to_core=False)
         members_all.insert(0, core_mol)
 
     return members_all
+
+
+def add_centers(cluster_list, mode="most_active", activity_prop=None):
+    """Add cluster centers to the cores.
+    Contrary to the cores, this is not an MCS, but one of the cluster members,
+    with a certain property.
+    Parameters:
+        mode (str): `most_active` (default): if activity_prop is not None, the most active compound is taken.
+            `smallest`: the compound with the least amount of heavy amount is taken as center."""
+
+    if "active" in mode:
+        if activity_prop is not None:
+            al = activity_prop.lower()
+            reverse = False
+            if "pic50" in al or "pec500" in al:
+                reverse = True
+
+        else:
+            mode = "smallest"
+
+    # first, remove any already existing cores
+    members_all = get_members(cluster_list)
+
+    # find cluster numbers
+    cl_ids = set(tools.get_value(mol.GetProp("Cluster_No")) for mol in members_all.mols_with_prop("Cluster_No"))
+
+    for cl_id in cl_ids:
+        cluster = get_clusters_by_no(members_all, cl_id, make_copy=False)
+        if len(cluster) < 3:
+            continue
+
+        if "active" in mode:
+            cluster.sort_list(activity_prop, reverse=reverse)
+
+        else:  # smallest
+            cluster.sort(key=Desc.HeavyAtomCount)
+
+        core_mol = deepcopy(cluster[0])
+        for prop in core_mol.GetPropNames():
+            core_mol.ClearProp(prop)
+
+        stats = get_stats_for_cluster(cluster, activity_prop)
+        if activity_prop is not None:
+            core_mol.SetProp("Num_Values", str(stats["Num_Values"]))
+
+            core_mol.SetProp("Min", "{:.2f}".format(stats["Min"]))
+            core_mol.SetProp("Max", "{:.2f}".format(stats["Max"]))
+            core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
+            core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
+
+
+        # set a number of properties for the cluster core
+        id_prop = tools.guess_id_prop(cluster[0].GetPropNames())
+        core_mol.SetProp(id_prop, str(cl_id))
+        core_mol.SetProp("is_core", "yes")
+        core_mol.SetProp("Cluster_No", str(cl_id))
+        core_mol.SetProp("Num_Members", str(len(cluster)))
+
+        stats = get_stats_for_cluster(cluster, activity_prop)
+
+        if stats["Supplier"] is not None:
+            core_mol.SetProp("Supplier", stats["Supplier"])
+
+        members_all.insert(0, core_mol)
+
+    return members_all
+
+
 
 
 def get_mol_list_from_index_list(orig_sdf, index_list, cl_id):
@@ -337,7 +391,7 @@ def show_numbers(cluster_list):
     print("Number of compounds as sum of members per cluster size:", total)
 
 
-def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_prop=None):
+def write_report(cluster_list, fn="clusters.html", title="Clusters", props=None, img_dir=None):
     content = []
 
     # collect the cluster numbers in the order in which they are in the cluster_list:
@@ -345,15 +399,13 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_pr
     for mol in cluster_list.has_prop_filter("Cluster_No"):
         cluster_numbers[int(mol.GetProp("Cluster_No"))] = 0  # dummy value
 
-    # print(cluster_numbers)
-    # return cluster_numbers
-    reverse = False
-    if activity_prop is not None:
-        if activity_prop and not isinstance(activity_prop, list):
-            activity_prop = [activity_prop]
-        s = activity_prop[0].lower()
-        if "pic50" in s or "pec50" in s:  # determine within the cluster
-            reverse = True
+    # reverse = False
+    if props is not None:
+        if props and not isinstance(props, list):
+            props = [props]
+        # s = props[0].lower()
+        # if "pic50" in s or "pec50" in s:  # determine within the cluster
+        #     reverse = True
 
     for cl_no in cluster_numbers:
         cluster = get_clusters_by_no(cluster_list, cl_no)
@@ -368,11 +420,7 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_pr
             content.append("<h4>Members:</h4>")
 
         members = get_members(cluster)
-        if activity_prop is not None:
-            members.sort_list(activity_prop[0], reverse=reverse)
-            content.append(members.grid(activity_prop, raw=True))
-        else:
-            content.append(members.grid(raw=True))
+        content.append(members.grid(props=props, size=300, raw=True, img_dir=img_dir))
 
         content.append("<hr>")
 
@@ -380,8 +428,29 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", activity_pr
     html.write(page, fn=fn)
 
 
-def write_cluster_viewer(cluster_list, viewer_dir="cluster_viewer", fn="index.html", title="Cluster Viewer", activity_prop=None):
-    """Write out a HTML file that allows interactive viewing of Clusters.
-    After the report has been written, the javascript has to be generated with: `cd cluster_viewer && transcrypt -b cluster_js.py`"""
-    tools.create_dir_if_not_exist(dir)
-    content = []
+def inject_charts(cluster_list, fn="clusters.html", img_dir="img", basename="hist", options='align="right", width="250"'):
+    """Insert links to chart (e.g. histogram) images into the HTML report."""
+
+    cluster_numbers = OrderedDict()
+    for mol in cluster_list.has_prop_filter("Cluster_No"):
+        cluster_numbers[int(mol.GetProp("Cluster_No"))] = 0  # dummy value
+
+    report = open(fn).read()
+
+    for cl_no in cluster_numbers:
+        chart_link = op.join(img_dir, "{}_{}.png".format(basename, cl_no))
+        if op.isfile(chart_link):
+            print(chart_link)
+            cluster_title = "<h2>Cluster {}</h2>\n".format(cl_no)
+            html_str = """{}<img src="{}" {}/><br>""".format(cluster_title, chart_link, options)
+            report = report.replace(cluster_title, html_str)
+
+    with open("new_" + fn, "w") as f:
+        f.write(report)
+
+
+# def write_cluster_viewer(cluster_list, viewer_dir="cluster_viewer", fn="index.html", title="Cluster Viewer", activity_prop=None):
+#     """Write out a HTML file that allows interactive viewing of Clusters.
+#     After the report has been written, the javascript has to be generated with: `cd cluster_viewer && transcrypt -b cluster_js.py`"""
+#     tools.create_dir_if_not_exist(dir)
+#     content = []
