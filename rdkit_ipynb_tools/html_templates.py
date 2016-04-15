@@ -11,11 +11,11 @@ HTML Templates
 A simple and pythonic templating library where every HTML tag is a function.
 """
 
-import time
-import os.path as op
+# import time
+# import os.path as op
 
 TABLE_OPTIONS = {"cellspacing": "1", "cellpadding": "1", "border": "1",
-                 "align": "", "height": "60px", "summary": "Table", } # "width": "800px",
+                 "align": "", "height": "60px", "summary": "Table", }  # "width": "800px",
 
 # PAGE_OPTIONS = {"icon": "icons/chart_bar.png", "css": ["css/style.css", "css/collapsible_list.css"],
 #                 "scripts": ["lib/jquery.js", "lib/highcharts.js", "script/folding.js"]}
@@ -120,7 +120,7 @@ table {
         if type(scripts) != list:
             scripts = [scripts]
 
-        js_str  = "".join(['  <script src="{}"></script>\n'.format(file_name) for file_name in scripts])
+        js_str = "".join(['  <script src="{}"></script>\n'.format(file_name) for file_name in scripts])
 
     else:
         js_str = ""
@@ -234,7 +234,7 @@ def li(content):
     return tag("li", content, lf_open=False, lf_close=True)
 
 
-def li_lf(content): # list item with opening line feed
+def li_lf(content):  # list item with opening line feed
     return tag("li", content, lf_open=True, lf_close=True)
 
 

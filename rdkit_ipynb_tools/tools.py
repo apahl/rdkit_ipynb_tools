@@ -894,7 +894,7 @@ class Mol_List(list):
             print("# {} records could not be processed.".format(failed))
 
 
-    def table(self, pagesize=50, id_prop=None, highlight=None, show_hidden=False, img_dir=None, raw=False):
+    def table(self, pagesize=50, highlight=None, show_hidden=False, img_dir=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
@@ -907,21 +907,21 @@ class Mol_List(list):
             img_dir (str or None): The directory, in which the molecule images are written. The directory has to exist.
                 Implies raw=True. If None, then the images are stored in the HTML object. Default is None."""
 
-        if not id_prop:
-            id_prop = guess_id_prop(list_fields(self)) if self.ia else None
+        if self.id_prop is None:
+            self.id_prop = guess_id_prop(list_fields(self))
 
         if img_dir is not None:
             raw = True
 
         if raw:
-            return mol_table(self, id_prop=id_prop, highlight=highlight, order=self.order,
+            return mol_table(self, id_prop=self.id_prop, highlight=highlight, order=self.order,
                              img_dir=img_dir, show_hidden=show_hidden)
         else:
-            return table_pager(self, pagesize, id_prop=id_prop, highlight=highlight, order=self.order,
+            return table_pager(self, pagesize, id_prop=self.id_prop, interact=self.ia, highlight=highlight, order=self.order,
                                show_hidden=show_hidden)
 
 
-    def grid(self, pagesize=16, props=None, id_prop=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
+    def grid(self, pagesize=16, props=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
         """Returns:
             The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
@@ -933,28 +933,28 @@ class Mol_List(list):
             img_dir (str or None): The directory, in which the molecule images are written. The directory has to exist.
                 Implies raw=True. If None, then the images are stored in the HTML object. Default is None."""
 
-        if not id_prop:
-            id_prop = guess_id_prop(list_fields(self)) if self.ia else None
+        if self.id_prop is None:
+            self.id_prop = guess_id_prop(list_fields(self))
 
         if img_dir is not None:
             raw = True
 
         if raw:
-            return mol_sheet(self, props=props, id_prop=id_prop, highlight=highlight,
+            return mol_sheet(self, props=props, id_prop=self.id_prop, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, img_dir=img_dir)
         else:
-            return grid_pager(self, pagesize, props=props, id_prop=id_prop, highlight=highlight,
+            return grid_pager(self, pagesize, props=props, id_prop=self.id_prop, interact=self.ia, highlight=highlight,
                               mols_per_row=mols_per_row, size=size)
 
 
-    def write_table(self, id_prop=None, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
-        html.write(html.page(self.table(id_prop=id_prop, highlight=highlight, raw=True, img_dir=img_dir),
+    def write_table(self, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
+        html.write(html.page(self.table(highlight=highlight, raw=True, img_dir=img_dir),
                              header=header, summary=summary), fn=fn)
 
 
-    def write_grid(self, props=None, id_prop=None, highlight=None, mols_per_row=5, size=200,
+    def write_grid(self, props=None, highlight=None, mols_per_row=5, size=250,
                    header=None, summary=None, img_dir=None, fn="mol_grid.html"):
-        html.write(html.page(self.grid(props=props, id_prop=id_prop, highlight=highlight,
+        html.write(html.page(self.grid(props=props, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary), fn=fn)
 
 
@@ -1464,7 +1464,7 @@ def b64_img(mol, size=300):
     return b64
 
 
-def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=None, img_dir=None):
+def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidden=False, order=None, img_dir=None):
     """Parameters:
         sdf_list (Mol_List): List of RDKit molecules
         highlight (dict): Dict of properties (special: *all*) and values to highlight cells,
@@ -1492,13 +1492,17 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
         for k in order_rev:
             prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
 
-    if id_prop:
+    if id_prop is None:
+        guessed_id = guess_id_prop(prop_list)
+    else:
+        guessed_id = id_prop
+
+    if interact and guessed_id is not None:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor="transparent"))
+
+    if id_prop is not None:
         if id_prop not in prop_list:
             raise LookupError("id_prop not found in data set.")
-        guessed_id = id_prop
-    else:  # try to guess an id_prop
-        guessed_id = guess_id_prop(prop_list)
 
     if guessed_id:
         # make sure that the id_prop (or the guessed id prop) is first:
@@ -1518,10 +1522,12 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
         cells = []
         mol_props = mol.GetPropNames()
 
-        if id_prop:
-            id_prop_val = mol.GetProp(id_prop)
+        if guessed_id:
+            id_prop_val = mol.GetProp(guessed_id)
+            img_id = id_prop_val
             cell_opt = {"id": "{}_{}".format(id_prop_val, time_stamp)}
         else:
+            img_id = idx
             cell_opt = {"id": str(idx)}
 
         cell = html.td(str(idx), cell_opt)
@@ -1536,17 +1542,17 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:  # write them out to img_dir
-                img_file = op.join(img_dir, "img_{:04d}.png".format(idx))
+                img_file = op.join(img_dir, "img_{}.png".format(img_id))
                 img = autocrop(Draw.MolToImage(mol))
                 img.save(img_file, format='PNG')
                 img_src = img_file
 
             cell_opt = {}
-            if id_prop:
+            if interact and guessed_id is not None:
                 img_opt = {"title": "Click to select / unselect",
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
-                img_opt = {"title": str(idx)}
+                img_opt = {"title": str(img_id)}
 
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
@@ -1576,14 +1582,14 @@ def mol_table(sdf_list, id_prop=None, highlight=None, show_hidden=False, order=N
 
     table_list.extend(html.table(rows))
 
-    if id_prop:
+    if interact and guessed_id is not None:
         table_list.append(ID_LIST.format(ts=time_stamp))
 
     # print(table_list)
     return "".join(table_list)
 
 
-def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4, size=200, img_dir=None):
+def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None, mols_per_row=4, size=200, img_dir=None):
     """Creates a HTML grid out of the Mol_List input.
 
     Parameters:
@@ -1607,11 +1613,13 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     if props and not isinstance(props, list):
         props = [props]
 
-    if id_prop:
-        table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor=BGCOLOR))
-        guessed_id = id_prop
-    else:  # try to guess an id_prop
+    if id_prop is None:
         guessed_id = guess_id_prop(prop_list)
+    else:
+        guessed_id = id_prop
+
+    if interact and guessed_id is not None:
+        table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor=BGCOLOR))
 
     rows = []
     id_cells = []
@@ -1620,10 +1628,13 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     for idx, mol in enumerate(sdf_list, 1):
         if guessed_id:
             id_prop_val = mol.GetProp(guessed_id)
+            img_id = id_prop_val
             cell_opt = {"id": "{}_{}".format(id_prop_val, time_stamp)}
             cell_opt.update(td_opt)
             cell_opt.update(header_opt)
             id_cells.extend(html.td(id_prop_val, cell_opt))
+        else:
+            img_id = idx
 
         if not mol:
             cell = ["no structure"]
@@ -1634,16 +1645,16 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:
-                img_file = op.join(img_dir, "img_{:04d}.png".format(idx))
+                img_file = op.join(img_dir, "img_{}.png".format(img_id))
                 img = autocrop(Draw.MolToImage(mol, size=(size, size)))
                 img.save(img_file, format='PNG')
                 img_src = img_file
 
-            if id_prop:
+            if interact and guessed_id is not None:
                 img_opt = {"title": "Click to select / unselect",
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
-                img_opt = {"title": str(idx)}
+                img_opt = {"title": str(img_id)}
 
             cell = html.img(img_src, img_opt)
 
@@ -1695,41 +1706,41 @@ def mol_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4
     if props:
         table_list.extend(["<p>properties shown: ", "[" + "] _ [".join(props) + "]", "</p>"])
 
-    if id_prop:
+    if interact and guessed_id is not None:
         table_list.append(ID_LIST.format(ts=time_stamp))
 
     # print(table_list)
     return "".join(table_list)
 
 
-def show_table(sdf_list, id_prop=None, highlight=None, order=None):
-    return HTML(mol_table(sdf_list, id_prop, highlight=highlight, order=order))
+def show_table(sdf_list, id_prop=None, interact=False, highlight=None, order=None):
+    return HTML(mol_table(sdf_list, id_prop, interact=interact, highlight=highlight, order=order))
 
 
-def show_sheet(sdf_list, props=None, id_prop=None, highlight=None, mols_per_row=4):
-    return HTML(mol_sheet(sdf_list, props, id_prop, highlight=highlight, mols_per_row=mols_per_row))
+def show_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None, mols_per_row=4):
+    return HTML(mol_sheet(sdf_list, props, id_prop, interact=interact, highlight=highlight, mols_per_row=mols_per_row))
 
 
-def table_pager(mol_list, id_prop=None, pagesize=20, highlight=None, order=None, show_hidden=False):
+def table_pager(mol_list, id_prop=None, interact=False, pagesize=50, highlight=None, order=None, show_hidden=False):
     l = len(mol_list)
     if not WIDGETS or l < pagesize:
         return HTML(mol_table(mol_list, id_prop=id_prop, highlight=highlight,
                               order=order, show_hidden=show_hidden))
 
     return ipyw.interactive(
-        lambda x: HTML(mol_table(mol_list[x: x + pagesize], id_prop=id_prop,
+        lambda x: HTML(mol_table(mol_list[x: x + pagesize], id_prop=id_prop, interact=interact,
                                  order=order, show_hidden=show_hidden)),
         x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
     )
 
 
-def grid_pager(mol_list, pagesize=50, id_prop=None, highlight=None, props=None, mols_per_row=4, size=200):
+def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=200):
     l = len(mol_list)
     if not WIDGETS or l < pagesize:
         return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))
 
     return ipyw.interactive(
-        lambda x: HTML(mol_sheet(mol_list[x:x + pagesize], id_prop=id_prop, highlight=highlight,
+        lambda x: HTML(mol_sheet(mol_list[x:x + pagesize], id_prop=id_prop, interact=interact, highlight=highlight,
                                  props=props, size=size)),
         x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
     )
