@@ -10,9 +10,11 @@ Clustering
 Clustering molecules.
 """
 
+import os
 import os.path as op
 from copy import deepcopy
 from collections import Counter, OrderedDict
+import shutil
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
@@ -27,12 +29,38 @@ from rdkit.ML.Cluster import Butina
 # from PIL import Image, ImageChops
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # from . import html_templates as html
-from . import tools, html_templates as html  # , file_templ as ft
+from . import tools, html_templates as html, file_templ as ft
 
 # from ipywidgets import widgets
 # from IPython.core.display import HTML, display
+
+
+def mpl_hist(data, bins=10, xlabel="values", ylabel="Occurrence", show=False, save=True, **kwargs):
+    """Useful kwargs: size (tuple<int>), dpi (int), fn (filename, str), title (str)"""
+    my_dpi = kwargs.get("dpi", 96)
+    size = kwargs.get("size", (300, 350))
+    title = kwargs.get("title", None)
+    figsize = (size[0] / my_dpi, size[1] / my_dpi)
+    plt.style.use('seaborn-pastel')
+    # plt.style.use('ggplot')
+    plt.style.use('seaborn-whitegrid')
+    fig = plt.figure(figsize=figsize, dpi=my_dpi)
+    if title is not None:
+        fig.suptitle(title, fontsize=24)
+    plt.hist(data, bins=bins)
+    plt.xlabel(xlabel, fontsize=20)
+    plt.ylabel(ylabel, fontsize=20)
+    plt.tick_params(axis='both', which='major', labelsize=16)
+
+    if save:
+        fn = kwargs.get("fn", "hist.png")
+        plt.savefig(fn, bbox_inches='tight')
+
+    if show:
+        plt.show()
 
 
 def renumber_clusters(cluster_list, start_at=1):
@@ -391,8 +419,83 @@ def show_numbers(cluster_list):
     print("Number of compounds as sum of members per cluster size:", total)
 
 
-def write_report(cluster_list, fn="clusters.html", title="Clusters", props=None, img_dir=None):
-    content = []
+def core_table(mol, props=None, hist=None):
+    if props is None:
+        props = ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]
+
+    td_opt = {"align": "center"}
+    header_opt = {"bgcolor": "#94CAEF"}
+    table_list = []
+
+    cells = html.td(html.b("Molecule"), header_opt)
+    for prop in props:
+        cells.extend(html.td(html.b(prop), header_opt))
+
+    if hist is not None:
+        cells.extend(html.td(html.b("Histogram"), header_opt))
+
+    rows = html.tr(cells)
+
+    cells = []
+    mol_props = mol.GetPropNames()
+
+    if not mol:
+        cells.extend(html.td("no structure"))
+
+    else:
+        cl_no = mol.GetProp("Cluster_No")
+        img_file = "img/core_{}.png".format(cl_no)
+        img = tools.autocrop(Draw.MolToImage(mol))
+        img.save(img_file, format='PNG')
+        img_src = img_file
+
+        cell_opt = {}
+
+        cell = html.img(img_src)
+        cells.extend(html.td(cell, cell_opt))
+
+    for prop in props:
+        td_opt = {"align": "center"}
+        if prop in mol_props:
+            prop_val = mol.GetProp(prop)
+            cells.extend(html.td(prop_val, td_opt))
+        else:
+            cells.extend(html.td("", td_opt))
+
+    if hist is not None:
+        if "img/" not in hist:
+            hist = "img/" + hist
+        img_opt = {"height": "250"}
+        cell = html.img(hist, img_opt)
+        cells.extend(html.td(cell, cell_opt))
+
+    rows.extend(html.tr(cells))
+
+    table_list.extend(html.table(rows))
+
+    # print(table_list)
+    return "".join(table_list)
+
+
+def write_report(cluster_list, title="Clusters", props=None, **kwargs):
+    """Useful kwargs: core_props (list, props to show for the core, default: ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]),
+    bins (int or list, default=10), align (bool)"""
+    resource_dir = op.join(op.dirname(__file__), "resources")
+    cur_dir = op.abspath(op.curdir)
+
+    core_props = kwargs.get("core_props", None)
+    align = kwargs.get("align", False)
+    content = [ft.CLUSTER_REPORT_INTRO]
+    bins = kwargs.get("bins", 10)
+
+    print("  Copying resources...")
+    if op.isdir("./clustering"):
+        print("* Clustering dir already exists. Will write into it.")
+    else:
+        shutil.copytree(op.join(resource_dir, "clustering"), "./clustering")
+
+    os.chdir("clustering")
+    print("  Generating Report...")
 
     # collect the cluster numbers in the order in which they are in the cluster_list:
     cluster_numbers = OrderedDict()
@@ -403,29 +506,38 @@ def write_report(cluster_list, fn="clusters.html", title="Clusters", props=None,
     if props is not None:
         if props and not isinstance(props, list):
             props = [props]
-        # s = props[0].lower()
-        # if "pic50" in s or "pec50" in s:  # determine within the cluster
-        #     reverse = True
 
     for cl_no in cluster_numbers:
         cluster = get_clusters_by_no(cluster_list, cl_no)
         if len(cluster) == 0: continue
-        content.append("<h2>Cluster {}</h2>".format(cl_no))
+        if align and len(cluster) > 2:
+            cluster.align()
+
+        hist_fn = None
+        if props is not None and len(cluster) > 5:
+            first_prop = props[0]
+            hist_fn = "img/hist_{}.png".format(cl_no)
+            data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
+            mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)
+
+        content.append("<br>\n<h2>Cluster {}</h2>".format(cl_no))
         core = get_cores(cluster)
         if len(core) > 0:
-            core.remove_props(["Compound_Id", "is_core", "Num_Values"])
-            core.order = ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]
-            content.append('<h4>Core:</h4>')
-            content.append(core.table(raw=True))
-            content.append("<h4>Members:</h4>")
+            content.append("<ul>\n<li>\n")
+            content.append(core_table(core[0], props=core_props, hist=hist_fn))
+            content.append("<ul>\n<li>\n<h4>Members:</h4>")
 
         members = get_members(cluster)
-        content.append(members.grid(props=props, size=300, raw=True, img_dir=img_dir))
-
+        content.append(members.grid(props=props, size=300, raw=True, img_dir="img"))
         content.append("<hr>")
+        if len(core) > 0:
+            content.append("</li>\n</ul></li>\n</ul>")
 
-    page = html.page("\n".join(content), title=title)
-    html.write(page, fn=fn)
+    content.append(ft.CLUSTER_REPORT_EXTRO)
+    print("  Writing report...")
+    open("index.html", "w").write("\n".join(content))
+    os.chdir(cur_dir)
+    print("  done.")
 
 
 def inject_charts(cluster_list, fn="clusters.html", img_dir="img", basename="hist", options='align="right", width="250"'):

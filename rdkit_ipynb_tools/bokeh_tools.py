@@ -415,7 +415,7 @@ def cpd_scatter(df, x, y, r=7, pid=None, **kwargs):
 
         pid = guess_id_prop(prop_list)
 
-    title = kwargs.get("title", "Compound Scatter Plot")
+    title = kwargs.pop("title", "Compound Scatter Plot")
     scatter = Chart(title=title, r=r)
     scatter.add_data(df, x, y, pid=pid, **kwargs)
     return scatter.show()

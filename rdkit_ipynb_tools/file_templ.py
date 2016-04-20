@@ -41,6 +41,35 @@ table {
 }
 </style>"""
 
+CLUSTER_REPORT_INTRO = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" type="text/css" href="css/style.css" />
+  <link rel="stylesheet" type="text/css" href="css/collapsible_list.css" />
+  <link rel="shortcut icon" href="icons/chart_bar.png" />
+
+  <script src="lib/jquery.min.js"></script>
+  <script src="lib/folding.js"></script>
+
+  <title>Clustering</title>
+</head>
+<body>
+<p><button onclick="expand_all()">expand all clusters</button>
+<button onclick="collapse_all()">collapse all clusters</button></p>
+"""
+
+CLUSTER_REPORT_EXTRO = """
+<p><button onclick="expand_all()">expand all clusters</button>
+<button onclick="collapse_all()">collapse all clusters</button></p>
+
+  <script>
+    folding();
+  </script>
+
+</body>
+</html>"""
+
 # string template ${cluster_list}:
 CLUSTER_PY = """# list method index is not (yet) available
 def index(l, elmnt):
