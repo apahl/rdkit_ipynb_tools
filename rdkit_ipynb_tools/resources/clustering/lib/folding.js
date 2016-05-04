@@ -26,11 +26,3 @@ function folding() {
     $('ul ul').hide();
     //$('ul ul').show();
 };
-
-function collapse_all() {
-    $('ul ul').hide();
-}
-
-function expand_all() {
-    $('ul ul').show();
-}

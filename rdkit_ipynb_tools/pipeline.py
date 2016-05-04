@@ -43,11 +43,24 @@ Draw.DrawingOptions.atomLabelFontSize = 18
 from . import tools
 
 try:
+    from rdkit.Avalon import pyAvalonTools as pyAv
+    USE_AVALON = True
+except ImportError:
+    USE_AVALON = False
+
+try:
     from Contrib.SA_Score import sascorer
     SASCORER = True
 except ImportError:
     print("* SA scorer not available. RDKit's Contrib dir needs to be in the Python import path...")
     SASCORER = False
+
+try:
+    # interactive IPython session
+    IPY = get_ipython()
+
+except NameError:
+    iPY = False
 
 
 def format_seconds(seconds):
@@ -229,7 +242,9 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
             rec_counter += 1
             if mol:
                 for prop in mol.GetPropNames():
-                    rec[prop] = get_value(mol.GetProp(prop))
+                    val = mol.GetProp(prop)
+                    if len(val) > 0:  # transfer only those properties to the stream which carry a value
+                        rec[prop] = get_value(val)
                     mol.ClearProp(prop)
 
                 rec["mol"] = mol
@@ -556,12 +571,18 @@ def pipe_mol_to_b64(stream, out_b64="Mol_b64", summary=None, comp_id="pipe_mol_t
                 yield rec
 
 
-def check_2d_coords(mol):
+def check_2d_coords(mol, force=False):
     """Check if a mol has 2D coordinates and if not, calculate them."""
     try:
         mol.GetConformer()
-    except ValueError:  # no 2D coords... calculate them
-        mol.Compute2DCoords()
+    except ValueError:
+        force = True  # no 2D coords... calculate them
+
+    if force:
+        if USE_AVALON:
+            pyAv.Generate2DCoords(mol)
+        else:
+            mol.Compute2DCoords()
 
 
 def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_calc_props"):
@@ -581,21 +602,17 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
     """
 
     rec_counter = 0
+    if not isinstance(props, list):
+        props = [props]
+
+    # make all props lower-case:
+    props = list(map(lambda x: x.lower(), props))
+
     for rec in stream:
-        if not isinstance(props, list):
-            props = [props]
-
-        # make all props lower-case:
-        props = list(map(lambda x: x.lower(), props))
-
         if "mol" in rec:
-
             mol = rec["mol"]
             if "2d" in props:
-                if force2d:
-                    mol.Compute2DCoords()
-                else:
-                    check_2d_coords(mol)
+                check_2d_coords(mol, force2d)
 
             if "date" in props:
                 rec["Date"] = time.strftime("%Y%m%d")
@@ -1095,4 +1112,8 @@ def generate_pipe_from_csv(fn):
 
     pipe_list.append(')')
 
-    return "".join(pipe_list)
+    pipe_str = "".join(pipe_list)
+    if IPY:
+        IPY.set_next_input(pipe_str)
+    else:
+        print(pipe_str)

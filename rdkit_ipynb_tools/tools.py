@@ -67,6 +67,13 @@ except ImportError:
     AP_TOOLS = False
 
 try:
+    # Preferably use Avalon for generation of 2d coordinates
+    from rdkit.Avalon import pyAvalonTools as pyAv
+    USE_AVALON = True
+except ImportError:
+    USE_AVALON = False
+
+try:
     from Contrib.SA_Score import sascorer
     SASCORER = True
 except ImportError:
@@ -662,10 +669,7 @@ class Mol_List(list):
             if not mol: continue
 
             if "2d" in props:
-                if force2d:
-                    mol.Compute2DCoords()
-                else:
-                    check_2d_coords(mol)
+                check_2d_coords(mol, force2d)
 
                 calculated_props.add("2d")
 
@@ -894,7 +898,7 @@ class Mol_List(list):
             print("# {} records could not be processed.".format(failed))
 
 
-    def table(self, pagesize=50, highlight=None, show_hidden=False, img_dir=None, raw=False):
+    def table(self, pagesize=25, highlight=None, show_hidden=False, img_dir=None, raw=False):
         """Return the Mol_List as HTML table.
         Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
@@ -917,7 +921,7 @@ class Mol_List(list):
             return mol_table(self, id_prop=self.id_prop, highlight=highlight, order=self.order,
                              img_dir=img_dir, show_hidden=show_hidden)
         else:
-            return table_pager(self, pagesize, id_prop=self.id_prop, interact=self.ia, highlight=highlight, order=self.order,
+            return table_pager(self, pagesize=pagesize, id_prop=self.id_prop, interact=self.ia, highlight=highlight, order=self.order,
                                show_hidden=show_hidden)
 
 
@@ -1301,12 +1305,18 @@ def ia_keep_props(mol_list):
     display(w_hb)
 
 
-def check_2d_coords(mol):
+def check_2d_coords(mol, force=False):
     """Check if a mol has 2D coordinates and if not, calculate them."""
     try:
         mol.GetConformer()
-    except ValueError:  # no 2D coords... calculate them
-        mol.Compute2DCoords()
+    except ValueError:
+        force = True  # no 2D coords... calculate them
+
+    if force:
+        if USE_AVALON:
+            pyAv.Generate2DCoords(mol)
+        else:
+            mol.Compute2DCoords()
 
 
 def find_mcs(mol_list):
@@ -1464,7 +1474,7 @@ def b64_img(mol, size=300):
     return b64
 
 
-def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidden=False, order=None, img_dir=None):
+def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidden=False, order=None, img_dir=None, size=300):
     """Parameters:
         sdf_list (Mol_List): List of RDKit molecules
         highlight (dict): Dict of properties (special: *all*) and values to highlight cells,
@@ -1538,12 +1548,12 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
 
         else:
             if img_dir is None:  # embed the images in the doc
-                b64 = b64_img(mol)
+                b64 = b64_img(mol, size * 2)
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:  # write them out to img_dir
                 img_file = op.join(img_dir, "img_{}.png".format(img_id))
-                img = autocrop(Draw.MolToImage(mol))
+                img = autocrop(Draw.MolToImage(mol, size=(size * 2, size * 2)))
                 img.save(img_file, format='PNG')
                 img_src = img_file
 
@@ -1553,6 +1563,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
                 img_opt = {"title": str(img_id)}
+            img_opt["width"] = size
 
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
@@ -1589,7 +1600,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
     return "".join(table_list)
 
 
-def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None, mols_per_row=4, size=200, img_dir=None):
+def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None, mols_per_row=4, size=250, img_dir=None):
     """Creates a HTML grid out of the Mol_List input.
 
     Parameters:
@@ -1641,12 +1652,12 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
 
         else:
             if img_dir is None:  # embed the images in the doc
-                b64 = b64_img(mol, size)
+                b64 = b64_img(mol, size * 2)
                 img_src = "data:image/png;base64,{}".format(b64)
 
             else:
                 img_file = op.join(img_dir, "img_{}.png".format(img_id))
-                img = autocrop(Draw.MolToImage(mol, size=(size, size)))
+                img = autocrop(Draw.MolToImage(mol, size=(size * 2, size * 2)))
                 img.save(img_file, format='PNG')
                 img_src = img_file
 
@@ -1655,6 +1666,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
                 img_opt = {"title": str(img_id)}
+            img_opt["width"] = size
 
             cell = html.img(img_src, img_opt)
 
@@ -1734,7 +1746,7 @@ def table_pager(mol_list, id_prop=None, interact=False, pagesize=50, highlight=N
     )
 
 
-def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=200):
+def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=250):
     l = len(mol_list)
     if not WIDGETS or l < pagesize:
         return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))

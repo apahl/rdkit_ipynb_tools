@@ -51,20 +51,25 @@ CLUSTER_REPORT_INTRO = """<!DOCTYPE html>
 
   <script src="lib/jquery.min.js"></script>
   <script src="lib/folding.js"></script>
+  <script src="lib/btn_callbacks.js"></script>
 
   <title>Clustering</title>
 </head>
 <body>
-<p><button onclick="expand_all()">expand all clusters</button>
-<button onclick="collapse_all()">collapse all clusters</button></p>
+
+
+<p><button onclick="toggle_clusters()">expand / collapse all cluster members</button>
+<button onclick="toggle_histograms()">show / hide histograms</button></p>
 """
 
 CLUSTER_REPORT_EXTRO = """
-<p><button onclick="expand_all()">expand all clusters</button>
-<button onclick="collapse_all()">collapse all clusters</button></p>
+<p><button onclick="toggle_clusters()">expand / collapse all cluster members</button>
+<button onclick="toggle_histograms()">show / hide histograms</button></p>
 
   <script>
     folding();
+    window.flag_clusters_expanded = false;
+    window.flag_histograms_shown = true;
   </script>
 
 </body>

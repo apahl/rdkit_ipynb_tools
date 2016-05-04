@@ -16,9 +16,11 @@ from copy import deepcopy
 from collections import Counter, OrderedDict
 import shutil
 
-from rdkit.Chem import AllChem as Chem
+from rdkit.Chem import AllChem as Chem, MACCSkeys
 from rdkit.Chem import Draw
 import rdkit.Chem.Descriptors as Desc
+from rdkit.Chem.AtomPairs import Pairs, Torsions
+
 # import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
@@ -34,8 +36,57 @@ import matplotlib.pyplot as plt
 # from . import html_templates as html
 from . import tools, html_templates as html, file_templ as ft
 
+try:
+    from rdkit.Avalon import pyAvalonTools as pyAv
+    USE_AVALON = True
+except ImportError:
+    USE_AVALON = False
+
+try:
+    from misc_tools import nb_tools as nbt
+    NBT = True
+except ImportError:
+    NBT = False
+    print("* Could not import Notebook tools. Progress bars will not be displayed.")
+
 # from ipywidgets import widgets
 # from IPython.core.display import HTML, display
+
+
+nbits = 1024
+nbits_long = 16384
+
+# dictionary
+FPDICT = {}
+FPDICT['ecfp0'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 0, nBits=nbits)
+FPDICT['ecfp2'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 1, nBits=nbits)
+FPDICT['ecfp4'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 2, nBits=nbits)
+FPDICT['ecfp6'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 3, nBits=nbits)
+FPDICT['ecfc0'] = lambda m: Chem.GetMorganFingerprint(m, 0)
+FPDICT['ecfc2'] = lambda m: Chem.GetMorganFingerprint(m, 1)
+FPDICT['ecfc4'] = lambda m: Chem.GetMorganFingerprint(m, 2)
+FPDICT['ecfc6'] = lambda m: Chem.GetMorganFingerprint(m, 3)
+FPDICT['fcfp2'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 1, useFeatures=True, nBits=nbits)
+FPDICT['fcfp4'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 2, useFeatures=True, nBits=nbits)
+FPDICT['fcfp6'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 3, useFeatures=True, nBits=nbits)
+FPDICT['fcfc2'] = lambda m: Chem.GetMorganFingerprint(m, 1, useFeatures=True)
+FPDICT['fcfc4'] = lambda m: Chem.GetMorganFingerprint(m, 2, useFeatures=True)
+FPDICT['fcfc6'] = lambda m: Chem.GetMorganFingerprint(m, 3, useFeatures=True)
+FPDICT['lecfp4'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 2, nBits=nbits_long)
+FPDICT['lecfp6'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 3, nBits=nbits_long)
+FPDICT['lfcfp4'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 2, useFeatures=True, nBits=nbits_long)
+FPDICT['lfcfp6'] = lambda m: Chem.GetMorganFingerprintAsBitVect(m, 3, useFeatures=True, nBits=nbits_long)
+FPDICT['maccs'] = lambda m: MACCSkeys.GenMACCSKeys(m)
+FPDICT['ap'] = lambda m: Pairs.GetAtomPairFingerprint(m)
+FPDICT['tt'] = lambda m: Torsions.GetTopologicalTorsionFingerprintAsIntVect(m)
+FPDICT['hashap'] = lambda m: Desc.GetHashedAtomPairFingerprintAsBitVect(m, nBits=nbits)
+FPDICT['hashtt'] = lambda m: Desc.GetHashedTopologicalTorsionFingerprintAsBitVect(m, nBits=nbits)
+FPDICT['rdk5'] = lambda m: Chem.RDKFingerprint(m, maxPath=5, fpSize=nbits, nBitsPerHash=2)
+FPDICT['rdk6'] = lambda m: Chem.RDKFingerprint(m, maxPath=6, fpSize=nbits, nBitsPerHash=2)
+FPDICT['rdk7'] = lambda m: Chem.RDKFingerprint(m, maxPath=7, fpSize=nbits, nBitsPerHash=2)
+if USE_AVALON:
+    FPDICT['avalon'] = lambda m: pyAv.GetAvalonFP(m, nbits)
+    FPDICT['avalon_l'] = lambda m: pyAv.GetAvalonFP(m, nbits_long)
 
 
 def mpl_hist(data, bins=10, xlabel="values", ylabel="Occurrence", show=False, save=True, **kwargs):
@@ -76,6 +127,16 @@ def renumber_clusters(cluster_list, start_at=1):
         if not mol.HasProp("Cluster_No"): continue
         old_id = int(mol.GetProp("Cluster_No"))
         mol.SetProp("Cluster_No", str(new_ids[old_id]))
+
+
+def get_cluster_numbers(cluster_list):
+    """Returns the cluster numbers present in the cluster_list as a list, keeping the original order."""
+    cl_no_od = OrderedDict()
+    for mol in cluster_list.mols_with_prop("Cluster_No"):
+        cl_no = int(mol.GetProp("Cluster_No"))
+        cl_no_od[cl_no] = 0
+
+    return list(cl_no_od.keys())
 
 
 def get_clusters_by_no(cluster_list, cl_no, make_copy=True, renumber=False):
@@ -159,8 +220,14 @@ def get_members(cluster_list):
 
 def get_stats_for_cluster(cluster_list, activity_prop=None):
     stats = {}
-    supplier = set([mol.GetProp("Supplier") for mol in cluster_list.mols_with_prop("Supplier")])
-    stats["Supplier"] = "; ".join(supplier) if supplier else None
+    sups_raw_list = [mol.GetProp("Supplier") for mol in cluster_list.mols_with_prop("Supplier")]
+    if sups_raw_list:
+        # each supplier field of a mol may already contain "; "
+        sups_raw_str = "; ".join(sups_raw_list)
+        sups_set = set(sups_raw_str.split("; "))
+        stats["Supplier"] = "; ".join(sorted(sups_set))
+    else:
+        stats["Supplier"] = None
 
     if activity_prop is not None:
         value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
@@ -335,8 +402,6 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None):
     return members_all
 
 
-
-
 def get_mol_list_from_index_list(orig_sdf, index_list, cl_id):
     """generate sdf_lists after clustering"""
     cluster_list = tools.Mol_List()
@@ -354,7 +419,7 @@ def get_mol_list_from_index_list(orig_sdf, index_list, cl_id):
     return cluster_list
 
 
-def cluster_from_mol_list(mol_list, cutoff=0.8, activity_prop=None,
+def cluster_from_mol_list(mol_list, cutoff=0.8, fp="ecfp6", activity_prop=None,
                           summary_only=True, generate_cores=False, align_to_core=False):
     """Clusters the input Mol_List.
 
@@ -366,10 +431,16 @@ def cluster_from_mol_list(mol_list, cutoff=0.8, activity_prop=None,
         A new Mol_List containing the input molecules with their respective cluster number,
         as well as additionally the cluster cores, containing some statistics."""
 
+    try:
+        fp_func = FPDICT[fp]
+    except KeyError:
+        print("Fingerprint {} not found. Available fingerprints are: {}".format(fp, ", ".join(sorted(FPDICT.keys()))))
+        return
+
     counter = Counter()
 
     # generate the fingerprints
-    fp_list = [Chem.GetMorganFingerprintAsBitVect(mol, 3, 1024) for mol in mol_list]
+    fp_list = [fp_func(mol) for mol in mol_list]
 
     # second generate the distance matrix:
     dists = []
@@ -382,10 +453,12 @@ def cluster_from_mol_list(mol_list, cutoff=0.8, activity_prop=None,
     cluster_idx_list = Butina.ClusterData(dists, num_of_fps, cutoff, isDistData=True)
     for cluster in cluster_idx_list:
         counter[len(cluster)] += 1
+    print("    fingerprint:", fp)
     print("    clustersize  num_of_clusters")
     print("    ===========  ===============")
     for length in sorted(counter.keys(), reverse=True):
         print("        {:4d}            {:3d}".format(length, counter[length]))
+    print()
 
     if summary_only:
         return None
@@ -394,7 +467,9 @@ def cluster_from_mol_list(mol_list, cutoff=0.8, activity_prop=None,
 
     # go over each list of indices to collect the cluster's molecules
     for cl_id, idx_list in enumerate(sorted(cluster_idx_list, key=len, reverse=True), 1):
-        cluster_list.extend(get_mol_list_from_index_list(mol_list, idx_list, cl_id))
+        cluster = get_mol_list_from_index_list(mol_list, idx_list, cl_id)
+        cluster[0].SetProp("is_repr", "yes")  # The first compound in a cluster is the representative
+        cluster_list.extend(cluster)
 
     if generate_cores:
         cluster_list = add_cores(cluster_list, activity_prop, align_to_core)
@@ -432,6 +507,7 @@ def core_table(mol, props=None, hist=None):
         cells.extend(html.td(html.b(prop), header_opt))
 
     if hist is not None:
+        header_opt["class"] = "histogram"
         cells.extend(html.td(html.b("Histogram"), header_opt))
 
     rows = html.tr(cells)
@@ -449,10 +525,8 @@ def core_table(mol, props=None, hist=None):
         img.save(img_file, format='PNG')
         img_src = img_file
 
-        cell_opt = {}
-
         cell = html.img(img_src)
-        cells.extend(html.td(cell, cell_opt))
+        cells.extend(html.td(cell, td_opt))
 
     for prop in props:
         td_opt = {"align": "center"}
@@ -463,11 +537,12 @@ def core_table(mol, props=None, hist=None):
             cells.extend(html.td("", td_opt))
 
     if hist is not None:
+        td_opt["class"] = "histogram"
         if "img/" not in hist:
             hist = "img/" + hist
-        img_opt = {"height": "250"}
+        img_opt = {"height": "220"}
         cell = html.img(hist, img_opt)
-        cells.extend(html.td(cell, cell_opt))
+        cells.extend(html.td(cell, td_opt))
 
     rows.extend(html.tr(cells))
 
@@ -488,9 +563,12 @@ def write_report(cluster_list, title="Clusters", props=None, **kwargs):
     content = [ft.CLUSTER_REPORT_INTRO]
     bins = kwargs.get("bins", 10)
 
+    if NBT:
+        pb = nbt.ProgressbarJS()
+
     print("  Copying resources...")
     if op.isdir("./clustering"):
-        print("* Clustering dir already exists. Will write into it.")
+        print("* Clustering dir already exists, writing into...")
     else:
         shutil.copytree(op.join(resource_dir, "clustering"), "./clustering")
 
@@ -507,7 +585,10 @@ def write_report(cluster_list, title="Clusters", props=None, **kwargs):
         if props and not isinstance(props, list):
             props = [props]
 
-    for cl_no in cluster_numbers:
+    len_cluster_numbers = len(cluster_numbers)
+    for idx, cl_no in enumerate(cluster_numbers, 1):
+        if NBT:
+            pb.update(100 * idx / len_cluster_numbers)
         cluster = get_clusters_by_no(cluster_list, cl_no)
         if len(cluster) == 0: continue
         if align and len(cluster) > 2:
@@ -520,7 +601,7 @@ def write_report(cluster_list, title="Clusters", props=None, **kwargs):
             data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
             mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)
 
-        content.append("<br>\n<h2>Cluster {}</h2>".format(cl_no))
+        content.append("<br>\n<h2>Cluster {:03d}</h2>".format(cl_no))
         core = get_cores(cluster)
         if len(core) > 0:
             content.append("<ul>\n<li>\n")
@@ -537,7 +618,9 @@ def write_report(cluster_list, title="Clusters", props=None, **kwargs):
     print("  Writing report...")
     open("index.html", "w").write("\n".join(content))
     os.chdir(cur_dir)
-    print("  done.")
+    print("  done. The report has been written to \n        {}.".format(op.join(cur_dir, "clustering", "index.html")))
+    if NBT:
+        pb.done()
 
 
 def inject_charts(cluster_list, fn="clusters.html", img_dir="img", basename="hist", options='align="right", width="250"'):
