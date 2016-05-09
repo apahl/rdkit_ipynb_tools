@@ -925,6 +925,20 @@ class Mol_List(list):
                                show_hidden=show_hidden)
 
 
+    def nested(self, pagesize=25, img_dir=None, raw=False):
+        if self.id_prop is None:
+            self.id_prop = guess_id_prop(list_fields(self))
+
+        if img_dir is not None:
+            raw = True
+
+        if raw:
+            return nested_table(self, id_prop=self.id_prop, order=self.order, img_dir=img_dir)
+        else:
+            return nested_pager(self, pagesize=pagesize, id_prop=self.id_prop, order=self.order)
+
+
+
     def grid(self, pagesize=16, props=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
         """Returns:
             The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
@@ -953,6 +967,11 @@ class Mol_List(list):
 
     def write_table(self, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
         html.write(html.page(self.table(highlight=highlight, raw=True, img_dir=img_dir),
+                             header=header, summary=summary), fn=fn)
+
+
+    def write_nested(self, header=None, summary=None, img_dir=None, fn="nested_table.html"):
+        html.write(html.page(self.nested(raw=True, img_dir=img_dir),
                              header=header, summary=summary), fn=fn)
 
 
@@ -1728,14 +1747,18 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
 
 
 def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_dir=None):
+    prop_list = list_fields(mol_list)
+
     if props is not None:
+        if not isinstance(props, list):
+            props = [props]
         order = props
 
     if order is None:
         order = ["Supplier", "Producer", "Hit", "ActAss"]
 
+
     if id_prop is None:
-        prop_list = list_fields(mol_list)
         guessed_id = guess_id_prop(prop_list)
     else:
         guessed_id = id_prop
@@ -1748,17 +1771,20 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
         order = [guessed_id]
         order.extend(old_order)
 
-    td_opt = {"align": "center"}
+    order_rev = order.copy()
+    order_rev.reverse()
+    for k in order_rev:
+        prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
+
     header_opt = {"bgcolor": "#94CAEF"}
 
     table = []
     rows = []
     cells = []
     # first line
-    cells.extend(html.td("#", options=header_opt))
-    cells.extend(html.td("Molecule", options=header_opt))
+    cells.extend(html.td(html.b("Molecule"), options=header_opt))
     header_opt["colspan"] = 2
-    cells.extend(html.td("Properties", options=header_opt))
+    cells.extend(html.td(html.b("Properties"), options=header_opt))
     rows.extend(html.tr(cells))
 
     cells = []
@@ -1766,17 +1792,22 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
         if not mol:
             continue
 
+        # How many properties have to be displayed for the mol?
+        mol_props = mol.GetPropNames()
+        if props is None:
+            props_to_show = mol_props
+            row_span = len(mol_props)
+        else:
+            props_to_show = list(set(props).intersection(mol_props))
+            row_span = len(props_to_show)
+
+        td_opt = {"align": "center", "rowspan": row_span}
+
         if guessed_id:
             id_prop_val = mol.GetProp(guessed_id)
             img_id = id_prop_val
         else:
             img_id = idx
-
-        # How many properties have to be displayed for the mol?
-        mol_props = mol.GetPropNames()
-
-
-        cells.extend(html.td(idx, options=td_opt))
 
         if img_dir is None:  # embed the images in the doc
             b64 = b64_img(mol, size * 2)
@@ -1790,15 +1821,21 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
 
         img_opt = {"title": str(img_id), "width": size, "height": size}
 
-        cells.extend(html.img(img_src, img_opt))
+        cells.extend(html.td(html.img(img_src, img_opt), td_opt))
 
+        # prop_opt = {}
         td_opt = {"align": "center"}
+        for prop in prop_list:
+            if prop not in props_to_show: continue
 
+            cells.extend(html.td(prop))
+            cells.extend(html.td(mol.GetProp(prop), td_opt))
+            rows.extend(html.tr(cells))
+            cells = []
 
-    table_list.extend(html.table(rows))
+    table = html.table(rows)
 
-    # print(table_list)
-    return "".join(table_list)
+    return "".join(table)
 
 
 def show_table(sdf_list, id_prop=None, interact=False, highlight=None, order=None):
@@ -1818,6 +1855,17 @@ def table_pager(mol_list, id_prop=None, interact=False, pagesize=50, highlight=N
     return ipyw.interactive(
         lambda x: HTML(mol_table(mol_list[x: x + pagesize], id_prop=id_prop, interact=interact,
                                  order=order, show_hidden=show_hidden)),
+        x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
+    )
+
+
+def nested_pager(mol_list, pagesize=25, id_prop=None, order=None):
+    l = len(mol_list)
+    if not WIDGETS or l < pagesize:
+        return HTML(nested_table(mol_list, id_prop=id_prop, order=order))
+
+    return ipyw.interactive(
+        lambda x: HTML(nested_table(mol_list[x: x + pagesize], id_prop=id_prop, order=order)),
         x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
     )
 
