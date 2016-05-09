@@ -1564,6 +1564,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
             else:
                 img_opt = {"title": str(img_id)}
             img_opt["width"] = size
+            img_opt["height"] = size
 
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
@@ -1667,6 +1668,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
             else:
                 img_opt = {"title": str(img_id)}
             img_opt["width"] = size
+            img_opt["height"] = size
 
             cell = html.img(img_src, img_opt)
 
@@ -1720,6 +1722,80 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
 
     if interact and guessed_id is not None:
         table_list.append(ID_LIST.format(ts=time_stamp))
+
+    # print(table_list)
+    return "".join(table_list)
+
+
+def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_dir=None):
+    if props is not None:
+        order = props
+
+    if order is None:
+        order = ["Supplier", "Producer", "Hit", "ActAss"]
+
+    if id_prop is None:
+        prop_list = list_fields(mol_list)
+        guessed_id = guess_id_prop(prop_list)
+    else:
+        guessed_id = id_prop
+
+    if guessed_id is not None:
+        if guessed_id in order:
+            order.pop(guessed_id)
+        # make sure, guessed_id is at the beginning
+        old_order = order.copy()
+        order = [guessed_id]
+        order.extend(old_order)
+
+    td_opt = {"align": "center"}
+    header_opt = {"bgcolor": "#94CAEF"}
+
+    table = []
+    rows = []
+    cells = []
+    # first line
+    cells.extend(html.td("#", options=header_opt))
+    cells.extend(html.td("Molecule", options=header_opt))
+    header_opt["colspan"] = 2
+    cells.extend(html.td("Properties", options=header_opt))
+    rows.extend(html.tr(cells))
+
+    cells = []
+    for idx, mol in enumerate(mol_list, 1):
+        if not mol:
+            continue
+
+        if guessed_id:
+            id_prop_val = mol.GetProp(guessed_id)
+            img_id = id_prop_val
+        else:
+            img_id = idx
+
+        # How many properties have to be displayed for the mol?
+        mol_props = mol.GetPropNames()
+
+
+        cells.extend(html.td(idx, options=td_opt))
+
+        if img_dir is None:  # embed the images in the doc
+            b64 = b64_img(mol, size * 2)
+            img_src = "data:image/png;base64,{}".format(b64)
+
+        else:
+            img_file = op.join(img_dir, "img_{}.png".format(img_id))
+            img = autocrop(Draw.MolToImage(mol, size=(size * 2, size * 2)))
+            img.save(img_file, format='PNG')
+            img_src = img_file
+
+        img_opt = {"title": str(img_id), "width": size, "height": size}
+
+        cells.extend(html.img(img_src, img_opt))
+
+        td_opt = {"align": "center"}
+
+
+    table_list.extend(html.table(rows))
 
     # print(table_list)
     return "".join(table_list)
