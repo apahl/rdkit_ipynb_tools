@@ -925,7 +925,7 @@ class Mol_List(list):
                                show_hidden=show_hidden)
 
 
-    def nested(self, pagesize=25, img_dir=None, raw=False):
+    def nested(self, pagesize=25, props=None, img_dir=None, raw=False):
         if self.id_prop is None:
             self.id_prop = guess_id_prop(list_fields(self))
 
@@ -933,9 +933,9 @@ class Mol_List(list):
             raw = True
 
         if raw:
-            return nested_table(self, id_prop=self.id_prop, order=self.order, img_dir=img_dir)
+            return nested_table(self, id_prop=self.id_prop, props=props, order=self.order, img_dir=img_dir)
         else:
-            return nested_pager(self, pagesize=pagesize, id_prop=self.id_prop, order=self.order)
+            return nested_pager(self, pagesize=pagesize, id_prop=self.id_prop, props=props, order=self.order)
 
 
 
@@ -1752,7 +1752,7 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
     if props is not None:
         if not isinstance(props, list):
             props = [props]
-        order = props
+        order = props.copy()
 
     if order is None:
         order = ["Supplier", "Producer", "Hit", "ActAss"]
@@ -1765,7 +1765,8 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
 
     if guessed_id is not None:
         if guessed_id in order:
-            order.pop(guessed_id)
+            pos = order.index(guessed_id)
+            order.pop(pos)
         # make sure, guessed_id is at the beginning
         old_order = order.copy()
         order = [guessed_id]
@@ -1859,13 +1860,13 @@ def table_pager(mol_list, id_prop=None, interact=False, pagesize=50, highlight=N
     )
 
 
-def nested_pager(mol_list, pagesize=25, id_prop=None, order=None):
+def nested_pager(mol_list, pagesize=25, id_prop=None, props=None, order=None):
     l = len(mol_list)
     if not WIDGETS or l < pagesize:
-        return HTML(nested_table(mol_list, id_prop=id_prop, order=order))
+        return HTML(nested_table(mol_list, id_prop=id_prop, props=props, order=order))
 
     return ipyw.interactive(
-        lambda x: HTML(nested_table(mol_list[x: x + pagesize], id_prop=id_prop, order=order)),
+        lambda x: HTML(nested_table(mol_list[x: x + pagesize], id_prop=id_prop, props=props, order=order)),
         x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
     )
 
