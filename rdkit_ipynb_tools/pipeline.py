@@ -270,7 +270,7 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
         print(summary)
 
 
-def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict"):
+def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict", show_first=False):
     """Provide a data stream from a dict."""
     prev_time = time.time()
     d_keys = list(d.keys())
@@ -280,14 +280,18 @@ def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict"):
         rec = {}
         for k in d_keys:
             rec[k] = d[k][idx]
-            rec_counter += 1
-            if summary is not None:
-                summary[comp_id] = rec_counter
-                curr_time = time.time()
-                if curr_time - prev_time > 2.0:  # write the log only every two seconds
-                    prev_time = curr_time
-                    print(summary)
-                    print(summary, file=open("pipeline.log", "w"))
+
+        rec_counter += 1
+        if summary is not None:
+            summary[comp_id] = rec_counter
+            curr_time = time.time()
+            if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                prev_time = curr_time
+                print(summary)
+                print(summary, file=open("pipeline.log", "w"))
+
+        if show_first and rec_counter == 1:
+            print("{}:".format(comp_id), rec)
 
         yield rec
 
@@ -656,7 +660,7 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
 def pipe_custom_filter(stream, run_code, start_code=None, summary=None, comp_id="pipe_custom_filter"):
     """If the evaluation of run_code is true, the respective record will be put on the stream."""
     rec_counter = 0
-    if start_code:
+    if start_code is not None:
         exec(start_code)
 
     # pre-compile the run_code statement for performance reasons
@@ -672,7 +676,7 @@ def pipe_custom_filter(stream, run_code, start_code=None, summary=None, comp_id=
 
 def pipe_custom_man(stream, run_code, start_code=None, stop_code=None, comp_id="pipe_custom_man"):
     """If the evaluation of run_code is true, the respective record will be put on the stream."""
-    if start_code:
+    if start_code is not None:
         exec(start_code)
 
     byte_code = compile(run_code, '<string>', 'exec')
@@ -765,9 +769,10 @@ def pipe_remove_props(stream, props, summary=None, comp_id="pipe_remove_props"):
         yield rec
 
 
-def pipe_keep_props(stream, props, summary=None, comp_id="pipe_keep_props"):
+def pipe_keep_props(stream, props, summary=None, comp_id="pipe_keep_props", show_first=False):
     """Keep only the listed properties on the stream. "mol" is always kept by this component.
-    props can be a single property name or a list of property names."""
+    props can be a single property name or a list of property names.
+    show_first prints the first records for debugging purposes."""
 
     if not isinstance(props, list):
         props = [props]
@@ -775,7 +780,6 @@ def pipe_keep_props(stream, props, summary=None, comp_id="pipe_keep_props"):
     if "mol" not in props:
         props.append("mol")
 
-    rec_counter = 0
     for rec_counter, rec in enumerate(stream, 1):
         for prop in rec.copy().keys():
             if prop not in props:
@@ -783,6 +787,9 @@ def pipe_keep_props(stream, props, summary=None, comp_id="pipe_keep_props"):
 
         if summary is not None:
             summary[comp_id] = rec_counter
+
+        if show_first and rec_counter == 1:
+            print("{}:".format(comp_id), rec)
 
         yield rec
 
@@ -806,7 +813,8 @@ def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_ren
         yield rec
 
 
-def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only", decimals=2, summary=None, comp_id="pipe_join_data_from_file"):
+def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
+                             decimals=2, summary=None, comp_id="pipe_join_data_from_file", show_first=False):
     """Joins data from a csv or SD file.
     CAUTION: The input stream will be held in memory by this component!
 
@@ -853,6 +861,9 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only", decim
         rec_counter += 1
         if summary is not None:
             summary[comp_id] = rec_counter
+
+        if show_first and rec_counter == 1:
+            print("{}:".format(comp_id), rec)
 
         yield rec
 
