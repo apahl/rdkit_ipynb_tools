@@ -72,6 +72,7 @@ try:
     USE_AVALON = True
 except ImportError:
     USE_AVALON = False
+    print("  * Avalon not available. Using RDKit for 2d coordinate generation.")
 
 try:
     from Contrib.SA_Score import sascorer
@@ -925,7 +926,7 @@ class Mol_List(list):
                                show_hidden=show_hidden)
 
 
-    def nested(self, pagesize=25, props=None, img_dir=None, raw=False):
+    def nested(self, pagesize=10, props=None, img_dir=None, raw=False):
         if self.id_prop is None:
             self.id_prop = guess_id_prop(list_fields(self))
 
@@ -939,7 +940,7 @@ class Mol_List(list):
 
 
 
-    def grid(self, pagesize=16, props=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
+    def grid(self, pagesize=12, props=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
         """Returns:
             The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
