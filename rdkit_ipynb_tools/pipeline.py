@@ -709,6 +709,25 @@ def pipe_has_prop_filter(stream, prop, invert=False, summary=None, comp_id="pipe
             yield rec
 
 
+def pipe_id_filter(stream, cpd_ids, id_prop="Compound_Id", summary=None, comp_id="pipe_id_filter"):
+    rec_counter = 0
+    if not isinstance(cpd_ids, list):
+        cpd_ids = [cpd_ids]
+
+    cpd_ids = {c_id: 0 for c_id in cpd_ids}
+
+    for rec in stream:
+        if id_prop not in rec: continue
+
+        if rec[id_prop] in cpd_ids:
+            rec_counter += 1
+
+            if summary is not None:
+                summary[comp_id] = rec_counter
+
+            yield rec
+
+
 def pipe_mol_filter(stream, query, smarts=False, invert=False, add_h=False, summary=None, comp_id="pipe_mol_filter"):
     rec_counter = 0
     if "[H]" in query or "#1" in query:
