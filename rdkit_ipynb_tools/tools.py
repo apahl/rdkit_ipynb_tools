@@ -1592,7 +1592,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
             else:
                 img_opt = {"title": str(img_id)}
             img_opt["width"] = size
-            img_opt["height"] = size
+            # img_opt["height"] = size
 
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
@@ -1696,7 +1696,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
             else:
                 img_opt = {"title": str(img_id)}
             img_opt["width"] = size
-            img_opt["height"] = size
+            # img_opt["height"] = size
 
             cell = html.img(img_src, img_opt)
 
@@ -1829,17 +1829,17 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
             img.save(img_file, format='PNG')
             img_src = img_file
 
-        img_opt = {"title": str(img_id), "width": size, "height": size}
+        img_opt = {"title": str(img_id), "width": size}
 
         cells.extend(html.td(html.img(img_src, img_opt), td_opt))
 
         # prop_opt = {}
-        td_opt = {"align": "center"}
+        # td_opt = {"align": "center"}
         for prop in prop_list:
             if prop not in props_to_show: continue
 
             cells.extend(html.td(prop))
-            cells.extend(html.td(mol.GetProp(prop), td_opt))
+            cells.extend(html.td(mol.GetProp(prop)))
             rows.extend(html.tr(cells))
             cells = []
 
