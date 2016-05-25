@@ -750,7 +750,7 @@ class Mol_List(list):
             if mol:
                 keep_props_in_mol(mol, props)
 
-        self.order = props
+        self.order = props.copy()
         self._set_recalc_needed()
 
 
@@ -1520,7 +1520,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
     td_opt = {"align": "center"}
-    header_opt = {"bgcolor": "#94CAEF"}
+    header_opt = {"bgcolor": "#94CAEF", "align": "center"}
     table_list = []
     prop_list = list_fields(sdf_list)
 
@@ -1773,11 +1773,11 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
         guessed_id = id_prop
 
     if guessed_id is not None:
-        if guessed_id in order:
-            pos = order.index(guessed_id)
-            order.pop(pos)
         # make sure, guessed_id is at the beginning
         old_order = order.copy()
+        if guessed_id in old_order:
+            pos = old_order.index(guessed_id)
+            old_order.pop(pos)
         order = [guessed_id]
         order.extend(old_order)
 
