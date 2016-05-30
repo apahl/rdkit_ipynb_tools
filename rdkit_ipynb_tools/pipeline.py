@@ -300,8 +300,9 @@ def start_stream_from_mol_list(mol_list, summary=None, comp_id="start_stream_fro
     """Provide a data stream from a Mol_List."""
     prev_time = time.time()
     rec_counter = 0
-    for mol in mol_list:
-        if not mol: continue
+    for orig_mol in mol_list:
+        if not orig_mol: continue
+        mol = deepcopy(orig_mol)
         rec = {}
         props = mol.GetPropNames()
         for prop in props:
