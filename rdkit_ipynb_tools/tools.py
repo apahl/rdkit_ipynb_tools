@@ -739,6 +739,11 @@ class Mol_List(list):
         self._set_recalc_needed()
 
 
+    def remove_empty_props(self):
+        remove_empty_props(self)
+        self._set_recalc_needed()
+
+
     def keep_props(self, props):
         """Keep properties in the Mol_List.
         props can be a single property or a list of properties."""
@@ -1288,6 +1293,23 @@ def remove_props(mol_or_sdf_list, props):
         remove_props_from_mol(mol_or_sdf_list, props)
 
 
+def remove_empty_props(mol_list):
+    for mol in mol_list:
+        props = mol.GetPropNames()
+        for prop in props:
+            if mol.GetProp(prop) == "":
+                mol.ClearProp(prop)
+
+
+def set_margin(container, margin=10):
+    """Recursively set margins on all widgets of a toplevel container (...Box())."""
+    if hasattr(container, "children"):
+        for ch in container.children:
+            set_margin(ch, margin)
+    else:
+        container.margin = margin
+
+
 def ia_remove_props(mol_list):
     """Interactively remove properties from a Mol_List.
     Uses IPython widgets to display the properties to be selected for removal."""
@@ -1525,9 +1547,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
     prop_list = list_fields(sdf_list)
 
     if isinstance(order, list):
-        order_rev = order[:]
-        order_rev.reverse()
-        for k in order_rev:
+        for k in reversed(order):
             prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
 
     if id_prop is None:
@@ -1798,9 +1818,16 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
     rows.extend(html.tr(cells))
 
     cells = []
+    bgcolor = "#F2F2F2"
     for idx, mol in enumerate(mol_list, 1):
         if not mol:
             continue
+
+        # alternating background colors for easier distinction between records
+        if "F2" in bgcolor:
+            bgcolor = "#FFFFFF"
+        else:
+            bgcolor = "#F2F2F2"
 
         # How many properties have to be displayed for the mol?
         mol_props = mol.GetPropNames()
@@ -1834,12 +1861,12 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
         cells.extend(html.td(html.img(img_src, img_opt), td_opt))
 
         # prop_opt = {}
-        # td_opt = {"align": "center"}
+        td_opt = {"bgcolor": bgcolor}
         for prop in prop_list:
             if prop not in props_to_show: continue
 
-            cells.extend(html.td(prop))
-            cells.extend(html.td(mol.GetProp(prop)))
+            cells.extend(html.td(prop, td_opt))
+            cells.extend(html.td(mol.GetProp(prop), td_opt))
             rows.extend(html.tr(cells))
             cells = []
 
