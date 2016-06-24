@@ -151,9 +151,10 @@ class Chart():
 
         color_by = kwargs.get("color_by", None)
         size_by = kwargs.get("size_by", None)
+        pid = kwargs.get("pid", None)
 
         tooltip = get_tooltip(x, y,
-                              kwargs.get("pid", None),
+                              pid,
                               series,
                               series_by,
                               color_by,
@@ -196,6 +197,9 @@ class Chart():
                 if size_by is not None:
                     d_series[size_by] = []
                     d_series[size] = []
+                if pid is not None:
+                    d_series[pid] = []
+                    d_series["mol"] = []
                 for idx, el in enumerate(d[x]):
                     if d[series_by][idx] == series:
                         d_series[x].append(d[x][idx])
@@ -204,6 +208,9 @@ class Chart():
                         if size_by is not None:
                             d_series[size_by].append(d[size_by][idx])
                             d_series[size].append(d[size][idx])
+                        if pid is not None:
+                            d_series[pid].append(d[pid][idx])
+                            d_series["mol"].append(d["mol"][idx])
 
 
                 d_series["x"] = d_series[x]
