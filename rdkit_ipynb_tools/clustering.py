@@ -342,7 +342,7 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None):
     with a certain property.
     Parameters:
         mode (str): `most_active` (default): if activity_prop is not None, the most active compound is taken.
-            `smallest`: the compound with the least amount of heavy amount is taken as center."""
+            `smallest`: the compound with the least amount of heavy atoms is taken as center."""
 
     if "active" in mode:
         if activity_prop is not None:
@@ -553,7 +553,8 @@ def core_table(mol, props=None, hist=None):
 
 
 def write_report(cluster_list, title="Clusters", props=None, **kwargs):
-    """Useful kwargs: core_props (list, props to show for the core, default: ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]),
+    """Useful kwargs: core_props (list, props to show for the core,
+    default: ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]),
     bins (int or list, default=10), align (bool)"""
     resource_dir = op.join(op.dirname(__file__), "resources")
     cur_dir = op.abspath(op.curdir)
@@ -595,7 +596,7 @@ def write_report(cluster_list, title="Clusters", props=None, **kwargs):
             cluster.align()
 
         hist_fn = None
-        if props is not None and len(cluster) > 5:
+        if props is not None and len(cluster) > 4:
             first_prop = props[0]
             hist_fn = "img/hist_{}.png".format(cl_no)
             data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]

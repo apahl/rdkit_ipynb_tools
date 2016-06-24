@@ -21,6 +21,7 @@ import os.path as op
 import random
 import csv
 import gzip
+import math
 from copy import deepcopy
 
 from rdkit.Chem import AllChem as Chem
@@ -669,57 +670,12 @@ class Mol_List(list):
         for mol in self:
             if not mol: continue
 
-            if "2d" in props:
-                check_2d_coords(mol, force2d)
-
-                calculated_props.add("2d")
-
-            if "date" in props:
-                mol.SetProp("Date", time.strftime("%Y%m%d"))
-                calculated_props.add("date")
-
-            if "formula" in props:
-                mol.SetProp("Formula", Chem.CalcMolFormula(mol))
-                calculated_props.add("formula")
-
-            if "smiles" in props:
-                mol.SetProp("Smiles", Chem.MolToSmiles(mol, isomericSmiles=True))
-                calculated_props.add("smiles")
-
-            if "hba" in props:
-                mol.SetProp("HBA", str(Desc.NOCount(mol)))
-                calculated_props.add("hba")
-
-            if "hbd" in props:
-                mol.SetProp("HBD", str(Desc.NHOHCount(mol)))
-                calculated_props.add("hbd")
-
-            if "logp" in props:
-                mol.SetProp("LogP", "{:.2f}".format(Desc.MolLogP(mol)))
-                calculated_props.add("logp")
-
             if "molid" in props:
                 ctr += 1
                 mol.SetProp("Mol_Id", str(ctr))
                 calculated_props.add("molid")
 
-            if "mw" in props:
-                mol.SetProp("MW", "{:.2f}".format(Desc.MolWt(mol)))
-                calculated_props.add("mw")
-
-            if "rotb" in props:
-                mol.SetProp("RotB", str(Desc.NumRotatableBonds(mol)))
-                calculated_props.add("rotb")
-
-            if SASCORER and "sa" in props:
-                score = sascorer.calculateScore(mol)
-                norm_score = 1 - (score / 10)
-                mol.SetProp("SA", "{:.2f}".format(norm_score))
-                calculated_props.add("sa")
-
-            if "tpsa" in props:
-                mol.SetProp("TPSA", str(int(Desc.TPSA(mol))))
-                calculated_props.add("tpsa")
+            calc_props(mol, props, force2d=force2d, calculated_props=calculated_props)
 
         self._set_recalc_needed()
 
@@ -1301,6 +1257,32 @@ def remove_empty_props(mol_list):
                 mol.ClearProp(prop)
 
 
+def unit_factor(unit):
+    """Return the factor corresponding to the unit, e.g. 1E-9 for nM.
+    Known units are: mM, uM, nM, pM. Raises ValueError for unknown unit."""
+    units = ["mm", "um", "nm", "pm"]
+    pos = units.index(unit.lower()) + 1
+    factor = 10 ** -(pos * 3)
+    return factor
+
+
+def pic50(ic50, unit=None):
+    """Calculate pIC50 from IC50. Optionally, a unit for the input IC50 value may be given.
+    Known units are: mM, uM, nM, pM"""
+    if unit is not None:
+        ic50 *= unit_factor(unit)
+    return -math.log10(ic50)
+
+
+def ic50(pic50, unit=None):
+    """Calculate IC50 from pIC50. Optionally, a unit for the returned IC50 value may be given.
+    Known units are: mM, uM, nM, pM"""
+    ic50 = 10 ** (-pic50)
+    if unit is not None:
+        ic50 /= unit_factor(unit)
+    return ic50
+
+
 def set_margin(container, margin=10):
     """Recursively set margins on all widgets of a toplevel container (...Box())."""
     if hasattr(container, "children"):
@@ -1367,6 +1349,70 @@ def check_2d_coords(mol, force=False):
             pyAv.Generate2DCoords(mol)
         else:
             mol.Compute2DCoords()
+
+
+def calc_props(mol, props, force2d=False, calculated_props=None):
+    """calculated_props can be None or of type set()."""
+
+    if not isinstance(props, list):
+        props = [props]
+
+    for prop in props:
+        if "2d" in props:
+            check_2d_coords(mol, force2d)
+            if calculated_props is not None:
+                calculated_props.add("2d")
+
+        if "date" in props:
+            mol.SetProp("Date", time.strftime("%Y%m%d"))
+            if calculated_props is not None:
+                calculated_props.add("date")
+
+        if "formula" in props:
+            mol.SetProp("Formula", Chem.CalcMolFormula(mol))
+            if calculated_props is not None:
+                calculated_props.add("formula")
+
+        if "smiles" in props:
+            mol.SetProp("Smiles", Chem.MolToSmiles(mol, isomericSmiles=True))
+            calculated_props.add("smiles")
+
+        if "hba" in props:
+            mol.SetProp("HBA", str(Desc.NOCount(mol)))
+            if calculated_props is not None:
+                calculated_props.add("hba")
+
+        if "hbd" in props:
+            mol.SetProp("HBD", str(Desc.NHOHCount(mol)))
+            if calculated_props is not None:
+                calculated_props.add("hbd")
+
+        if "logp" in props:
+            mol.SetProp("LogP", "{:.2f}".format(Desc.MolLogP(mol)))
+            if calculated_props is not None:
+                calculated_props.add("logp")
+
+        if "mw" in props:
+            mol.SetProp("MW", "{:.2f}".format(Desc.MolWt(mol)))
+            if calculated_props is not None:
+                calculated_props.add("mw")
+
+        if "rotb" in props:
+            mol.SetProp("RotB", str(Desc.NumRotatableBonds(mol)))
+            if calculated_props is not None:
+                calculated_props.add("rotb")
+
+        if SASCORER and "sa" in props:
+            score = sascorer.calculateScore(mol)
+            norm_score = 1 - (score / 10)
+            mol.SetProp("SA", "{:.2f}".format(norm_score))
+            if calculated_props is not None:
+                calculated_props.add("sa")
+
+        if "tpsa" in props:
+            mol.SetProp("TPSA", str(int(Desc.TPSA(mol))))
+            if calculated_props is not None:
+                calculated_props.add("tpsa")
 
 
 def find_mcs(mol_list):

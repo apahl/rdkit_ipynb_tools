@@ -409,12 +409,12 @@ def stop_sdf_writer(stream, fn, max=500, summary=None, comp_id="stop_sdf_writer"
                 summary["{}_no_mol".format(comp_id)] = no_mol_counter
             return
 
-        mol = rec["mol"]
+        rec_counter += 1
+        if rec_counter > max:
+            continue  # Let the pipe run to completion for the Summary
 
-        try:
-            mol.GetConformer()
-        except ValueError:  # no 2D coords... calculate them
-            mol.Compute2DCoords()
+        mol = rec["mol"]
+        check_2d_coords(mol)
 
         # assign the values from rec to the mol object
         for key in rec:
@@ -426,7 +426,6 @@ def stop_sdf_writer(stream, fn, max=500, summary=None, comp_id="stop_sdf_writer"
             else:
                 mol.SetProp(key, str(val))
 
-        rec_counter += 1
         if summary is not None:
             summary[comp_id] = rec_counter
 
@@ -445,6 +444,10 @@ def stop_mol_list_from_stream(stream, max=250, summary=None, comp_id="stop_mol_l
     for rec in stream:
         if "mol" not in rec: continue
 
+        rec_counter += 1
+        if rec_counter > max:
+            continue  # Let the pipe run to completion for the Summary
+
         mol = rec["mol"]
 
         try:
@@ -462,14 +465,11 @@ def stop_mol_list_from_stream(stream, max=250, summary=None, comp_id="stop_mol_l
             else:
                 mol.SetProp(key, str(val))
 
-        rec_counter += 1
         if summary is not None:
             summary[comp_id] = rec_counter
 
         mol_list.append(mol)
 
-        if rec_counter >= max:
-            break
 
     return mol_list
 
@@ -811,6 +811,13 @@ def pipe_keep_props(stream, props, summary=None, comp_id="pipe_keep_props", show
         if show_first and rec_counter == 1:
             print("{}:".format(comp_id), rec)
 
+        yield rec
+
+
+def pipe_do_nothing(stream, *args, **kwargs):
+    """A stub component that does nothing."""
+
+    for rec in stream:
         yield rec
 
 
