@@ -29,7 +29,6 @@ from rdkit import DataStructs
 from rdkit.ML.Cluster import Butina
 
 # from PIL import Image, ImageChops
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -552,7 +551,7 @@ def core_table(mol, props=None, hist=None):
     return "".join(table_list)
 
 
-def write_report(cluster_list, title="Clusters", props=None, **kwargs):
+def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwargs):
     """Useful kwargs: core_props (list, props to show for the core,
     default: ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]),
     bins (int or list, default=10), align (bool)"""
@@ -598,6 +597,7 @@ def write_report(cluster_list, title="Clusters", props=None, **kwargs):
         hist_fn = None
         if props is not None and len(cluster) > 4:
             first_prop = props[0]
+            cluster.sort_list(first_prop, reverse=reverse)
             hist_fn = "img/hist_{}.png".format(cl_no)
             data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
             mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)

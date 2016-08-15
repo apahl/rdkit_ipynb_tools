@@ -1011,12 +1011,13 @@ def pipe_inspect_stream(stream, fn="pipe_inspect.txt", exclude=None, summary=Non
         yield rec
 
 
-def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", summary=None, comp_id="pipe_merge_data"):
+def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark=True, summary=None, comp_id="pipe_merge_data"):
     """Merge the data from the stream on the `merge_on` property.
     WARNING: The stream is collected in memory by this component!
 
     Parameters:
         merge_on (str): Name of the property (key) to merge on.
+        mark (bool): if true, merged records will be marked with a `Merged=num_of_merged_records` field.
         str_props (str): Merge behaviour for string properties.
             Allowed values are: concat ("; "-separated concatenation),
             unique ("; "-separated concatenation of the unique values),
@@ -1066,7 +1067,12 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", summ
         rec = {merge_on: item}
         for prop in merged[item]:
             val_list = merged[item][prop]
-            rec[prop] = _get_merged_val_from_val_list(val_list, str_props, num_props)
+            if len(val_list) > 1:
+                rec[prop] = _get_merged_val_from_val_list(val_list, str_props, num_props)
+                if mark:
+                    rec["Merged"] = len(val_list)
+            else:
+                rec[prop] = val_list[0]
 
         rec_counter += 1
         if summary is not None:

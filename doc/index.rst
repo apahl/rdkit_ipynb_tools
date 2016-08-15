@@ -23,6 +23,11 @@ Indices and tables
    :private-members:
    :special-members:
 
+.. automodule:: rdkit_ipynb_tools.scaffolds
+   :members:
+   :private-members:
+   :special-members:
+
 .. automodule:: rdkit_ipynb_tools.clustering
    :members:
    :private-members:

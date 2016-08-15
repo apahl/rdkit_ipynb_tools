@@ -10,9 +10,6 @@ Tools
 A set of tools to use with the `RDKit <http://rdkit.org>`_ in the IPython notebook.
 """
 
-
-from __future__ import print_function, division
-
 import time
 import sys
 import base64
@@ -29,7 +26,6 @@ from rdkit.Chem import Draw, rdFMCS
 import rdkit.Chem.Descriptors as Desc
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
-
 
 from PIL import Image, ImageChops
 
@@ -68,12 +64,14 @@ except ImportError:
     AP_TOOLS = False
 
 try:
-    # Preferably use Avalon for generation of 2d coordinates
+    # Try to import Avalon so it can be used for generation of 2d coordinates.
+    # The default remains the RDKit method, because it produces more horizontal
+    # (don't know a better way to put it) molecules.
     from rdkit.Avalon import pyAvalonTools as pyAv
-    USE_AVALON = True
 except ImportError:
-    USE_AVALON = False
     print("  * Avalon not available. Using RDKit for 2d coordinate generation.")
+
+USE_AVALON = False
 
 try:
     from Contrib.SA_Score import sascorer
@@ -1206,6 +1204,15 @@ def load_sdf(file_name_or_obj="testset.sdf"):
         print("  > sdf loaded with {} records.".format(len(sdf_list)))
 
     return sdf_list
+
+
+def write_ids(id_list, fn="id_list.txt"):
+    """Write a list of compound ids to a file. The list will be sorted by Id."""
+    id_str = "\n".join(sorted([str(i) for i in id_list]))
+    id_str = "Compound_Id\n" + id_str
+    f = open(fn, "w")
+    f.write(id_str)
+    f.close()
 
 
 def csv_supplier(fn):
