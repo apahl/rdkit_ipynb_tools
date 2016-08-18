@@ -99,7 +99,7 @@ def calc_child_scaffolds(scaf):
     for scaf in scaf_list:
         scaf_id_list.append(calc_scaffold_id(scaf))
 
-    ScaffoldsList = namedtuple("ScaffoldsList", ["smiles", "ids"])
+    ScaffoldsList = namedtuple("ScaffoldsList", ["level_smiles", "ids"])
     return ScaffoldsList(smiles=scaf_list, ids=scaf_id_list)
 
 
@@ -109,16 +109,16 @@ def calc_all_scaffolds(mol):
     scaf_list = []
     scaf_id_list = []
     # MurckoFrame, MurckoScaf
-    for calculator in [calc_murcko_frame, calc_murcko_scaf]:
+    for level, calculator in enumerate([calc_murcko_frame, calc_murcko_scaf]):
         scaf = calculator(mol)
         scaf_id = calc_scaffold_id(scaf)
-        scaf_list.append(scaf)
+        scaf_list.append(str(level) + "_" + scaf)
         scaf_id_list.append(scaf_id)
 
     # remaining scaffolds...
     child_scaffolds = calc_child_scaffolds(scaf_list[1])  # start from the MurckoScaffold
-    scaf_list.extend(child_scaffolds.smiles)
+    scaf_list.extend(child_scaffolds.level_smiles)
     scaf_id_list.extend(child_scaffolds.ids)
 
-    Scaffolds = namedtuple("Scaffolds", ["smiles", "ids"])
+    Scaffolds = namedtuple("Scaffolds", ["level_smiles", "ids"])
     return Scaffolds(smiles="; ".join(scaf_list), ids="; ".join(scaf_id_list))

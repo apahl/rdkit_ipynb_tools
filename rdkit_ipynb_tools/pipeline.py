@@ -474,6 +474,32 @@ def stop_mol_list_from_stream(stream, max=250, summary=None, comp_id="stop_mol_l
     return mol_list
 
 
+def stop_dict_from_stream(stream, summary=None, comp_id="stop_dict_from_stream"):
+    """Generates a dict out of the stream"""
+    rec_counter = 0
+    for rec in stream:
+        rec_counter += 1
+        if rec_counter == 1:
+            stream_dict = {k: [] for k in rec}
+            stream_keys = set(stream_dict.keys())
+
+        for field in rec:
+            if field in stream_keys:
+                stream_dict[field].append(rec[field])
+            else:  # this field was not in the records until now
+                stream_dict[field] = rec_counter * [np.nan]
+                stream_keys.add(field)
+
+        empty_fields = stream_keys - set(rec.keys())    # handle fields which are in the stream,
+        for field in empty_fields:                      # but not in this record
+            stream_dict[field].append(np.nan)
+
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+    return stream_dict
+
+
 def stop_count_records(stream, summary=None, comp_id="stop_count_records"):
     """Only count the records from the incoming stream."""
     rec_counter = 0
