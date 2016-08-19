@@ -98,6 +98,10 @@ else:
 
 BGCOLOR = "#94CAEF"
 
+# A list of partial property strings to use for ordering of properties:
+DEFAULT_ORDER = ["_id", "supplier", "producer", "activity", "pic50",
+                 "hit", "actass", "pure_flag", "purity", "identity", "lcms"]
+
 JSME_OPTIONS = {"css": ["css/style.css", "css/collapsible_list.css"],
                 "scripts": ["lib/jsme/jsme.nocache.js"]}
 
@@ -1207,9 +1211,7 @@ def load_sdf(file_name_or_obj="testset.sdf", order="default"):
     if sdf_list.id_prop is None:
         sdf_list.id_prop = guess_id_prop(sdf_list.fields)
     if sdf_list.order is None and order == "default":  # only when no order is already present.
-        print("ordering...")
         sdf_list.order_props(order=order)
-        print(sdf_list.order)
 
     if isinstance(file_name_or_obj, str):
         print("  > sdf {} loaded with {} records.".format(file_name_or_obj.split(".")[0], len(sdf_list)))
@@ -1224,25 +1226,19 @@ def order_props(sdf_list, order="default"):
     then the activity fields, then the physicochemical properties and LCMS"""
     if order == "default":
         prop_order = []
-        if sdf_list.id_prop is not None:
-            prop_order.append(sdf_list.id_prop)
-        if "Supplier" in sdf_list.fields:
-            prop_order.append("Supplier")
-        if "Producer" in sdf_list.fields:
-            prop_order.append("Producer")
-
         fields = sorted(sdf_list.fields)
-        for f in fields:
-            f_lower = f.lower()
-            if "activity" in f_lower or "pic50" in f_lower:
-                prop_order.append(f)
-
-        for f in fields:
-            f_lower = f.lower()
-            if (f == sdf_list.id_prop or f == "Supplier" or f == "Producer" or
-               "activity" in f_lower or "pic50" in f_lower):
-                continue
-            prop_order.append(f)
+        for def_ord in DEFAULT_ORDER:
+            fields_found = []
+            for f in fields:
+                f_lower = f.lower()
+                if def_ord in f_lower:
+                    prop_order.append(f)
+                    fields_found.append(f)
+            # Remove the fields that are now already on the prop_order list
+            # from the original field list.
+            # This way they will not be added multiple times
+            for f in fields_found:
+                fields.remove(f)
 
         sdf_list.order = prop_order
 
