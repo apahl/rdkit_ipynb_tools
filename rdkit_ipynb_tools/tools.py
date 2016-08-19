@@ -378,6 +378,11 @@ class Mol_List(list):
         self.sort(key=lambda x: self._key_get_prop(x, field, reverse=reverse), reverse=reverse)
 
 
+    def order_props(self, order="default"):
+        """Arrange the display order of the properties."""
+        order_props(self, order)
+
+
     def mols_with_prop(self, prop):
         """Returns:
             Am iterator of molecules in the list where mol and prop are defined."""
@@ -1160,9 +1165,10 @@ def list_fields(sdf_list):
     return list(set(field_list))
 
 
-def load_sdf(file_name_or_obj="testset.sdf"):
+def load_sdf(file_name_or_obj="testset.sdf", order="default"):
     """Create a Mol_List instance from an SD File.
-    Accepts a string filename or a file object as input"""
+    Accepts a string filename or a file object as input.
+    order: "default" or None."""
 
     if isinstance(file_name_or_obj, str):
         if PY3:
@@ -1182,21 +1188,28 @@ def load_sdf(file_name_or_obj="testset.sdf"):
         if mol:
             if first_mol:
                 first_mol = False
-                order = None
+                prop_order = None
                 try:
-                    order = mol.GetProp("order")
+                    prop_order = mol.GetProp("order")
                     remove_props_from_mol(mol, "order")
                 except KeyError:  # first mol does not contain an order field
                     pass
 
-                if order:
+                if prop_order is not None:
                     try:
-                        sdf_list.order = order.split(";")
+                        sdf_list.order = prop_order.split(";")
 
                     except AttributeError:  # sdf_list is not a Mol_List
                         pass
 
             sdf_list.append(mol)
+
+    if sdf_list.id_prop is None:
+        sdf_list.id_prop = guess_id_prop(sdf_list.fields)
+    if sdf_list.order is None and order == "default":  # only when no order is already present.
+        print("ordering...")
+        sdf_list.order_props(order=order)
+        print(sdf_list.order)
 
     if isinstance(file_name_or_obj, str):
         print("  > sdf {} loaded with {} records.".format(file_name_or_obj.split(".")[0], len(sdf_list)))
@@ -1204,6 +1217,34 @@ def load_sdf(file_name_or_obj="testset.sdf"):
         print("  > sdf loaded with {} records.".format(len(sdf_list)))
 
     return sdf_list
+
+
+def order_props(sdf_list, order="default"):
+    """Order fields. First Compound_Id, Supplier, Producer;
+    then the activity fields, then the physicochemical properties and LCMS"""
+    if order == "default":
+        prop_order = []
+        if sdf_list.id_prop is not None:
+            prop_order.append(sdf_list.id_prop)
+        if "Supplier" in sdf_list.fields:
+            prop_order.append("Supplier")
+        if "Producer" in sdf_list.fields:
+            prop_order.append("Producer")
+
+        fields = sorted(sdf_list.fields)
+        for f in fields:
+            f_lower = f.lower()
+            if "activity" in f_lower or "pic50" in f_lower:
+                prop_order.append(f)
+
+        for f in fields:
+            f_lower = f.lower()
+            if (f == sdf_list.id_prop or f == "Supplier" or f == "Producer" or
+               "activity" in f_lower or "pic50" in f_lower):
+                continue
+            prop_order.append(f)
+
+        sdf_list.order = prop_order
 
 
 def write_ids(id_list, fn="id_list.txt"):
