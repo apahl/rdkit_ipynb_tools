@@ -99,7 +99,7 @@ else:
 BGCOLOR = "#94CAEF"
 
 # A list of partial property strings to use for ordering of properties:
-DEFAULT_ORDER = ["_id", "supplier", "producer", "activity", "pic50",
+DEFAULT_ORDER = ["_id", "supplier", "producer", "activity|pic50",
                  "hit", "actass", "pure_flag", "purity", "identity", "lcms"]
 
 JSME_OPTIONS = {"css": ["css/style.css", "css/collapsible_list.css"],
@@ -1228,18 +1228,21 @@ def order_props(sdf_list, order="default"):
         prop_order = []
         fields = sorted(sdf_list.fields)
         for def_ord in DEFAULT_ORDER:
+            def_ord_items = def_ord.split("|")
             fields_found = []
             for f in fields:
-                f_lower = f.lower()
-                if def_ord in f_lower:
-                    prop_order.append(f)
-                    fields_found.append(f)
+                for item in def_ord_items:
+                    if item in f.lower():
+                        prop_order.append(f)
+                        fields_found.append(f)
             # Remove the fields that are now already on the prop_order list
             # from the original field list.
             # This way they will not be added multiple times
             for f in fields_found:
                 fields.remove(f)
 
+        if len(fields) > 0:  # add the remaining fields in alphabetical order
+            prop_order.extend(fields)
         sdf_list.order = prop_order
 
 
