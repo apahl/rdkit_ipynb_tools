@@ -580,7 +580,6 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     for mol in cluster_list.has_prop_filter("Cluster_No"):
         cluster_numbers[int(mol.GetProp("Cluster_No"))] = 0  # dummy value
 
-    # reverse = False
     if props is not None:
         if props and not isinstance(props, list):
             props = [props]
@@ -595,12 +594,13 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
             cluster.align()
 
         hist_fn = None
-        if props is not None and len(cluster) > 4:
+        if props is not None:
             first_prop = props[0]
             cluster.sort_list(first_prop, reverse=reverse)
-            hist_fn = "img/hist_{}.png".format(cl_no)
-            data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
-            mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)
+            if len(cluster) > 4:
+                hist_fn = "img/hist_{}.png".format(cl_no)
+                data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
+                mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)
 
         content.append("<br>\n<h2>Cluster {:03d}</h2>".format(cl_no))
         core = get_cores(cluster)
