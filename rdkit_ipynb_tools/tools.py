@@ -1313,12 +1313,12 @@ def unit_factor(unit):
     return factor
 
 
-def pic50(ic50, unit=None):
+def pic50(ic50, unit=None, ndigits=2):
     """Calculate pIC50 from IC50. Optionally, a unit for the input IC50 value may be given.
     Known units are: mM, uM, nM, pM"""
     if unit is not None:
         ic50 *= unit_factor(unit)
-    return -math.log10(ic50)
+    return round(-math.log10(ic50), ndigits=ndigits)
 
 
 def ic50(pic50, unit=None):

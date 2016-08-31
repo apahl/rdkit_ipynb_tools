@@ -1,6 +1,9 @@
 doc/_build/
 .ipynb_checkpoints/
 .kdev4/
+tutorial/.ipynb_checkpoints/
+tutorial/chembl_et-a_antagonists.txt
+tutorial/chembl_et-a_ant_active.sdf
 *.pkl
 *.png
 *.mrv

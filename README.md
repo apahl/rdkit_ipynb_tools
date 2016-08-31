@@ -54,7 +54,7 @@ or, using the pipe function:
     >>>      (stop_csv_writer, "test.csv", {"summary": s})
     >>>     )
 
-The progress of the pipeline can be followed in a terminal with: `watch -n 2 less pipeline.log`
+The progress of the pipeline can be followed in a separate terminal with: `watch -n 2 cat pipeline.log`
 
 Currently available components:
 * starting pipes:
@@ -87,6 +87,9 @@ Currently available components:
     - stop_count_records
 
 Limitation: unlike in other pipelining tools, because of the nature of Python generators, the pipeline can not be branched.
+
+### Tutorial
+Much of the functionality is shown in the [tutorial notebook](tutorial/tutorial.ipynb).
 
 ### ToDo
 This README is meant as a teaser. I urgently need to prepare a proper example notebook to show all the functionality, this is high on my ToDo list.
