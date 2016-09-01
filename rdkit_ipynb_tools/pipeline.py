@@ -881,11 +881,11 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
         decimals (int): number of decimal places for floating point values. Default: 2."""
 
     # collect the records from the stream in a list, store the position of the join_on properties in a dict
-    stream_counter = -1
     stream_list = []
     stream_dict = {}  # dict to hold the join_on properties and their positions in the stream_list
     joined_stream_list_idx = set()  # hold the indexes in stream_list, on which data was joined
 
+    stream_counter = -1
     for rec in stream:
         stream_join_on_val = rec.get(join_on, False)
         if stream_join_on_val is False: continue
