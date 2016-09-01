@@ -881,17 +881,16 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
         decimals (int): number of decimal places for floating point values. Default: 2."""
 
     # collect the records from the stream in a list, store the position of the join_on properties in a dict
-    stream_list = []
-    stream_dict = {}  # dict to hold the join_on properties and their positions in the stream_list
-    joined_stream_list_idx = set()  # hold the indexes in stream_list, on which data was joined
+    stream_rec_list = []
+    stream_id_list = []  # list to hold the join_on properties and their positions in the stream_rec_list
 
     stream_counter = -1
     for rec in stream:
         stream_join_on_val = rec.get(join_on, False)
         if stream_join_on_val is False: continue
         stream_counter += 1
-        stream_list.append(rec)
-        stream_dict[stream_join_on_val] = stream_counter
+        stream_rec_list.append(rec)
+        stream_id_list.append(stream_join_on_val)
 
     if "sdf" in fn:
         rd = start_sdf_reader(fn)
@@ -902,28 +901,29 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
     for rec in rd:
         rec_join_on_val = rec.get(join_on, False)
         if not rec_join_on_val: continue
-        stream_join_on_idx = stream_dict.get(rec_join_on_val, False)
-        if stream_join_on_idx is False: continue
 
-        joined_stream_list_idx.add(stream_join_on_idx)
-        stream_rec = stream_list[stream_join_on_idx]
-        for k in stream_rec:
-            if k != join_on:
-                rec[k] = stream_rec[k]
+        while rec_join_on_val in stream_id_list:
+            rec_copy = deepcopy(rec)
+            stream_join_on_idx = stream_id_list.index(rec_join_on_val)
+            stream_id_list.pop(stream_join_on_idx)
+            stream_rec = stream_rec_list.pop(stream_join_on_idx)
 
-        rec_counter += 1
-        if summary is not None:
-            summary[comp_id] = rec_counter
+            for k in stream_rec:
+                if k != join_on:
+                    rec_copy[k] = stream_rec[k]
 
-        if show_first and rec_counter == 1:
-            print("{}:".format(comp_id), rec)
+            rec_counter += 1
+            if summary is not None:
+                summary[comp_id] = rec_counter
 
-        yield rec
+            if show_first and rec_counter == 1:
+                print("{}:".format(comp_id), rec)
+
+            yield rec_copy
 
     # with behaviour="keep_all", now add the records to the stream on which no data was joined.
     if "all" in behaviour.lower():
-        for idx, rec in enumerate(stream_list):
-            if idx in joined_stream_list_idx: continue  # this record was already output with joined data
+        for rec in stream_rec_list:
 
             rec_counter += 1
             if summary is not None:
