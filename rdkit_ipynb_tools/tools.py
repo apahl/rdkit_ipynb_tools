@@ -657,7 +657,7 @@ class Mol_List(list):
 
 
     def set_prop_on_mol(self, id_no, prop_name, prop_value, is_cpd_id=True):
-        """Change the value of a property in the mol_list.
+        """Change the value of a property in the Mol_List.
         prop_name (str) is the name of the property,
         prop_value (str) the value to which it will be set (using mol.SetProp()).
         With is_cpd_id == True (default), the given id_no is interpreted as a Compound_Id.
@@ -1670,7 +1670,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
 
     if id_prop is not None:
         if id_prop not in prop_list:
-            raise LookupError("id_prop not found in data set.")
+            raise LookupError("Id property {} not found in data set.".format(id_prop))
 
     if guessed_id:
         # make sure that the id_prop (or the guessed id prop) is first:
@@ -2001,10 +2001,10 @@ def table_pager(mol_list, id_prop=None, interact=False, pagesize=25, highlight=N
                               order=order, show_hidden=show_hidden))
 
     return ipyw.interactive(
-        lambda page: HTML(mol_table(mol_list[page * pagesize:(page + 1) + pagesize],
+        lambda page: HTML(mol_table(mol_list[page * pagesize:(page + 1) * pagesize],
                           id_prop=id_prop, interact=interact, order=order,
                           show_hidden=show_hidden)),
-        page=ipyw.IntSlider(min=0, max=num_pages, step=pagesize, value=0)
+        page=ipyw.IntSlider(min=0, max=num_pages, step=1, value=0)
     )
 
 
@@ -2028,10 +2028,10 @@ def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=No
         return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))
 
     return ipyw.interactive(
-        lambda page: HTML(mol_sheet(mol_list[page * pagesize:(page + 1) + pagesize],
+        lambda page: HTML(mol_sheet(mol_list[page * pagesize:(page + 1) * pagesize],
                           id_prop=id_prop, interact=interact, highlight=highlight,
                           props=props, size=size)),
-        page=ipyw.IntSlider(min=0, max=num_pages, step=pagesize, value=0)
+        page=ipyw.IntSlider(min=0, max=num_pages, step=1, value=0)
     )
 
 

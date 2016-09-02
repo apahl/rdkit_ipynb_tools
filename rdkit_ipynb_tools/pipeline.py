@@ -802,6 +802,10 @@ def pipe_mol_filter(stream, query, smarts=False, invert=False, add_h=False, summ
 
 
 def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_filter"):
+    """Filter for compounds that have a similarity greater or equal
+    than `cutoff` to the `query` Smiles.
+    If the field `FP_b64` (e.g. pre-calculated) is present, this will be used,
+    otherwise the fingerprint will be generated on-the-fly (much slower)."""
     rec_counter = 0
 
     query_mol = Chem.MolFromSmiles(query)

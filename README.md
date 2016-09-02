@@ -11,7 +11,6 @@ In the past months, this set of tools based on the [RDKit](http.//www.rdkit.org)
 A Mol_List class was introduced, which is a subclass of a Python list for holding lists of RDKit molecule objects and allows direct access to a lot of the RDKit functionality.
 It is meant to be used with the Jupyter Notebook and includes a.o.:
 * display of the Mol_List
-    * as HTML table
     * as HTML grid
   (both display types include the option to select molecules by clicking)
 * display of a summary including number of records and min, max, mean, median for numeric properties
@@ -56,35 +55,29 @@ or, using the pipe function:
 
 The progress of the pipeline can be followed in a separate terminal with: `watch -n 2 cat pipeline.log`
 
-Currently available components:
-* starting pipes:
-    - start_csv_reader
-    - start_sdf_reader
-    - start_cache_reader
-    - start_stream_from_mol_list
-    - start_mol_csv_reader
-* pipeline components:
-    - pipe_calc_props
-    - pipe_custom_filter
-    - pipe_custom_man
-    - pipe_join_from_file
-    - pipe_mol_filter
-    - pipe_has_prop_filter
-    - pipe_mol_from_b64
-    - pipe_mol_from_smiles
-    - pipe_mol_to_b64
-    - pipe_mol_to_smiles
-    - pipe_remove_props
-    - pipe_keep_props
-    - pipe_rename_prop
-    - pipe_keep_largest_fragment
-    - pipe_neutralize_mol
-* stopping pipes:
-    - stop_csv_writer
-    - stop_sdf_writer
-    - stop_mol_list_from_stream
-    - stop_cache_writer
-    - stop_count_records
+#### Currently Available Pipeline Components:
+| Starting                   | Running                    | Stopping
+|----------------------------|----------------------------|---------------------------|
+| start_cache_reader         | pipe_calc_props            | stop_cache_writer         |
+| start_csv_reader           | pipe_custom_filter         | stop_count_records        |
+| start_mol_csv_reader       | pipe_custom_man            | stop_csv_writer           |
+| start_sdf_reader           | pipe_do_nothing            | stop_dict_from_stream     |
+| start_stream_from_dict     | pipe_has_prop_filter       | stop_mol_list_from_stream |
+| start_stream_from_mol_list | pipe_id_filter             | stop_sdf_writer           |
+|                            | pipe_inspect_stream        |                           |
+|                            | pipe_join_data_from_file   |                           |
+|                            | pipe_keep_largest_fragment |                           |
+|                            | pipe_keep_props            |                           |
+|                            | pipe_merge_data            |                           |
+|                            | pipe_mol_filter            |                           |
+|                            | pipe_mol_from_b64          |                           |
+|                            | pipe_mol_from_smiles       |                           |
+|                            | pipe_mol_to_b64            |                           |
+|                            | pipe_mol_to_smiles         |                           |
+|                            | pipe_neutralize_mol        |                           |
+|                            | pipe_remove_props          |                           |
+|                            | pipe_rename_prop           |                           |
+|                            | pipe_sim_filter            |                           |
 
 Limitation: unlike in other pipelining tools, because of the nature of Python generators, the pipeline can not be branched.
 
