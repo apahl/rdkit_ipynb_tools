@@ -614,10 +614,10 @@ class Mol_List(list):
         return new_list
 
 
-    def show_cpd(self, id_no, is_cpd_id=True):
+    def show_cpd(self, id_no, is_cpd_id=True, make_copy=True):
         """Display a single compound together with its Smiles.
         With is_cpd_id == True (default), the given id_no is interpreted as a Compound_Id.
-        Other it is used as index in the list."""
+        Otherwise it is used as index in the list."""
 
         new_list = Mol_List()
         if self.order:
@@ -626,7 +626,10 @@ class Mol_List(list):
         new_list.id_prop = self.id_prop
 
         if not is_cpd_id:
-            mol = deepcopy(self[id_no])
+            if make_copy:
+                mol = deepcopy(self[id_no])
+            else:
+                mol = self[id_no]
             new_list.append(mol)
 
         else:
@@ -640,7 +643,8 @@ class Mol_List(list):
                     if mol.HasProp(self.id_prop):
                         val = get_value(mol.GetProp(self.id_prop))
                         if val == id_no:
-                            mol = deepcopy(mol)
+                            if make_copy:
+                                mol = deepcopy(mol)
                             new_list.append(mol)
 
         if len(new_list) == 0:
@@ -1978,37 +1982,43 @@ def show_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=Non
 
 def table_pager(mol_list, id_prop=None, interact=False, pagesize=50, highlight=None, order=None, show_hidden=False):
     l = len(mol_list)
+    num_pages = l // pagesize
     if not WIDGETS or l < pagesize:
         return HTML(mol_table(mol_list, id_prop=id_prop, highlight=highlight,
                               order=order, show_hidden=show_hidden))
 
     return ipyw.interactive(
-        lambda x: HTML(mol_table(mol_list[x: x + pagesize], id_prop=id_prop, interact=interact,
-                                 order=order, show_hidden=show_hidden)),
-        x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
+        lambda page: HTML(mol_table(mol_list[page * pagesize:(page + 1) + pagesize],
+                          id_prop=id_prop, interact=interact, order=order,
+                          show_hidden=show_hidden)),
+        page=ipyw.IntSlider(min=0, max=pages, step=pagesize, value=0)
     )
 
 
 def nested_pager(mol_list, pagesize=25, id_prop=None, props=None, order=None):
     l = len(mol_list)
+    num_pages = l // pagesize
     if not WIDGETS or l < pagesize:
         return HTML(nested_table(mol_list, id_prop=id_prop, props=props, order=order))
 
     return ipyw.interactive(
-        lambda x: HTML(nested_table(mol_list[x: x + pagesize], id_prop=id_prop, props=props, order=order)),
-        x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
+        lambda page: HTML(nested_table(mol_list[page * pagesize:(page + 1) * pagesize],
+                          id_prop=id_prop, props=props, order=order)),
+        page=ipyw.IntSlider(min=0, max=num_pages, step=1, value=0)
     )
 
 
 def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=250):
     l = len(mol_list)
+    num_pages = l // pagesize
     if not WIDGETS or l < pagesize:
         return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))
 
     return ipyw.interactive(
-        lambda x: HTML(mol_sheet(mol_list[x:x + pagesize], id_prop=id_prop, interact=interact, highlight=highlight,
-                                 props=props, size=size)),
-        x=ipyw.IntSlider(min=0, max=l - 1, step=pagesize, value=0)
+        lambda page: HTML(mol_sheet(mol_list[page * pagesize:(page + 1) + pagesize],
+                          id_prop=id_prop, interact=interact, highlight=highlight,
+                          props=props, size=size)),
+        page=ipyw.IntSlider(min=0, max=pages, step=pagesize, value=0)
     )
 
 

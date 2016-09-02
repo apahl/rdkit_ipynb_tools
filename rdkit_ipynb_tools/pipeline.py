@@ -37,6 +37,11 @@ import numpy as np
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
 import rdkit.Chem.Descriptors as Desc
+
+# imports for similarity search
+from rdkit import DataStructs
+from rdkit.Chem.Fingerprints import FingerprintMols
+
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
@@ -788,6 +793,33 @@ def pipe_mol_filter(stream, query, smarts=False, invert=False, add_h=False, summ
             hit = not hit
 
         if hit:
+            rec_counter += 1
+
+            if summary is not None:
+                summary[comp_id] = rec_counter
+
+            yield rec
+
+
+def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_filter"):
+    rec_counter = 0
+
+    query_mol = Chem.MolFromSmiles(query)
+    if not query_mol:
+        print("* {} ERROR: could not generate query from SMILES.".format(comp_id))
+        return None
+
+    query_fp = FingerprintMols.FingerprintMol(query_mol)
+    for rec in stream:
+        if "mol" not in rec: continue
+
+        if "FP_b64" in rec:  # use the pre-defined fingerprint if it is present in the stream
+            mol_fp = pickle.loads(b64.b64decode(rec["FP_b64"]))
+        else:
+            mol_fp = FingerprintMols.FingerprintMol(rec["mol"])
+
+        sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
+        if sim >= cutoff:
             rec_counter += 1
 
             if summary is not None:
