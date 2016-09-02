@@ -614,7 +614,7 @@ class Mol_List(list):
         return new_list
 
 
-    def show_cpd(self, id_no, is_cpd_id=True, make_copy=True):
+    def show_cpd(self, id_no, is_cpd_id=True, make_copy=True, show_smiles=True):
         """Display a single compound together with its Smiles.
         With is_cpd_id == True (default), the given id_no is interpreted as a Compound_Id.
         Otherwise it is used as index in the list."""
@@ -637,7 +637,7 @@ class Mol_List(list):
             if self.id_prop is None:
                 self.id_prop = guess_id_prop(self.fields)
                 if self.id_prop is None:
-                    raise LookupError("no id prop could be found in data set.")
+                    raise LookupError("Id property {} could not be found in the Mol_List.".format(self.id_prop))
 
             for idx, mol in enumerate(self):
                 if mol:
@@ -649,10 +649,22 @@ class Mol_List(list):
                             new_list.append(mol)
 
         if len(new_list) == 0:
-            return None
+            raise LookupError("no molecule with {}: {} could be found in the Mol_List.".format(self.id_prop, id_no))
 
-        print("idx: {:3d}   Smiles: {}".format(idx, Chem.MolToSmiles(new_list[0])))
+        if show_smiles:
+            print("idx: {:3d}   Smiles: {}".format(idx, Chem.MolToSmiles(new_list[0])))
         return new_list
+
+
+    def set_prop_on_mol(self, id_no, prop_name, prop_value, is_cpd_id=True):
+        """Change the value of a property in the mol_list.
+        prop_name (str) is the name of the property,
+        prop_value (str) the value to which it will be set (using mol.SetProp()).
+        With is_cpd_id == True (default), the given id_no is interpreted as a Compound_Id.
+        Otherwise it is used as index in the list."""
+
+        mol = self.show_cpd(id_no, is_cpd_id=is_cpd_id, make_copy=False, show_smiles=False)[0]
+        mol.SetProp(prop_name, prop_value)
 
 
     def calc_props(self, props, force2d=False):
