@@ -1003,6 +1003,19 @@ class Mol_List(list):
             return hist.plot
 
 
+    def bar(self, x, show=True, **kwargs):
+        """Displays a bar chart for the occurrence of the given x-value.
+        This plot type is especially useful for plotting the occurrence of categorical data,
+        where only a small number (<= 10) of different values are present.
+        This function is directly calling the advanced bokeh bar chart type,
+        therefore no additional class is used.
+        Useful kwargs include: title, plot_height, plot_width."""
+        if show:
+            bkt.bar_chart(self.d, x, show=True, **kwargs)
+        else:
+            return bkt.bar_chart(self.d, x, show=False, **kwargs)
+
+
     def summary(self, text_only=False):
         """Output a summary of the Mol_List and its properties.
         If ``text_only``is True only a text version is printed.
