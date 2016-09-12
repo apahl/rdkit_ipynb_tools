@@ -62,10 +62,14 @@ except ImportError:
 
 try:
     # interactive IPython session
-    IPY = get_ipython()
-
+    _ = get_ipython()
+    IPY = True
 except NameError:
-    iPY = False
+    IPY = False
+
+if IPY:
+    from IPython.core.display import HTML, Javascript, display
+    import uuid
 
 
 def format_seconds(seconds):
@@ -100,6 +104,28 @@ class Summary(OrderedDict):
         self.timeit = timeit
         if self.timeit:
             self.t_start = time.time()
+        if IPY:
+            self.status_id = str(uuid.uuid4())
+            self.status = HTML(
+                """
+                <table style="border: none;"><tbody><tr style="border: none;">
+                <td style="border: none;" id="{}"></td>
+                </tr></tbody></table>
+                """.format(self.status_id))
+            display(self.status)
+
+
+    def __html__(self):
+        outer = """<table style="border: 1px solid black;"><tbody><tr><td bgcolor="#94CAEF"><b>Component</b></td><td bgcolor="#94CAEF"><b># Records</b></td></tr>{}</tbody></table>"""
+        rows = []
+        for k in self.keys():
+            value = self[k]
+            row = """<tr><td>{}</td><td>{}</td></tr>""".format(k, str(value))
+            rows.append(row)
+        seconds = time.time() - self.t_start
+        row = """<tr bgcolor="#E9E9E9"><td><i>Time elapsed</i></td><td><i>{}</i></td></tr>""".format(format_seconds(seconds))
+        rows.append(row)
+        return outer.format("".join(rows))
 
 
     def __str__(self):
@@ -132,6 +158,13 @@ class Summary(OrderedDict):
     def print(self):
         """print the content of a dict or Counter object in a formatted way"""
         print(self.__str__())
+
+    def update(self):
+        if IPY:
+            display(Javascript("""document.getElementById("{}").innerHTML = '{}';""".format(self.status_id, self.__html__())))
+        else:
+            print(self.__str__())
+
 
 
 def pipe(val, *forms):
@@ -178,35 +211,44 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
         An iterator with the fields as dict
 
     Parameters:
-        fn (str): filename
+        fn (str, list<str>): filename or list of filenames
         max_records (int): maximum number of records to read, 0 means all
         summary (Summary): a Counter class to collect runtime statistics
         comp_id: (str): the component Id to use for the summary"""
 
-    if ".gz" in fn:
-        f = gzip.open(fn, mode="rt")
-    else:
-        f = open(fn)
+    if not isinstance(fn, list):
+        fn = [fn]
 
-    reader = csv.DictReader(f, dialect="excel-tab")
-    prev_time = time.time()
-    for rec_counter, row_dict in enumerate(reader, 1):
-        if max_records > 0 and rec_counter > max_records: break
-        # make a copy with non-empty values
-        rec = {k: get_value(v) for k, v in row_dict.items() if v is not None and v != ""}  # make a copy with non-empty values
+    rec_counter = 0
+    for filen in fn:
+        if ".gz" in filen:
+            f = gzip.open(filen, mode="rt")
+        else:
+            f = open(filen)
 
-        if summary is not None:
-            summary[comp_id] = rec_counter
-            curr_time = time.time()
-            if curr_time - prev_time > 2.0:  # write the log only every two seconds
-                prev_time = curr_time
-                print(summary, file=open("pipeline.log", "w"))
-        yield rec
+        reader = csv.DictReader(f, dialect="excel-tab")
+        prev_time = time.time()
+        for row_dict in reader:
+            rec_counter += 1
+            if max_records > 0 and rec_counter > max_records: break
+            # make a copy with non-empty values
+            rec = {k: get_value(v) for k, v in row_dict.items() if v is not None and v != ""}  # make a copy with non-empty values
 
-    f.close()
+            if summary is not None:
+                summary[comp_id] = rec_counter
+                curr_time = time.time()
+                if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                    prev_time = curr_time
+                    print(summary, file=open("pipeline.log", "w"))
+                    summary.update()
+            yield rec
+
+        f.close()
+
     if summary:
         print(summary, file=open("pipeline.log", "w"))
-        print(summary)
+        # print(summary)
+        summary.update()
 
 
 
@@ -260,6 +302,7 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
                     if curr_time - prev_time > 2.0:  # write the log only every two seconds
                         prev_time = curr_time
                         print(summary, file=open("pipeline.log", "w"))
+                        summary.update()
 
                 yield rec
 
@@ -272,7 +315,7 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
 
     if summary:
         print(summary, file=open("pipeline.log", "w"))
-        print(summary)
+        summary.update()
 
 
 def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict", show_first=False):
@@ -292,13 +335,17 @@ def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict", sh
             curr_time = time.time()
             if curr_time - prev_time > 2.0:  # write the log only every two seconds
                 prev_time = curr_time
-                print(summary)
                 print(summary, file=open("pipeline.log", "w"))
+                summary.update()
 
         if show_first and rec_counter == 1:
             print("{}:".format(comp_id), rec)
 
         yield rec
+
+    if summary is not None:
+        print(summary, file=open("pipeline.log", "w"))
+        summary.update()
 
 
 def start_stream_from_mol_list(mol_list, summary=None, comp_id="start_stream_from_mol_list"):
@@ -324,14 +371,14 @@ def start_stream_from_mol_list(mol_list, summary=None, comp_id="start_stream_fro
             curr_time = time.time()
             if curr_time - prev_time > 2.0:  # write the log only every two seconds
                 prev_time = curr_time
-                print(summary)
                 print(summary, file=open("pipeline.log", "w"))
+                summary.update()
 
         yield rec
 
     if summary:
         print(summary, file=open("pipeline.log", "w"))
-        print(summary)
+        summary.update()
 
 
 def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
@@ -397,7 +444,8 @@ def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
 
     f.close()
     tmp.close()
-    print("* {}: {} records written.".format(comp_id, rec_counter))
+    if not IPY:
+        print("* {}: {} records written.".format(comp_id, rec_counter))
 
 
 def stop_sdf_writer(stream, fn, max=500, summary=None, comp_id="stop_sdf_writer"):
@@ -919,6 +967,7 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
     # collect the records from the stream in a list, store the position of the join_on properties in a dict
     stream_rec_list = []
     stream_id_list = []  # list to hold the join_on properties and their positions in the stream_rec_list
+    prev_time = time.time()
 
     stream_counter = -1
     for rec in stream:
@@ -951,6 +1000,11 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
             rec_counter += 1
             if summary is not None:
                 summary[comp_id] = rec_counter
+                curr_time = time.time()
+                if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                    prev_time = curr_time
+                    print(summary, file=open("pipeline.log", "w"))
+                    summary.update()
 
             if show_first and rec_counter == 1:
                 print("{}:".format(comp_id), rec)
@@ -964,8 +1018,17 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
             rec_counter += 1
             if summary is not None:
                 summary[comp_id] = rec_counter
+                curr_time = time.time()
+                if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                    prev_time = curr_time
+                    print(summary, file=open("pipeline.log", "w"))
+                    summary.update()
 
             yield rec
+
+    if summary:
+        print(summary, file=open("pipeline.log", "w"))
+        summary.update()
 
 
 def pipe_keep_largest_fragment(stream, summary=None, comp_id="pipe_keep_largest_frag"):
@@ -1125,6 +1188,8 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
             merged[merge_on_val][prop].append(rec[prop])
 
     rec_counter = 0
+    prev_time = time.time()
+
     for item in merged:
         rec = {merge_on: item}
         for prop in merged[item]:
@@ -1139,8 +1204,18 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
         rec_counter += 1
         if summary is not None:
             summary[comp_id] = rec_counter
+            curr_time = time.time()
+            if curr_time - prev_time > 2.0:  # write the log only every two seconds
+                prev_time = curr_time
+                print(summary, file=open("pipeline.log", "w"))
+                summary.update()
 
         yield rec
+
+    if summary:
+        print(summary, file=open("pipeline.log", "w"))
+        summary.update()
+
 
 
 def dict_from_csv(fn, max_records=0):
