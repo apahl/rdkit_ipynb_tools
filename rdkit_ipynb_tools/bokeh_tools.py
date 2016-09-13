@@ -89,6 +89,10 @@ class Chart():
         self.tools_added = False
 
         self.plot = figure(plot_height=self.height, title=self.title, tools="pan,wheel_zoom,box_zoom,reset,resize,save")
+        self.plot.axis.axis_label_text_font_size = "14pt"
+        self.plot.axis.major_label_text_font_size = "14pt"
+        self.plot.title.text_font_size = "18pt"
+
 
 
     def _add_series(self, x, y, series, size, source):

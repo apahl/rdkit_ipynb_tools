@@ -554,7 +554,8 @@ def core_table(mol, props=None, hist=None):
 def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwargs):
     """Useful kwargs: core_props (list, props to show for the core,
     default: ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]),
-    bins (int or list, default=10), align (bool)"""
+    bins (int or list, default=10), align (bool)
+    show_hist (bool): whether to show histograms or not (default: True)."""
     resource_dir = op.join(op.dirname(__file__), "resources")
     cur_dir = op.abspath(op.curdir)
 
@@ -562,6 +563,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     align = kwargs.get("align", False)
     content = [ft.CLUSTER_REPORT_INTRO]
     bins = kwargs.get("bins", 10)
+    show_hist = kwargs.get("show_hist", True)
 
     if NBT:
         pb = nbt.ProgressbarJS()
@@ -597,7 +599,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
         if props is not None:
             first_prop = props[0]
             cluster.sort_list(first_prop, reverse=reverse)
-            if len(cluster) > 4:
+            if show_hist and len(cluster) > 4:
                 hist_fn = "img/hist_{}.png".format(cl_no)
                 data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
                 mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)

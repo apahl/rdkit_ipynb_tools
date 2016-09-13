@@ -246,7 +246,7 @@ class Mol_List(list):
         try:
             val = float(mol.GetProp(field))
         except ValueError:  # GetProp value could not be converted to float
-            val = mol.GetProp(field)
+            val = 0
         except KeyError:   # field is not present in the mol properties
             val = not_found
         return val
