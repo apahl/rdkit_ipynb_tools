@@ -1,18 +1,17 @@
 ## RDKit IPython Tools
 by Axel Pahl
 
-### Work in progress
-*(10-Feb-2016)*
-In the past months, this set of tools based on the [RDKit](http.//www.rdkit.org) has evolved quite a bit.
+A set of tools to use with the Open Source Cheminformatics toolkit
+[RDKit](http.//www.rdkit.org) in the Jupyter Notebook.<br>
+Written for Python3, only tested on Linux (Ubuntu 16.04)
+and the conda install of the RDkit.
 
-
-#### Module tools
+### Module tools
 
 A Mol_List class was introduced, which is a subclass of a Python list for holding lists of RDKit molecule objects and allows direct access to a lot of the RDKit functionality.
 It is meant to be used with the Jupyter Notebook and includes a.o.:
 * display of the Mol_List
-    * as HTML grid
-  (both display types include the option to select molecules by clicking)
+    * as HTML table, nested table or grid
 * display of a summary including number of records and min, max, mean, median for numeric properties
 * display of correlations between the Mol_List's properties
   (using np.corrcoef, this allows getting a quick overview on which properties correlate with each other)
@@ -23,12 +22,12 @@ It is meant to be used with the Jupyter Notebook and includes a.o.:
     * further development will focus on Bokeh because of the more pythonic interface
 
 
-##### Other functions in the tools module:
+#### Other functions in the tools module:
 - *jsme*: Display Peter Ertl's Javascript Molecule Editor to enter a molecule directly in the IPython notebook (*how cool is that??*)
 
-plus many others
+plus many others.
 
-#### Module pipeline
+### Module pipeline
 
 A Pipelining Workflow using Python Generators, mainly for RDKit and large compound sets.
 The use of generators allows working with arbitrarily large data sets, the memory usage at any given time is low.
@@ -53,7 +52,7 @@ or, using the pipe function:
     >>>      (stop_csv_writer, "test.csv", {"summary": s})
     >>>     )
 
-The progress of the pipeline can be followed in a separate terminal with: `watch -n 2 cat pipeline.log`
+The progress of the pipeline is displayed as a table in the Notebook and can also be followed in a separate terminal with: `watch -n 2 cat pipeline.log`.
 
 #### Currently Available Pipeline Components:
 | Starting                   | Running                    | Stopping
@@ -81,11 +80,45 @@ The progress of the pipeline can be followed in a separate terminal with: `watch
 
 Limitation: unlike in other pipelining tools, because of the nature of Python generators, the pipeline can not be branched.
 
+### Other Modules
+#### Clustering
+Fully usable, documentation needs to be written.
+Please refer to the docstrings until then.
+
+#### Scaffolds
+New, WIP, **not** usable. Should probably be moved to a development branch.
+
 ### Tutorial
 Much of the functionality is shown in the [tutorial notebook](tutorial/tutorial.ipynb).
 
-### ToDo
-This README is meant as a teaser. I urgently need to prepare a proper example notebook to show all the functionality, this is high on my ToDo list.
-
 ### Documentation
 The module documentation can be built with sphinx using the `make_doc.sh` script
+
+### Installation
+#### Requirements
+The recommended way to use this project is via conda.
+1. Python 3
+1. Jupyter Notebook
+1. ipywidgets
+1. [RDKit](http://www.rdkit.org/)
+1. [Bokeh](http://bokeh.pydata.org/en/latest/)
+
+#### Highly recommended
+* cairo (via conda or pip) and cairocffi (only via pip)
+to get decent-looking structures
+
+After installing the requirements,
+clone this repo, then the rdkit_ipynb_tools can be used by including
+the project's base directory (`rdkit_ipynb_tools`)
+in Python's import path (I actually prefer this to using setuptools,
+because a simple `git pull` will get you the newest version). <br>
+This can be achieved by one of the following: <br>
+* If you use conda (recommended), use [conda develop](http://conda.pydata.org/docs/commands/build/conda-develop.html).
+This works similar to the next option.
+* Put a file with the extension `.pth`, e.g. `my_packages.pth`,
+into one of the `site-packages` directories of your Python installation
+and put the path to the base directory of this project
+(`rdkit_ipynb_tools`) into it. <br>
+(I have the path to a dedicated folder on my machine included in such a `.pth`
+file and link all my development projects to that folder.
+This way, I only need to create the `.pth` file once.)
