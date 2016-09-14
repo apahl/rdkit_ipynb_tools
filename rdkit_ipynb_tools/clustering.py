@@ -226,6 +226,13 @@ def get_stats_for_cluster(cluster_list, activity_prop=None):
         sups_set = set(sups_raw_str.split("; "))
         stats["Supplier"] = "; ".join(sorted(sups_set))
 
+    prod_raw_list = [mol.GetProp("Producer") for mol in cluster_list.mols_with_prop("Producer")]
+    if prod_raw_list:
+        # each Producer field of a mol may already contain "; "
+        prod_raw_str = "; ".join(prod_raw_list)
+        prod_set = set(prod_raw_str.split("; "))
+        stats["Producer"] = "; ".join(sorted(prod_set))
+
     if activity_prop is not None:
         value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
         stats["Num_Values"] = len(value_list)
@@ -324,6 +331,9 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
         if "Supplier" in stats:
             core_mol.SetProp("Supplier", stats["Supplier"])
 
+        if "Producer" in stats:
+            core_mol.SetProp("Producer", stats["Producer"])
+
         if align_to_core:
             # align_mol = MurckoScaffold.GetScaffoldForMol(core_mol)
             cluster.align(core_mol)
@@ -393,6 +403,9 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None):
 
         if "Supplier" in stats:
             core_mol.SetProp("Supplier", stats["Supplier"])
+
+        if "Producer" in stats:
+            core_mol.SetProp("Producer", stats["Producer"])
 
         members_all.insert(0, core_mol)
 
