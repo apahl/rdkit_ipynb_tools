@@ -68,8 +68,7 @@ except NameError:
     IPY = False
 
 if IPY:
-    from IPython.core.display import HTML, Javascript, display
-    import uuid
+    from IPython.core.display import HTML, display, clear_output
 
 
 def format_seconds(seconds):
@@ -104,19 +103,15 @@ class Summary(OrderedDict):
         self.timeit = timeit
         if self.timeit:
             self.t_start = time.time()
-        if IPY:
-            self.status_id = str(uuid.uuid4())
-            self.status = HTML(
-                """
-                <table style="border: none;"><tbody><tr style="border: none;">
-                <td style="border: none;" id="{}"></td>
-                </tr></tbody></table>
-                """.format(self.status_id))
-            display(self.status)
 
 
-    def __html__(self):
-        outer = """<table style="border: 1px solid black;"><tbody><tr><td bgcolor="#94CAEF"><b>Component</b></td><td bgcolor="#94CAEF"><b># Records</b></td></tr>{}</tbody></table>"""
+    def __html__(self, final=False):
+        if final:
+            pipe_status = "finished."
+        else:
+            pipe_status = "running..."
+
+        outer = """<table style="border: 1px solid black;"><tbody><tr><td bgcolor="#94CAEF" colspan=2><b>Pipeline {}</b></td></tr><tr><td bgcolor="#94CAEF"><b>Component</b></td><td bgcolor="#94CAEF"><b># Records</b></td></tr>{}</tbody></table>"""
         rows = []
         for k in self.keys():
             value = self[k]
@@ -125,7 +120,7 @@ class Summary(OrderedDict):
         seconds = time.time() - self.t_start
         row = """<tr bgcolor="#E9E9E9"><td><i>Time elapsed</i></td><td><i>{}</i></td></tr>""".format(format_seconds(seconds))
         rows.append(row)
-        return outer.format("".join(rows))
+        return outer.format(pipe_status, "".join(rows))
 
 
     def __str__(self):
@@ -159,11 +154,15 @@ class Summary(OrderedDict):
         """print the content of a dict or Counter object in a formatted way"""
         print(self.__str__())
 
-    def update(self):
+
+    def update(self, final=False):
+        clear_output()
         if IPY:
-            display(Javascript("""document.getElementById("{}").innerHTML = '{}';""".format(self.status_id, self.__html__())))
+            display(HTML(self.__html__(final)))
         else:
             print(self.__str__())
+
+
 
 
 
@@ -248,7 +247,7 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
     if summary:
         print(summary, file=open("pipeline.log", "w"))
         # print(summary)
-        summary.update()
+        summary.update(final=True)
 
 
 
