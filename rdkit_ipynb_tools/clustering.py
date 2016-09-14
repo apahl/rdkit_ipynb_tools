@@ -225,8 +225,6 @@ def get_stats_for_cluster(cluster_list, activity_prop=None):
         sups_raw_str = "; ".join(sups_raw_list)
         sups_set = set(sups_raw_str.split("; "))
         stats["Supplier"] = "; ".join(sorted(sups_set))
-    else:
-        stats["Supplier"] = None
 
     if activity_prop is not None:
         value_list = [tools.get_value(mol.GetProp(activity_prop)) for mol in cluster_list.mols_with_prop(activity_prop)]
@@ -323,7 +321,7 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
             core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
             core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
 
-        if stats["Supplier"] is not None:
+        if "Supplier" in stats:
             core_mol.SetProp("Supplier", stats["Supplier"])
 
         if align_to_core:
@@ -393,7 +391,7 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None):
 
         stats = get_stats_for_cluster(cluster, activity_prop)
 
-        if stats["Supplier"] is not None:
+        if "Supplier" in stats:
             core_mol.SetProp("Supplier", stats["Supplier"])
 
         members_all.insert(0, core_mol)
