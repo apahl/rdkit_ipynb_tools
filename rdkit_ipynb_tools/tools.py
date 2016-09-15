@@ -169,9 +169,9 @@ function jsmeOnLoad() {{
 }}
 
 function onSubmit() {{
-    var drawing = jsmeApplet{ts}.smiles();
+    var drawing = jsmeApplet{ts}.molFile();
     // document.getElementById('jsme_smiles{ts}').value = drawing;
-    var command = "{var_name} = Chem.MolFromSmiles('" + drawing + "')";
+    var command = '{var_name} = Chem.MolFromMolBlock("""' + drawing + '""")';
     console.log("Executing Command: " + command);
 
     var kernel = IPython.notebook.kernel;
