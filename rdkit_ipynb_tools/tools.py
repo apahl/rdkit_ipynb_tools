@@ -984,9 +984,9 @@ class Mol_List(list):
                 tooltip = "struct"
 
         if self.plot_tool == "bokeh":
-            return bkt.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
+            return bkt.cpd_scatter(self.d, x, y, r=r, pid=self.id_prop, tooltip=tooltip, **kwargs)
         else:
-            return hct.cpd_scatter(self.d, x, y, r=r, tooltip=tooltip, **kwargs)
+            return hct.cpd_scatter(self.d, x, y, r=r, pid=self.id_prop, tooltip=tooltip, **kwargs)
 
 
     def hist(self, field, bins=10, title="Distribution", xlabel=None, ylabel="Occurrence", normed=False, show=True, **kwargs):
