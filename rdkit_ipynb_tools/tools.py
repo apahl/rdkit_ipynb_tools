@@ -65,13 +65,11 @@ except ImportError:
 
 try:
     # Try to import Avalon so it can be used for generation of 2d coordinates.
-    # The default remains the RDKit method, because it produces more horizontal
-    # (don't know a better way to put it) molecules.
     from rdkit.Avalon import pyAvalonTools as pyAv
+    USE_AVALON = True
 except ImportError:
     print("  * Avalon not available. Using RDKit for 2d coordinate generation.")
-
-USE_AVALON = False
+    USE_AVALON = False
 
 try:
     from Contrib.SA_Score import sascorer
