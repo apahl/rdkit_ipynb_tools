@@ -10,5 +10,6 @@ tutorial/chembl_et-a_ant_active.sdf
 *.mol
 *.pyc
 .spyderproject
+branch_info.txt
 commit_msg.txt
 snippets.txt
