@@ -95,6 +95,7 @@ else:
 
 
 BGCOLOR = "#94CAEF"
+IMG_GRID_SIZE = 235
 
 # A list of partial property strings to use for ordering of properties:
 DEFAULT_ORDER = ["_id", "supplier", "producer", "activity|pic50",
@@ -923,7 +924,7 @@ class Mol_List(list):
 
 
 
-    def grid(self, pagesize=12, props=None, highlight=None, mols_per_row=4, size=250, img_dir=None, raw=False):
+    def grid(self, pagesize=12, props=None, highlight=None, mols_per_row=4, size=IMG_GRID_SIZE, img_dir=None, raw=False):
         """Returns:
             The Mol_List as HTML grid table. Either as raw HTML (raw==True) or as HTML object for display in IPython notebook.
 
@@ -959,7 +960,7 @@ class Mol_List(list):
                              header=header, summary=summary), fn=fn)
 
 
-    def write_grid(self, props=None, highlight=None, mols_per_row=5, size=250,
+    def write_grid(self, props=None, highlight=None, mols_per_row=5, size=IMG_GRID_SIZE,
                    header=None, summary=None, img_dir=None, fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary), fn=fn)
@@ -1662,8 +1663,8 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
         HTML table as TEXT to embed in IPython or a web page."""
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
-    td_opt = {"align": "center"}
-    header_opt = {"bgcolor": "#94CAEF", "align": "center"}
+    td_opt = {"style": "text-align: center;"}
+    header_opt = {"bgcolor": "#94CAEF", "style": "text-align: center;"}
     table_list = []
     prop_list = list_fields(sdf_list)
 
@@ -1732,14 +1733,15 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
                 img_opt = {"title": str(img_id)}
-            img_opt["width"] = size
+            # img_opt["width"] = size
             # img_opt["height"] = size
+            img_opt["style"] = 'max-width: {}px; max-height: {}px; display: block; margin: auto;'.format(size, size)
 
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
 
         for prop in prop_list:
-            td_opt = {"align": "center"}
+            td_opt = {"style": "text-align: center;"}
             if prop in mol_props:
                 if not show_hidden and prop.startswith("_"): continue
                 td_opt["title"] = prop
@@ -1770,7 +1772,7 @@ def mol_table(sdf_list, id_prop=None, interact=False, highlight=None, show_hidde
     return "".join(table_list)
 
 
-def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None, mols_per_row=4, size=250, img_dir=None):
+def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None, mols_per_row=4, size=IMG_GRID_SIZE, img_dir=None):
     """Creates a HTML grid out of the Mol_List input.
 
     Parameters:
@@ -1786,7 +1788,8 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
     prop_opt = {"align": "center"}
-    td_opt = {"align": "center"}
+    # td_opt = {"align": "center"}
+    td_opt = {"style": "text-align: center;"}
 
     header_opt = {"bgcolor": BGCOLOR}
     table_list = []
@@ -1836,12 +1839,14 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
                            "onclick": "toggleCpd('{}')".format(id_prop_val)}
             else:
                 img_opt = {"title": str(img_id)}
-            img_opt["width"] = size
+            # img_opt["width"] = size
             # img_opt["height"] = size
+            img_opt["style"] = 'max-width: {}px; max-height: {}px; display: block; margin: auto;'.format(size, size)
 
             cell = html.img(img_src, img_opt)
 
-        td_opt = {"align": "center"}
+        # td_opt = {"align": "center"}
+        td_opt = {"style": "text-align: center;"}
 
         if highlight:
             eval_str = None
@@ -1927,7 +1932,7 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
     for k in order_rev:
         prop_list.sort(key=lambda x: k.lower() in x.lower(), reverse=True)
 
-    header_opt = {"bgcolor": "#94CAEF"}
+    header_opt = {"bgcolor": "#94CAEF", "style": "text-align: center;"}
 
     table = []
     rows = []
@@ -1977,7 +1982,8 @@ def nested_table(mol_list, id_prop=None, props=None, order=None, size=300, img_d
             img.save(img_file, format='PNG')
             img_src = img_file
 
-        img_opt = {"title": str(img_id), "width": size}
+        img_opt = {"title": str(img_id)}
+        img_opt["style"] = 'max-width: {}px; max-height: {}px; display: block; margin: auto;'.format(size, size)
 
         cells.extend(html.td(html.img(img_src, img_opt), td_opt))
 
@@ -2032,7 +2038,7 @@ def nested_pager(mol_list, pagesize=10, id_prop=None, props=None, order=None):
     )
 
 
-def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=250):
+def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=IMG_GRID_SIZE):
     l = len(mol_list)
     num_pages = l // pagesize
     if not WIDGETS or l <= pagesize:
