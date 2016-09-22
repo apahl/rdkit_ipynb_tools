@@ -343,13 +343,16 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
     return members_all
 
 
-def add_centers(cluster_list, mode="most_active", activity_prop=None):
+def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
     """Add cluster centers to the cores.
     Contrary to the cores, this is not an MCS, but one of the cluster members,
     with a certain property.
     Parameters:
         mode (str): `most_active` (default): if activity_prop is not None, the most active compound is taken.
-            `smallest`: the compound with the least amount of heavy atoms is taken as center."""
+            `smallest`: the compound with the least amount of heavy atoms is taken as center.
+            `center`: the compound with the medium number of heavy atoms is taken.
+            `from_tag`: takes the molecule the `tag` property as center.
+            The `tag` parameter needs to be defined."""
 
     if "active" in mode:
         if activity_prop is not None:
@@ -374,11 +377,26 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None):
 
         if "active" in mode:
             cluster.sort_list(activity_prop, reverse=reverse)
+            core_mol = deepcopy(cluster[0])
 
-        else:  # smallest
+        elif "smallest" in mode:  # smallest
             cluster.sort(key=Desc.HeavyAtomCount)
+            core_mol = deepcopy(cluster[0])
 
-        core_mol = deepcopy(cluster[0])
+        elif "center" in mode:  # medium number of heavy atoms, the middle of the list
+            cluster.sort(key=Desc.HeavyAtomCount)
+            core_mol = deepcopy(cluster[len(cluster) // 2])
+
+        elif "tag" in mode:
+            tag = kwargs.get("tag", None)
+            if tag is None:
+                raise KeyError("Parameter `tag` is required but could not be found.")
+            tmp_list = cluster.has_prop_filter(tag)
+            if len(tmp_list) == 0:
+                print("No core for cluster {} (tag: {})".format(cl_id, tag))
+                continue
+            core_mol = tmp_list[0]
+
         for prop in core_mol.GetPropNames():
             core_mol.ClearProp(prop)
 
