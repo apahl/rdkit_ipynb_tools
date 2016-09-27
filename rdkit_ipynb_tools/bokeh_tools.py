@@ -18,7 +18,7 @@ import numpy as np
 from bokeh.charts import Bar
 from bokeh.plotting import figure, ColumnDataSource
 import bokeh.io as io
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, OpenURL, TapTool
 
 AVAIL_COLORS = ["#1F77B4", "firebrick", "goldenrod", "aqua", "brown", "chartreuse", "darkmagenta"
                 "aquamarine", "blue", "red", "blueviolet", "darkorange", "forestgreen", "lime"]
@@ -76,7 +76,8 @@ class Chart():
 
         Parameters:
             xlabel (str): override the automatic x_axis_label. Default is None.
-            ylabel (str): override the automatic y_axis_label. Default is None."""
+            ylabel (str): override the automatic y_axis_label. Default is None.
+            callback (str): clicking on a point will link to the given HTML address. `@<IdProperty>` can be used as placeholder for the point id (e.g. Compound_Id). Default is None."""
 
         self.data = {}
         self.kwargs = kwargs
@@ -87,12 +88,18 @@ class Chart():
 
         self.series_counter = 0
         self.tools_added = False
+        tools = ["pan", "wheel_zoom", "box_zoom", "reset", "resize", "save"]
+        self.callback = kwargs.get("callback", None)
+        if self.callback is not None:
+            tools.append("tap")
 
-        self.plot = figure(plot_height=self.height, title=self.title, tools="pan,wheel_zoom,box_zoom,reset,resize,save")
+        self.plot = figure(plot_height=self.height, title=self.title, tools=tools)
         self.plot.axis.axis_label_text_font_size = "14pt"
         self.plot.axis.major_label_text_font_size = "14pt"
         self.plot.title.text_font_size = "18pt"
-
+        if self.callback is not None:
+            taptool = self.plot.select(type=TapTool)
+            taptool.callback = OpenURL(url=self.callback)
 
 
     def _add_series(self, x, y, series, size, source):
@@ -446,7 +453,8 @@ def cpd_scatter(df, x, y, r=7, pid=None, **kwargs):
 
         pid = guess_id_prop(prop_list)
 
+    callback = kwargs.pop("callback", None)
     title = kwargs.pop("title", "Compound Scatter Plot")
-    scatter = Chart(title=title, r=r)
+    scatter = Chart(title=title, r=r, callback=callback)
     scatter.add_data(df, x, y, pid=pid, **kwargs)
     return scatter.show()

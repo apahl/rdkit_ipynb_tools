@@ -968,13 +968,14 @@ class Mol_List(list):
 
     def scatter(self, x, y, r=7, tooltip=None, **kwargs):
         """Displays a Highcharts plot in the IPython Notebook.
-        Uses the Highcharts javascript library, either locally under lib/ relative to the Notebook
+        Uses Bokeh (preferred) or the Highcharts javascript library, either locally under lib/ relative to the Notebook
         or the web version at http://code.highcharts.com.
-        If ``tooltip`` is *None*, then structure ttooltips will be shown for Mol_Lists with
+        If ``tooltip`` is *None*, then structure tooltips will be shown for Mol_Lists with
         less than or equal 150 records, if the Mol_List has more records, no structure tooltips
         will be shown. The bevaviour can be forced by either providing ``tooltip="struct"`` for tooltips
         or ``tooltip=""`` for no tooltips. Properties in the ``jitter`` list (only when used for x or y)
-        will be jittered by a magnitude of ``mag``."""
+        will be jittered by a magnitude of ``mag``.
+        callback (str): clicking on a point will link to the given HTML address. `@<IdProperty>` can be used as placeholder for the point id (e.g. Compound_Id). Default is None."""
 
         if tooltip is None:
             if len(self) > 150:

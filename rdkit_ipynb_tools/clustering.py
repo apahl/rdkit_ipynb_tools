@@ -633,7 +633,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
                 data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
                 mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)
 
-        content.append("<br>\n<h2>Cluster {:03d}</h2>".format(cl_no))
+        content.append("""<br>\n<h2 id="{}">Cluster {:03d}</h2>""".format(cl_no, cl_no))
         core = get_cores(cluster)
         if len(core) > 0:
             content.append("<ul>\n<li>\n")
