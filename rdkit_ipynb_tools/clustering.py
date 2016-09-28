@@ -505,21 +505,27 @@ def cluster_from_mol_list(mol_list, cutoff=0.8, fp="ecfp6", activity_prop=None,
     return cluster_list
 
 
-def show_numbers(cluster_list):
-    """Show some numbers for the cluster_list."""
+def show_numbers(cluster_list, show=True):
+    """Calculate (and show) some numbers for the cluster_list. Returns a dict."""
     all_members = get_members(cluster_list)
     ctr_cl_no = Counter([int(mol.GetProp("Cluster_No")) for mol in all_members])
-    ctr_size = Counter([s for s in ctr_cl_no.values()])
+    sizes = [s for s in ctr_cl_no.values()]
+    ctr_size = Counter(sizes)
 
-    total = 0
-    print("\nCluster Size  |  Number of Clusters")
-    print("------------- + -------------------")
-    for i in sorted(ctr_size, reverse=True):
-        print("     {:3d}      |   {:3d}".format(i, ctr_size[i]))
-        total += (i * ctr_size[i])
+    if show:
+        total = 0
+        print("\nCluster Size  |  Number of Clusters")
+        print("------------- + -------------------")
 
-    print()
-    print("Number of compounds as sum of members per cluster size:", total)
+        for i in sorted(ctr_size, reverse=True):
+
+            print("     {:3d}      |   {:3d}".format(i, ctr_size[i]))
+            total += (i * ctr_size[i])
+
+        print()
+        print("Number of compounds as sum of members per cluster size:", total)
+
+    return sizes
 
 
 def core_table(mol, props=None, hist=None):
