@@ -204,9 +204,9 @@ def keep_clusters_by_len(cluster_list, min_len=3, max_len=1000, make_copy=True, 
     return result_list
 
 
-def get_cores(cluster_list):
+def get_cores(cluster_list, make_copy=True):
     """Find and return the core molecules in a cluster_list."""
-    core_list = cluster_list.has_prop_filter("is_core")
+    core_list = cluster_list.has_prop_filter("is_core", make_copy=make_copy)
     core_list.order = ["Compound_Id", "Cluster_No", "Num_Members", "Num_Values", "Min", "Max", "Mean", "Median", "is_core"]
     return core_list
 
@@ -242,6 +242,45 @@ def get_stats_for_cluster(cluster_list, activity_prop=None):
         stats["Median"] = np.median(value_list) if value_list else None
 
     return stats
+
+
+def add_stats_to_cores(cluster_list_w_cores, props=None):
+    """Add statistical information for the given props to the cluster cores.
+    If `props`is None, a default list of properties is used.
+    The cores have to be already present in the list."""
+    if props is None:
+        props = ["ALogP", "QED", "SA_Score"]
+    cores = get_cores(cluster_list_w_cores, make_copy=False)
+    cores.order = ["Cluster_No", "Num_Members"]
+    for prop in props:
+        cores.order.extend(["{}_Min".format(prop), "{}_Max".format(prop), "{}_Mean".format(prop),
+                           "{}_Median".format(prop), "{}_#Values".format(prop)])
+    if len(cores) == 0:
+        raise LookupError("Could not find any cores in the list! Please add them first with add_cores() or add_centers()")
+    for core in cores:
+        cl_no = tools.get_prop_val(core, "Cluster_No")
+        cluster = get_members(get_clusters_by_no(cl_no, make_copy=False), make_copy=False)
+        for prop in props:
+            value_list = list(filter(
+                lambda x: x is not None, [tools.get_prop_val(mol, prop) for mol in cluster]))
+            if len(value_list) == 0: continue
+
+            core.SetProp("{}_#Values".format(prop), str(len(value_list)))
+
+            if all(tools.isnumber(x) for x in value_list):
+                core.SetProp("{}_Min".format(prop), "{:.2f}".format(min(value_list)))
+                core.SetProp("{}_Max".format(prop), "{:.2f}".format(max(value_list)))
+                core.SetProp("{}_Mean".format(prop), "{:.2f}".format(np.mean(value_list)))
+                core.SetProp("{}_Median".format(prop), "{:.2f}".format(np.median(value_list)))
+
+            else:  # summarize the values as strings
+                value_str = "; ".join(str(x) for x in value_list)
+                value_list_ext = value_str.split("; ")
+                value_ctr = Counter(value_list_ext)
+                prop_values = []
+                for val in sorted(value_ctr):
+                    prop_values.append("{} ({})".format(val, value_ctr[val]))
+                core.SetProp("{}s".format(prop), "; ".join(prop_values))
 
 
 def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_act=None, min_len=1, renumber=False):
@@ -319,21 +358,6 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
         core_mol.SetProp("Cluster_No", str(cl_id))
         core_mol.SetProp("Num_Members", str(len(cluster)))
 
-        stats = get_stats_for_cluster(cluster, activity_prop)
-        if activity_prop is not None:
-            core_mol.SetProp("Num_Values", str(stats["Num_Values"]))
-
-            core_mol.SetProp("Min", "{:.2f}".format(stats["Min"]))
-            core_mol.SetProp("Max", "{:.2f}".format(stats["Max"]))
-            core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
-            core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
-
-        if "Supplier" in stats:
-            core_mol.SetProp("Supplier", stats["Supplier"])
-
-        if "Producer" in stats:
-            core_mol.SetProp("Producer", stats["Producer"])
-
         if align_to_core:
             # align_mol = MurckoScaffold.GetScaffoldForMol(core_mol)
             cluster.align(core_mol)
@@ -362,7 +386,7 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
                 reverse = True
 
         else:
-            mode = "smallest"
+            mode = "center"
 
     # first, remove any already existing cores
     members_all = get_members(cluster_list)
@@ -400,30 +424,12 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
         for prop in core_mol.GetPropNames():
             core_mol.ClearProp(prop)
 
-        stats = get_stats_for_cluster(cluster, activity_prop)
-        if activity_prop is not None:
-            core_mol.SetProp("Num_Values", str(stats["Num_Values"]))
-
-            core_mol.SetProp("Min", "{:.2f}".format(stats["Min"]))
-            core_mol.SetProp("Max", "{:.2f}".format(stats["Max"]))
-            core_mol.SetProp("Mean", "{:.2f}".format(stats["Mean"]))
-            core_mol.SetProp("Median", "{:.2f}".format(stats["Median"]))
-
-
         # set a number of properties for the cluster core
         id_prop = tools.guess_id_prop(cluster[0].GetPropNames())
         core_mol.SetProp(id_prop, str(cl_id))
         core_mol.SetProp("is_core", "yes")
         core_mol.SetProp("Cluster_No", str(cl_id))
         core_mol.SetProp("Num_Members", str(len(cluster)))
-
-        stats = get_stats_for_cluster(cluster, activity_prop)
-
-        if "Supplier" in stats:
-            core_mol.SetProp("Supplier", stats["Supplier"])
-
-        if "Producer" in stats:
-            core_mol.SetProp("Producer", stats["Producer"])
 
         members_all.insert(0, core_mol)
 
@@ -530,7 +536,7 @@ def show_numbers(cluster_list, show=True):
 
 def core_table(mol, props=None, hist=None):
     if props is None:
-        props = ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]
+        props = ["Cluster_No", "Num_Members", "Producers"]
 
     td_opt = {"align": "center"}
     header_opt = {"bgcolor": "#94CAEF"}
@@ -547,12 +553,12 @@ def core_table(mol, props=None, hist=None):
     rows = html.tr(cells)
 
     cells = []
-    mol_props = mol.GetPropNames()
 
     if not mol:
         cells.extend(html.td("no structure"))
 
     else:
+        mol_props = mol.GetPropNames()
         cl_no = mol.GetProp("Cluster_No")
         img_file = "img/core_{}.png".format(cl_no)
         img = tools.autocrop(Draw.MolToImage(mol))
@@ -588,8 +594,10 @@ def core_table(mol, props=None, hist=None):
 
 def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwargs):
     """Useful kwargs: core_props (list, props to show for the core,
-    default: ["Cluster_No", "Num_Members", "Min", "Max", "Mean", "Median", "Supplier"]),
+    default: ["Cluster_No", "Num_Members", "Producers"]),
     bins (int or list, default=10), align (bool)
+    add_stats (bool): whether to add the statistics on the fly
+    or use any precalculated ones. Default: True
     show_hist (bool): whether to show histograms or not (default: True)."""
     resource_dir = op.join(op.dirname(__file__), "resources")
     cur_dir = op.abspath(op.curdir)
@@ -599,6 +607,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     content = [ft.CLUSTER_REPORT_INTRO]
     bins = kwargs.get("bins", 10)
     show_hist = kwargs.get("show_hist", True)
+    add_stats = kwargs.get("add_stats", True)
 
     if NBT:
         pb = nbt.ProgressbarJS()
@@ -610,6 +619,10 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
         shutil.copytree(op.join(resource_dir, "clustering"), "./clustering")
 
     os.chdir("clustering")
+    if add_stats:
+        print("  Adding statisical information...")
+        add_stats_to_cores(cluster_list, core_props)
+
     print("  Generating Report...")
 
     # collect the cluster numbers in the order in which they are in the cluster_list:
@@ -617,9 +630,8 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     for mol in cluster_list.has_prop_filter("Cluster_No"):
         cluster_numbers[int(mol.GetProp("Cluster_No"))] = 0  # dummy value
 
-    if props is not None:
-        if props and not isinstance(props, list):
-            props = [props]
+    if props is not None and not isinstance(props, list):
+        props = [props]
 
     len_cluster_numbers = len(cluster_numbers)
     for idx, cl_no in enumerate(cluster_numbers, 1):
