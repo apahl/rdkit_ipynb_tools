@@ -250,13 +250,16 @@ def add_stats_to_cores(cluster_list_w_cores, props=None):
     The cores have to be already present in the list."""
     if props is None:
         props = ["ALogP", "QED", "SA_Score"]
+    elif not isinstance(props, list):
+        props = [props]
+
     cores = get_cores(cluster_list_w_cores, make_copy=False)
+    if len(cores) == 0:
+        raise LookupError("Could not find any cores in the list! Please add them first with add_cores() or add_centers()")
     cores.order = ["Cluster_No", "Num_Members"]
     for prop in props:
         cores.order.extend(["{}_Min".format(prop), "{}_Max".format(prop), "{}_Mean".format(prop),
                            "{}_Median".format(prop), "{}_#Values".format(prop)])
-    if len(cores) == 0:
-        raise LookupError("Could not find any cores in the list! Please add them first with add_cores() or add_centers()")
     for core in cores:
         cl_no = tools.get_prop_val(core, "Cluster_No")
         cluster = get_members(get_clusters_by_no(cl_no, make_copy=False), make_copy=False)
@@ -594,7 +597,7 @@ def core_table(mol, props=None, hist=None):
 
 def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwargs):
     """Useful kwargs: core_props (list, props to show for the core,
-    default: ["Cluster_No", "Num_Members", "Producers"]),
+    default: ["Cluster_No", "Num_Members", "Producers"]). The exact names of the props have to be given (with `_Mean` etc.).
     bins (int or list, default=10), align (bool)
     add_stats (bool): whether to add the statistics on the fly
     or use any precalculated ones. Default: True
@@ -621,7 +624,15 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     os.chdir("clustering")
     if add_stats:
         print("  Adding statisical information...")
-        add_stats_to_cores(cluster_list, core_props)
+        props_to_stat = []
+        for prop in core_props:
+            if "Num_Members" in prop or "Cluster_No" in prop: continue  # no stats for these props!
+            for stat_type in ["_Min", "_Max", "_Mean", "_Median", "s"]:
+                if prop.endswith(stat_type):
+                    prop = prop[:-(len(stat_type))]
+            if props not in props_to_stat:
+                props_to_stat.append(prop)
+        add_stats_to_cores(cluster_list, props_to_stat)
 
     print("  Generating Report...")
 
