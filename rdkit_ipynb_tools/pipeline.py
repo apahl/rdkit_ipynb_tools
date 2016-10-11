@@ -1135,7 +1135,7 @@ def pipe_inspect_stream(stream, fn="pipe_inspect.txt", exclude=None, summary=Non
         yield rec
 
 
-def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark=True, summary=None, comp_id="pipe_merge_data"):
+def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark=True, digits=2, summary=None, comp_id="pipe_merge_data"):
     """Merge the data from the stream on the `merge_on` property.
     WARNING: The stream is collected in memory by this component!
 
@@ -1147,7 +1147,9 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
             unique ("; "-separated concatenation of the unique values),
             keep_first, keep_last.
         num_props (str): Merge behaviour for numerical values.
-            Allowed values are: mean, median, keep_first, keep_last."""
+            Allowed values are: mean, median, keep_first, keep_last.
+        digits (int): The number of decimal digits for the merged numerical props
+            (mean or median)."""
 
     def _get_merged_val_from_val_list(val_list, str_props, num_props):
         if isinstance(val_list[0], str):
@@ -1164,9 +1166,9 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
 
         else:
             if "mean" in num_props:
-                return np.mean(val_list)
+                return np.round(np.mean(val_list), digits)
             if "median" in num_props:
-                return np.median(val_list)
+                return np.round(np.median(val_list), digits)
             if "first" in num_props:
                 return val_list[0]
             if "last" in num_props:
