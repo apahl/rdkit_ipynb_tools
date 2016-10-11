@@ -211,9 +211,9 @@ def get_cores(cluster_list, make_copy=True):
     return core_list
 
 
-def get_members(cluster_list):
+def get_members(cluster_list, make_copy=True):
     """Find and return the members of a cluster_list, exclude the cores."""
-    member_list = cluster_list.has_prop_filter("is_core", invert=True)
+    member_list = cluster_list.has_prop_filter("is_core", invert=True, make_copy=make_copy)
     return member_list
 
 
@@ -262,7 +262,8 @@ def add_stats_to_cores(cluster_list_w_cores, props=None):
                            "{}_Median".format(prop), "{}_#Values".format(prop)])
     for core in cores:
         cl_no = tools.get_prop_val(core, "Cluster_No")
-        cluster = get_members(get_clusters_by_no(cl_no, make_copy=False), make_copy=False)
+        cluster = get_members(get_clusters_by_no(cluster_list_w_cores, cl_no, make_copy=False),
+                              make_copy=False)
         for prop in props:
             value_list = list(filter(
                 lambda x: x is not None, [tools.get_prop_val(mol, prop) for mol in cluster]))
@@ -542,11 +543,18 @@ def core_table(mol, props=None, hist=None):
         props = ["Cluster_No", "Num_Members", "Producers"]
 
     td_opt = {"align": "center"}
-    header_opt = {"bgcolor": "#94CAEF"}
+    header_opt = {"bgcolor": "#94CAEF", "align": "center"}
     table_list = []
 
     cells = html.td(html.b("Molecule"), header_opt)
     for prop in props:
+        pl = prop.lower()
+        if (pl.endswith("min") or pl.endswith("max") or pl.endswith("mean") or
+                pl.endswith("median")or pl.endswith("ic50") or pl.endswith("ic50)") or
+                pl.endswith("activity") or pl.endswith("acctivity)")):
+            pos = prop.rfind("_")
+            if pos > 0:
+                prop = prop[:pos] + "<br>" + prop[pos + 1:]
         cells.extend(html.td(html.b(prop), header_opt))
 
     if hist is not None:
@@ -610,7 +618,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     content = [ft.CLUSTER_REPORT_INTRO]
     bins = kwargs.get("bins", 10)
     show_hist = kwargs.get("show_hist", True)
-    add_stats = kwargs.get("add_stats", True)
+    add_stats = kwargs.get("add_stats", False)
 
     if NBT:
         pb = nbt.ProgressbarJS()
