@@ -24,6 +24,11 @@ from copy import deepcopy
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw, rdFMCS
 import rdkit.Chem.Descriptors as Desc
+
+# imports for similarity search
+from rdkit.Chem.Fingerprints import FingerprintMols
+from rdkit import DataStructs
+
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
@@ -666,12 +671,13 @@ class Mol_List(list):
         mol.SetProp(prop_name, prop_value)
 
 
-    def calc_props(self, props, force2d=False):
+    def calc_props(self, props, force2d=False, **kwargs):
         """Calculate properties from the Mol_List.
         props can be a single property or a list of properties.
 
         Calculable properties:
-            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa
+            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa,
+            sim (similarity relative to `sim_mol_or_smiles` or the mol with `sim_id`)
 
         Synthetic Accessibility (normalized):
             0: hard to synthesize; 1: easy access
@@ -681,12 +687,27 @@ class Mol_List(list):
                 | *Peter Ertl and Ansgar Schuffenhauer*
                 | Journal of Cheminformatics 1:8 (2009) (`link <http://www.jcheminf.com/content/1/1/8>`_)
         """
+        sim_mol_or_smiles = kwargs.get("sim_mol_or_smiles", None)
+        sim_id = kwargs.get("sim_id", None)
 
         if not isinstance(props, list):
             props = [props]
 
         # make all props lower-case:
         props = list(map(lambda x: x.lower(), props))
+
+        if sim_id is not None:  # sim_id represents a Compound_Id,
+                                # which is then taken as the Similarity base
+            sim_mol_or_smiles = self.show_cpd(sim_id, is_cpd_id=True,
+                                              make_copy=False, show_smiles=False)[0]
+
+        if sim_mol_or_smiles is not None:
+            if isinstance(sim_mol_or_smiles, str):
+                sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
+            if USE_AVALON:
+                query_fp = pyAv.GetAvalonFP(sim_mol_or_smiles, 1024)
+            else:
+                query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
 
         ctr = 0
         calculated_props = set()
@@ -698,7 +719,8 @@ class Mol_List(list):
                 mol.SetProp("Mol_Id", str(ctr))
                 calculated_props.add("molid")
 
-            calc_props(mol, props, force2d=force2d, calculated_props=calculated_props)
+            calc_props(mol, props, force2d=force2d, query_fp=query_fp,
+                       calculated_props=calculated_props)
 
         self._set_recalc_needed()
 
@@ -1428,8 +1450,11 @@ def check_2d_coords(mol, force=False):
             mol.Compute2DCoords()
 
 
-def calc_props(mol, props, force2d=False, calculated_props=None):
+def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
     """calculated_props can be None or of type set()."""
+
+    sim_mol_or_smiles = kwargs.get("sim_mol_or_smiles", None)
+    query_fp = kwargs.get("query_fp", None)
 
     if not isinstance(props, list):
         props = [props]
@@ -1490,6 +1515,24 @@ def calc_props(mol, props, force2d=False, calculated_props=None):
             mol.SetProp("TPSA", str(int(Desc.TPSA(mol))))
             if calculated_props is not None:
                 calculated_props.add("tpsa")
+
+        if "sim" in props:
+            if sim_mol_or_smiles is not None:
+                if isinstance(sim_mol_or_smiles, str):
+                    sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
+                    if USE_AVALON:
+                        query_fp = pyAv.GetAvalonFP(sim_mol_or_smiles, 1024)
+                    else:
+                        query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
+
+            if query_fp is not None:
+                if USE_AVALON:
+                    mol_fp = pyAv.GetAvalonFP(mol, 1024)
+                else:
+                    mol_fp = FingerprintMols.FingerprintMol(mol)
+                sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
+                mol.SetProp("Sim", "{:.2f}".format(sim * 100))
+                calculated_props.add("sim")
 
 
 def find_mcs(mol_list):
