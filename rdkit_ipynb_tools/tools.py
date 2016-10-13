@@ -29,6 +29,8 @@ import rdkit.Chem.Descriptors as Desc
 from rdkit.Chem.Fingerprints import FingerprintMols
 from rdkit import DataStructs
 
+import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
+
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
@@ -676,7 +678,7 @@ class Mol_List(list):
         props can be a single property or a list of properties.
 
         Calculable properties:
-            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa,
+            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa, murcko (MurckoScaffold as Smiles)
             sim (similarity relative to `sim_mol_or_smiles` or the mol with `sim_id`)
 
         Synthetic Accessibility (normalized):
@@ -689,6 +691,7 @@ class Mol_List(list):
         """
         sim_mol_or_smiles = kwargs.get("sim_mol_or_smiles", None)
         sim_id = kwargs.get("sim_id", None)
+        query_fp = None
 
         if not isinstance(props, list):
             props = [props]
@@ -1515,6 +1518,11 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
             mol.SetProp("TPSA", str(int(Desc.TPSA(mol))))
             if calculated_props is not None:
                 calculated_props.add("tpsa")
+
+        if "murcko" in props:
+            msmiles = MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
+            mol.SetProp("Murcko", msmiles)
+            calculated_props.add("murcko")
 
         if "sim" in props:
             if sim_mol_or_smiles is not None:
