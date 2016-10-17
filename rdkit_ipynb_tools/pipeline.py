@@ -203,17 +203,18 @@ def pipe(val, *forms):
     return result
 
 
-def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"):
+def start_csv_reader(fn, max_records=0, tag=True, summary=None, comp_id="start_csv_reader"):
     """A reader for csv files.
 
     Returns:
         An iterator with the fields as dict
 
     Parameters:
-        fn (str, list<str>): filename or list of filenames
-        max_records (int): maximum number of records to read, 0 means all
-        summary (Summary): a Counter class to collect runtime statistics
-        comp_id: (str): the component Id to use for the summary"""
+        fn (str, list<str>): filename or list of filenames.
+        tag (bool): add the filename as a record when reading from more than one file.
+        max_records (int): maximum number of records to read, 0 means all.
+        summary (Summary): a Counter class to collect runtime statistics.
+        comp_id: (str): the component Id to use for the summary."""
 
     if not isinstance(fn, list):
         fn = [fn]
@@ -232,6 +233,8 @@ def start_csv_reader(fn, max_records=0, summary=None, comp_id="start_csv_reader"
             if max_records > 0 and rec_counter > max_records: break
             # make a copy with non-empty values
             rec = {k: get_value(v) for k, v in row_dict.items() if v is not None and v != ""}  # make a copy with non-empty values
+            if len(fn) > 1 and tag:
+                rec["tag"] = filen
 
             if summary is not None:
                 summary[comp_id] = rec_counter
@@ -256,17 +259,18 @@ def start_cache_reader(name, summary=None, comp_id="start_cache_reader"):
     start_csv_reader(fn, summary=None, comp_id=comp_id)
 
 
-def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"):
+def start_sdf_reader(fn, max_records=0, tag=True, summary=None, comp_id="start_sdf_reader"):
     """A reader for SD files.
 
     Returns:
         An iterator with the fields as dict, including the molecule in the "mol" key
 
     Parameters:
-        fn (str, list): filename or list of filenames
-        max_records (int): maximum number of records to read, 0 means all
-        summary (Summary): a Counter class to collect runtime statistics
-        comp_id: (str): the component Id to use for the summary"""
+        fn (str, list): filename or list of filenames.
+        max_records (int): maximum number of records to read, 0 means all.
+        tag (bool): add the filename as a record when reading from more than one file.
+        summary (Summary): a Counter class to collect runtime statistics.
+        comp_id: (str): the component Id to use for the summary."""
 
     rec_counter = 0
     no_mol_counter = 0
@@ -287,6 +291,8 @@ def start_sdf_reader(fn, max_records=0, summary=None, comp_id="start_sdf_reader"
             rec = {}
             rec_counter += 1
             if mol:
+                if len(fn) > 1 and tag:
+                    rec["tag"] = filen
                 for prop in mol.GetPropNames():
                     val = mol.GetProp(prop)
                     if len(val) > 0:  # transfer only those properties to the stream which carry a value
@@ -610,19 +616,20 @@ def pipe_mol_from_b64(stream, in_b64="Mol_b64", remove=True, summary=None, comp_
                 yield rec
 
 
-def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", summary=None, comp_id="start_mol_csv_reader"):
+def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", tag=True, summary=None, comp_id="start_mol_csv_reader"):
     """A reader for csv files containing molecules in binary b64 format.
 
     Returns:
         An iterator with the fields and the molecule as dict
 
     Parameters:
-        fn (str): filename
-        max_records (int): maximum number of records to read, 0 means all
-        summary (Summary): a Counter class to collect runtime statistics
-        comp_id: (str): the component Id to use for the summary"""
+        fn (str): filename.
+        tag (bool): add the filename as a record when reading from more than one file.
+        max_records (int): maximum number of records to read, 0 means all.
+        summary (Summary): a Counter class to collect runtime statistics.
+        comp_id: (str): the component Id to use for the summary."""
 
-    rd = start_csv_reader(fn, max_records, summary, comp_id)
+    rd = start_csv_reader(fn, max_records, tag, summary, comp_id)
     mol = pipe_mol_from_b64(rd, in_b64)
 
     return mol
