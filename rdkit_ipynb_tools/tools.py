@@ -968,8 +968,8 @@ class Mol_List(list):
             raw = True
 
         if raw:
-            return mol_sheet(self, props=props, id_prop=self.id_prop, highlight=highlight,
-                             mols_per_row=mols_per_row, size=size, img_dir=img_dir)
+            return mol_sheet(self, props=props, id_prop=self.id_prop, interact=self.ia,
+                             highlight=highlight, mols_per_row=mols_per_row, size=size, img_dir=img_dir)
         else:
             return grid_pager(self, pagesize, props=props, id_prop=self.id_prop, interact=self.ia, highlight=highlight,
                               mols_per_row=mols_per_row, size=size)
