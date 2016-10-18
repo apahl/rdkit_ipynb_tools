@@ -147,6 +147,9 @@ function toggleCpd(cpdIdent)
     document.id_list{ts}.data.value = tempStr1;
     cpdIdentCell.style.backgroundColor = "{bgcolor}";
   }}
+  // display the number of selected compounds:
+  var count = (document.id_list{ts}.data.value.match(/\\n/g) || []).length;
+  document.getElementById("selection_title{ts}").innerHTML = "Selection (" + count + "):";
 }}
 
 
@@ -156,7 +159,7 @@ function myShowSelection() {{
 </script>
 '''
 
-ID_LIST = """<br><b><a name="SelectionList">Selection:</a></b>
+ID_LIST = """<br><b><a name="SelectionList" id="selection_title{ts}">Selection (0):</a></b>
 <form name="id_list{ts}">
 <input type="checkbox" name="remark" value="prompt" > Prompt for Remarks<br>
 <textarea name="data" cols="70" rows="10"></textarea>
