@@ -874,7 +874,12 @@ def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_f
         if "FP_b64" in rec:  # use the pre-defined fingerprint if it is present in the stream
             mol_fp = pickle.loads(b64.b64decode(rec["FP_b64"]))
         else:
-            mol_fp = FingerprintMols.FingerprintMol(rec["mol"])
+            if USE_AVALON:
+                mol_fp = pyAv.GetAvalonFP(rec["mol"], 1024)
+            else:
+                mol_fp = FingerprintMols.FingerprintMol(rec["mol"])
+
+
 
         sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
         if sim >= cutoff:
