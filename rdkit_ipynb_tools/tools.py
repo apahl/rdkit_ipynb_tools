@@ -474,7 +474,8 @@ class Mol_List(list):
         return result_list
 
 
-    def mol_filter(self, query, smarts=False, invert=False, add_h=False, make_copy=True):
+    def mol_filter(self, query, smarts=False, invert=False,
+                   align=True, add_h=False, make_copy=True):
         """Returns a new Mol_List containing the substructure matches.
         By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
@@ -483,14 +484,18 @@ class Mol_List(list):
         result_list.ia = self.ia
 
         mol_counter_out = 0
-        if "[H]" in query or "#1" in query:
-            add_h = True
-            print("> explicit hydrogens turned on (add_h = True)")
+        if isinstance(query, str):
+            if "[H]" in query or "#1" in query:
+                add_h = True
+                print("> explicit hydrogens turned on (add_h = True)")
 
-        if add_h or "#6" in query or "#7" in query:
-            smarts = True
+            if add_h or "#6" in query or "#7" in query:
+                smarts = True
 
-        query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
+            query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
+        else:
+            query_mol = query
+
         if not query_mol:
             print("* ERROR: could not generate query molecule. Try smarts=True")
             return None
@@ -517,6 +522,9 @@ class Mol_List(list):
                 if make_copy:
                     mol = deepcopy(mol)
                 result_list.append(mol)
+
+        if align and len(result_list) > 0:
+            result_list.align(query_mol)
 
         print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
@@ -931,8 +939,8 @@ class Mol_List(list):
             raw = True
 
         if raw:
-            return mol_table(self, id_prop=self.id_prop, highlight=highlight, order=self.order,
-                             img_dir=img_dir, show_hidden=show_hidden)
+            return mol_table(self, id_prop=self.id_prop, highlight=highlight, interact=self.ia,
+                             order=self.order, img_dir=img_dir, show_hidden=show_hidden)
         else:
             return table_pager(self, pagesize=pagesize, id_prop=self.id_prop, interact=self.ia, highlight=highlight, order=self.order,
                                show_hidden=show_hidden)
@@ -981,17 +989,20 @@ class Mol_List(list):
     def write_table(self, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
         html.write(html.page(self.table(highlight=highlight, raw=True, img_dir=img_dir),
                              header=header, summary=summary), fn=fn)
+        return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
 
     def write_nested(self, header=None, summary=None, img_dir=None, fn="nested_table.html"):
         html.write(html.page(self.nested(raw=True, img_dir=img_dir),
                              header=header, summary=summary), fn=fn)
+        return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
 
     def write_grid(self, props=None, highlight=None, mols_per_row=5, size=IMG_GRID_SIZE,
                    header=None, summary=None, img_dir=None, fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary), fn=fn)
+        return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
 
     def scatter(self, x, y, r=7, tooltip=None, **kwargs):
