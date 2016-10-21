@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-#####
-Scafffolds
-#####
+#########
+Scaffolds
+#########
 
 *Created on Thu Jul 11 14:00 2016 by A. Pahl*
 
