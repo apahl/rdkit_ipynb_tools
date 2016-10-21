@@ -23,9 +23,12 @@ It is meant to be used with the Jupyter Notebook and includes a.o.:
 
 
 #### Other functions in the tools module:
-- *jsme*: Display Peter Ertl's Javascript Molecule Editor to enter a molecule directly in the IPython notebook (*how cool is that??*)
+- *jsme*: Display Peter Ertl's [Javascript Molecule Editor](http://peter-ertl.com/jsme/) to enter a molecule directly in the IPython notebook (*how cool is that??*). <br>
+The module tries to find a local version of JSME in <notebook_dir>/lib/ and when it fails to do so,
+loads a web version of the editor. I use a central lib/ folder and create symlinks
+to it in all notebook folders where I want to use these libraries
 
-plus many others.
+...plus many others.
 
 ### Module pipeline
 
@@ -52,7 +55,7 @@ or, using the pipe function:
     >>>      (stop_csv_writer, "test.csv", {"summary": s})
     >>>     )
 
-The progress of the pipeline is displayed as a table in the Notebook and can also be followed in a separate terminal with: `watch -n 2 cat pipeline.log`.
+The progress of the pipeline is displayed as a HTML table in the Notebook and can also be followed in a separate terminal with: `watch -n 2 cat pipeline.log`.
 
 #### Currently Available Pipeline Components:
 | Starting                   | Running                    | Stopping
@@ -77,6 +80,8 @@ The progress of the pipeline is displayed as a table in the Notebook and can als
 |                            | pipe_remove_props          |                           |
 |                            | pipe_rename_prop           |                           |
 |                            | pipe_sim_filter            |                           |
+|                            | pipe_sleep                 |                           |
+
 
 Limitation: unlike in other pipelining tools, because of the nature of Python generators, the pipeline can not be branched.
 
@@ -97,6 +102,7 @@ The module documentation can be built with sphinx using the `make_doc.sh` script
 ### Installation
 #### Requirements
 The recommended way to use this project is via conda.
+
 1. Python 3
 1. Jupyter Notebook
 1. ipywidgets
