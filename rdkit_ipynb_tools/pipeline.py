@@ -942,6 +942,15 @@ def pipe_do_nothing(stream, *args, **kwargs):
         yield rec
 
 
+def pipe_sleep(stream, duration):
+    """Another stub component, that slows down the puipeline
+    by `duration` seconds for demonstration purposes."""
+
+    for rec in stream:
+        time.sleep(duration)
+        yield rec
+
+
 def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_rename_prop"):
     """Rename a property on the stream.
 
