@@ -1,4 +1,4 @@
-## RDKit IPython Tools
+# RDKit IPython Tools
 by Axel Pahl
 
 A set of tools to use with the Open Source Cheminformatics toolkit
@@ -6,7 +6,7 @@ A set of tools to use with the Open Source Cheminformatics toolkit
 Written for Python3, only tested on Linux (Ubuntu 16.04)
 and the conda install of the RDkit.
 
-### Module tools
+# Module tools
 
 A Mol_List class was introduced, which is a subclass of a Python list for holding lists of RDKit molecule objects and allows direct access to a lot of the RDKit functionality.
 It is meant to be used with the Jupyter Notebook and includes a.o.:
@@ -22,7 +22,7 @@ It is meant to be used with the Jupyter Notebook and includes a.o.:
     * further development will focus on Bokeh because of the more pythonic interface
 
 
-#### Other functions in the tools module:
+## Other functions in the tools module:
 - *jsme*: Display Peter Ertl's [Javascript Molecule Editor](http://peter-ertl.com/jsme/) to enter a molecule directly in the IPython notebook (*how cool is that??*). <br>
 The module tries to find a local version of JSME in <notebook_dir>/lib/ and when it fails to do so,
 loads a web version of the editor. I use a central lib/ folder and create symlinks
@@ -30,7 +30,7 @@ to it in all notebook folders where I want to use these libraries
 
 ...plus many others.
 
-### Module pipeline
+# Module pipeline
 
 A Pipelining Workflow using Python Generators, mainly for RDKit and large compound sets.
 The use of generators allows working with arbitrarily large data sets, the memory usage at any given time is low.
@@ -57,7 +57,7 @@ or, using the pipe function:
 
 The progress of the pipeline is displayed as a HTML table in the Notebook and can also be followed in a separate terminal with: `watch -n 2 cat pipeline.log`.
 
-#### Currently Available Pipeline Components:
+## Currently Available Pipeline Components:
 | Starting                   | Running                    | Stopping
 |----------------------------|----------------------------|---------------------------|
 | start_cache_reader         | pipe_calc_props            | stop_cache_writer         |
@@ -85,33 +85,34 @@ The progress of the pipeline is displayed as a HTML table in the Notebook and ca
 
 Limitation: unlike in other pipelining tools, because of the nature of Python generators, the pipeline can not be branched.
 
-### Other Modules
-#### Clustering
+# Other Modules
+## Clustering
 Fully usable, documentation needs to be written.
 Please refer to the docstrings until then.
 
-#### Scaffolds
+## Scaffolds
 New, WIP, **not** usable. Should probably be moved to a development branch.
 
-### Tutorial
+# Tutorial
 Much of the functionality is shown in the [tutorial notebook](tutorial/tutorial.ipynb).
 
-### Documentation
+# Documentation
 The module documentation can be built with sphinx using the `make_doc.sh` script
 
-### Installation
-#### Requirements
+# Installation
+## Requirements
 The recommended way to use this project is via conda.
 
 1. Python 3
+1. [RDKit](http://www.rdkit.org/)
 1. Jupyter Notebook
 1. ipywidgets
-1. [RDKit](http://www.rdkit.org/)
-1. [Bokeh](http://bokeh.pydata.org/en/latest/)
 
-#### Highly recommended
-* cairo (via conda or pip) and cairocffi (only via pip)
+## Highly recommended
+1. cairo (via conda or pip) and cairocffi (only via pip)
 to get decent-looking structures
+1. [Bokeh](http://bokeh.pydata.org/en/latest/) for high-quality data plots
+with structure tooltips
 
 After installing the requirements,
 clone this repo, then the rdkit_ipynb_tools can be used by including
@@ -128,3 +129,28 @@ and put the path to the base directory of this project
 (I have the path to a dedicated folder on my machine included in such a `.pth`
 file and link all my development projects to that folder.
 This way, I only need to create the `.pth` file once.)
+
+# Tips & Tricks
+## Pipelines, Structures and Performance
+Processing data from 200k compounds takes 10-15 sec on my notebook.
+
+Substructure searches take longer.
+
+For performance reasons, I use b64encode and pickle strings of mol objects to store the molecule structures in text format<br>
+(see also Greg's blog post for [faster structure generation](http://rdkit.blogspot.de/2016/09/avoiding-unnecessary-work-and.html)):
+
+```python
+b64encode(pickle.dumps(mol)).decode()
+```
+For me, that has proven to be the fastest method when dealing with flat text files and is also the reason why there are `pipe_mol_to_b64` and `pipe_mol_from_b64` components in the `pipeline` module.
+
+## Working Offline
+* When you use a local copy of the Javascript Molecule Editor as described above
+and use Bokeh for plotting, you can work completely offline in your Notebook.
+
+# Roadmap
+* make pipelines more user-friendly
+* complete the scaffolds module
+* add functionality as needed / requested
+
+(probably not in this order)
