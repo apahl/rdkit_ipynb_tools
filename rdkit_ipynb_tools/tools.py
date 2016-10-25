@@ -386,6 +386,40 @@ class Mol_List(list):
         writer.close()
 
 
+    def write_csv(self, fn="mols.csv", props=None, include_smiles=True, isomeric=True):
+        """Writes the Mol_List as a csv file to disk.
+
+        Parameters:
+            fn (str): Filename.
+            props (list[string]): An optional list of molecule properties to write.
+                If `props` is None, all props are written.
+            include_smiles (bool): If true, the Smiles will be calculated on the fly
+                and written to the csv.
+            isomeric (bool): If True, the generated Smiles will be isomeric."""
+
+        if props is None:
+            props = self.fields
+        if not isinstance(props, list):
+            props = [props]
+        csv_fields = props.copy()
+        if include_smiles:
+            csv_fields.append("Smiles")
+        with open(fn, "w") as f:
+            writer = csv.DictWriter(f, csv_fields, dialect="excel-tab")
+            writer.writeheader()
+            for mol in self:
+                row = {}
+                if include_smiles:
+                    smi = Chem.MolToSmiles(mol, isomericSmiles=isomeric)
+                    row["Smiles"] = smi
+                for prop in props:
+                    if mol.HasProp(prop):
+                        val = mol.GetProp(prop)
+                        if val != "":
+                            row[prop] = val
+                writer.writerow(row)
+
+
     def sort_list(self, field, reverse=True):
         """Sort the Mol_List according to <field>."""
         self.sort(key=lambda x: self._key_get_prop(x, field, reverse=reverse), reverse=reverse)
@@ -689,8 +723,10 @@ class Mol_List(list):
         props can be a single property or a list of properties.
 
         Calculable properties:
-            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb, sa (synthetic accessibility), tpsa, murcko (MurckoScaffold as Smiles)
-            sim (similarity relative to `sim_mol_or_smiles` or the mol with `sim_id`)
+            2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb,
+            sa (synthetic accessibility, tpsa, murcko (MurckoScaffold as Smiles),
+            sim (similarity relative to `sim_mol_or_smiles` or the mol with `sim_id`),
+            smiles (isomeric=True/False)
 
         Synthetic Accessibility (normalized):
             0: hard to synthesize; 1: easy access
@@ -734,7 +770,7 @@ class Mol_List(list):
                 calculated_props.add("molid")
 
             calc_props(mol, props, force2d=force2d, query_fp=query_fp,
-                       calculated_props=calculated_props)
+                       calculated_props=calculated_props, **kwargs)
 
         self._set_recalc_needed()
 
@@ -1290,6 +1326,28 @@ def load_sdf(file_name_or_obj="testset.sdf", order="default"):
     return sdf_list
 
 
+def load_csv(fn, smiles_col="Smiles"):
+    """Reads a csv file and returns a Mol_List instance. The molecules are generated from the Smiles column, which has to be present."""
+    with open(fn) as f:
+        ctr = 0
+        sdf_list = Mol_List()
+        reader = csv.DictReader(f, dialect="excel-tab")
+        for row_dict in reader:
+            if smiles_col not in row_dict: continue
+            smi = row_dict.pop("Smiles", "")
+            mol = Chem.MolFromSmiles(smi)
+            if not mol: continue
+            for prop in row_dict:
+                val = row_dict[prop]
+                if val != "":
+                    mol.SetProp(prop, val)
+            sdf_list.append(mol)
+            ctr += 1
+
+    print("> {} loaded into Mol_List ({} records).".format(fn, ctr))
+    return sdf_list
+
+
 def order_props(sdf_list, order="default"):
     """Order fields. First Compound_Id, Supplier, Producer;
     then the activity fields, then the physicochemical properties and LCMS"""
@@ -1471,6 +1529,7 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
     """calculated_props can be None or of type set()."""
 
     sim_mol_or_smiles = kwargs.get("sim_mol_or_smiles", None)
+    isomeric = kwargs.get("isomeric", True)
     query_fp = kwargs.get("query_fp", None)
 
     if not isinstance(props, list):
@@ -1493,7 +1552,7 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
                 calculated_props.add("formula")
 
         if "smiles" in props:
-            mol.SetProp("Smiles", Chem.MolToSmiles(mol, isomericSmiles=True))
+            mol.SetProp("Smiles", Chem.MolToSmiles(mol, isomericSmiles=isomeric))
             calculated_props.add("smiles")
 
         if "hba" in props:
