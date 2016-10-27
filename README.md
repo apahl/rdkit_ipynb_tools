@@ -91,7 +91,7 @@ Fully usable, documentation needs to be written.
 Please refer to the docstrings until then.
 
 ## Scaffolds
-New, WIP, **not** usable. Should probably be moved to a development branch.
+New, WIP, **not** usable. Has been moved to the scaffolds branch.
 
 # Tutorial
 Much of the functionality is shown in the [tutorial notebook](tutorial/tutorial.ipynb).
