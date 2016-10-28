@@ -63,10 +63,10 @@ The progress of the pipeline is displayed as a HTML table in the Notebook and ca
 | start_cache_reader         | pipe_calc_props            | stop_cache_writer         |
 | start_csv_reader           | pipe_custom_filter         | stop_count_records        |
 | start_mol_csv_reader       | pipe_custom_man            | stop_csv_writer           |
-| start_sdf_reader           | pipe_do_nothing            | stop_dict_from_stream     |
-| start_stream_from_dict     | pipe_has_prop_filter       | stop_mol_list_from_stream |
-| start_stream_from_mol_list | pipe_id_filter             | stop_sdf_writer           |
-|                            | pipe_inspect_stream        |                           |
+| start_sdf_reader           | pipe_do_nothing            | stop_df_from_stream       |
+| start_stream_from_dict     | pipe_has_prop_filter       | stop_dict_from_stream     |
+| start_stream_from_mol_list | pipe_id_filter             | stop_mol_list_from_stream |
+|                            | pipe_inspect_stream        | stop_sdf_writer           |
 |                            | pipe_join_data_from_file   |                           |
 |                            | pipe_keep_largest_fragment |                           |
 |                            | pipe_keep_props            |                           |
