@@ -98,7 +98,7 @@ if op.isfile("lib/jsme/jsme.nocache.js"):
     JSME_LOCATION = "lib"
 else:
     print("- no local installation of JSME found, using web version.")
-    JSME_LOCATION = "http://peter-ertl.com/jsme/JSME_2015-06-14"
+    JSME_LOCATION = "http://peter-ertl.com/jsme/JSME_2016-07-31"
 
 
 BGCOLOR = "#94CAEF"
