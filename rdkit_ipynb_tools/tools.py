@@ -509,7 +509,7 @@ class Mol_List(list):
 
 
     def mol_filter(self, query, smarts=False, invert=False,
-                   align=True, add_h=False, make_copy=True):
+                   align=None, add_h=False, make_copy=True):
         """Returns a new Mol_List containing the substructure matches.
         By default it creates an independent copy of the mol objects."""
         result_list = Mol_List()
@@ -526,9 +526,23 @@ class Mol_List(list):
             if add_h or "#6" in query or "#7" in query:
                 smarts = True
 
-            query_mol = Chem.MolFromSmarts(query) if smarts else Chem.MolFromSmiles(query)
+            if smarts:
+                query_mol = Chem.MolFromSmarts(query)
+                if align is None:  # Aligning to mol generated from Smarts does not work
+                    align = False
+            else:
+                Chem.MolFromSmiles(query)
+                if align is None:
+                    align = True
+
         else:
             query_mol = query
+            if align is None:
+                atm = query_mol.GetAtomWithIdx(1)
+                if atm.HasQuery():  # True for molecules that were generated from Smarts
+                    align = False   # Aligning to mol generated from Smarts does not work
+                else:
+                    align = True
 
         if not query_mol:
             print("* ERROR: could not generate query molecule. Try smarts=True")
