@@ -1944,10 +1944,13 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
     if interact and guessed_id is not None:
         table_list.append(TBL_JAVASCRIPT.format(ts=time_stamp, bgcolor=BGCOLOR))
 
+    if props is not None:
+        td_opt["colspan"] = "2"
+        prop_row_cells = {k: [] for k, _ in enumerate(props)}
+
     rows = []
     id_cells = []
     mol_cells = []
-    prop_cells = []
     for idx, mol in enumerate(sdf_list, 1):
         if guessed_id:
             id_prop_val = mol.GetProp(guessed_id)
@@ -1986,6 +1989,8 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
 
         # td_opt = {"align": "center"}
         td_opt = {"style": "text-align: center;"}
+        if props is not None:
+            td_opt["colspan"] = "2"
 
         if highlight:
             eval_str = None
@@ -1998,26 +2003,26 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
         mol_cells.extend(html.td(cell, td_opt))
 
         if props:
-            prop_values = []
-            for prop in props:
+            for prop_no, prop in enumerate(props):
+                prop_cells = []
+                prop_val = ""
                 if mol.HasProp(prop):
-                    prop_values.append(mol.GetProp(prop))
-                else:
-                    prop_values.append(" ")
-            prop_str = "_".join(prop_values)
-            prop_cells.extend(html.td(prop_str, prop_opt))
+                    prop_val = mol.GetProp(prop)
+                prop_cells.extend(html.td(prop[:25], prop_opt))
+                prop_cells.extend(html.td(prop_val[:7], prop_opt))
+                prop_row_cells[prop_no].extend(prop_cells)
 
         if idx % mols_per_row == 0:
             if guessed_id:
                 rows.extend(html.tr(id_cells))
-
             rows.extend(html.tr(mol_cells))
 
-            if props:
-                rows.extend(html.tr(prop_cells))
+            if props is not None:
+                for prop_no in sorted(prop_row_cells):
+                    rows.extend(html.tr(prop_row_cells[prop_no]))
+                prop_row_cells = {k: [] for k, _ in enumerate(props)}
             id_cells = []
             mol_cells = []
-            prop_cells = []
 
     if mol_cells:
         if guessed_id:
@@ -2029,9 +2034,6 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
             rows.extend(html.tr(prop_cells))
 
     table_list.extend(html.table(rows))
-
-    if props:
-        table_list.extend(["<p>properties shown: ", "[" + "] _ [".join(props) + "]", "</p>"])
 
     if interact and guessed_id is not None:
         table_list.append(ID_LIST.format(ts=time_stamp))
