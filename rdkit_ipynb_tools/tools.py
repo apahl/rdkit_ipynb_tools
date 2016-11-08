@@ -2012,7 +2012,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
                 prop_cells.extend(html.td(prop_val[:8], prop_opt))
                 prop_row_cells[prop_no].extend(prop_cells)
 
-        if idx % mols_per_row == 0:
+        if idx % mols_per_row == 0 or idx == len(sdf_list):
             if guessed_id:
                 rows.extend(html.tr(id_cells))
             rows.extend(html.tr(mol_cells))
@@ -2023,15 +2023,6 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
                 prop_row_cells = {k: [] for k, _ in enumerate(props)}
             id_cells = []
             mol_cells = []
-
-    if mol_cells:
-        if guessed_id:
-            rows.extend(html.tr(id_cells))
-
-        rows.extend(html.tr(mol_cells))
-
-        if props:
-            rows.extend(html.tr(prop_cells))
 
     table_list.extend(html.table(rows))
 
