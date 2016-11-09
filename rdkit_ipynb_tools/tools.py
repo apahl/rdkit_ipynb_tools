@@ -147,11 +147,32 @@ function toggleCpd(cpdIdent)
     document.id_list{ts}.data.value = tempStr1;
     cpdIdentCell.style.backgroundColor = "{bgcolor}";
   }}
+  show_number_selected();
+}}
+
+function show_number_selected() {{
   // display the number of selected compounds:
   var count = (document.id_list{ts}.data.value.match(/\\n/g) || []).length;
   document.getElementById("selection_title{ts}").innerHTML = "Selection (" + count + "):";
 }}
 
+function highlight_cpds() {{
+  // highlights compounds that were pasted into the selection list
+  // and keeps those that could be found
+  var lines = document.id_list{ts}.data.value.split("\\n");
+  var found = "";
+  for (var idx = 0; idx < lines.length; idx++) {{
+    var cpd = lines[idx];
+    var cpdIdentCell = document.getElementById(cpd+"_{ts}");
+    if (cpdIdentCell != null) {{
+      cpdIdentCell.style.backgroundColor = "yellow";
+      found = found + cpd +  "\\n";
+    }}
+  }}
+  // set the value of the selection list to the found compound Ids
+  document.id_list{ts}.data.value = found;
+  show_number_selected();
+}}
 
 function myShowSelection() {{
   document.location.hash = "#SelectionList";
@@ -163,6 +184,8 @@ ID_LIST = """<br><b><a name="SelectionList" id="selection_title{ts}">Selection (
 <form name="id_list{ts}">
 <input type="checkbox" name="remark" value="prompt" > Prompt for Remarks<br>
 <textarea name="data" cols="70" rows="10"></textarea>
+<input type="button" name="highlight" value="highlight compounds" onclick="highlight_cpds()"
+title="Paste a list of Compound_Ids here and press this button. The compounds will be highlighted in the report above. Compounds which were not found are removed from the list.">
 </form>
 """
 
