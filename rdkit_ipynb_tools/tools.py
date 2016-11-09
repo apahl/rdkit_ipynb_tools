@@ -1036,22 +1036,23 @@ class Mol_List(list):
                               mols_per_row=mols_per_row, size=size)
 
 
-    def write_table(self, highlight=None, header=None, summary=None, img_dir=None, fn="mol_table.html"):
+    def write_table(self, highlight=None, header=None, summary=None, img_dir=None,
+                    title="Results", fn="mol_table.html"):
         html.write(html.page(self.table(highlight=highlight, raw=True, img_dir=img_dir),
-                             header=header, summary=summary), fn=fn)
+                             header=header, summary=summary, title=title), fn=fn)
         return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
 
-    def write_nested(self, header=None, summary=None, img_dir=None, fn="nested_table.html"):
+    def write_nested(self, header=None, summary=None, img_dir=None, title="Results", fn="nested_table.html"):
         html.write(html.page(self.nested(raw=True, img_dir=img_dir),
-                             header=header, summary=summary), fn=fn)
+                             header=header, summary=summary, title=title), fn=fn)
         return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
 
     def write_grid(self, props=None, highlight=None, mols_per_row=5, size=IMG_GRID_SIZE,
-                   header=None, summary=None, img_dir=None, fn="mol_grid.html"):
+                   header=None, summary=None, img_dir=None, title="Results", fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, highlight=highlight,
-                             mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary), fn=fn)
+                             mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary, title=title), fn=fn)
         return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
 
