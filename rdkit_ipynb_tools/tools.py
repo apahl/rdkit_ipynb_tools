@@ -462,9 +462,11 @@ class Mol_List(list):
                 yield mol
 
 
-    def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None, make_copy=True):
+    def prop_filter(self, query, invert=False, sorted=True, reverse=True, field_types=None,
+                    make_copy=True, show=True):
         """Return a new Mol_List based on the property filtering.
-        By default it creates an independent copy of the mol objects."""
+        By default it creates an independent copy of the mol objects.
+        With `show == True` (default), the resulting numbers of the search will be printed."""
         result_list = Mol_List()
         if self.order:
             result_list.order = self.order.copy()
@@ -522,8 +524,8 @@ class Mol_List(list):
                     if make_copy:
                         mol = deepcopy(mol)
                     result_list.append(mol)
-
-        print("  > processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
+        if show:
+            print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
         if sorted:
             result_list.sort_list(field, reverse=reverse)
@@ -532,9 +534,10 @@ class Mol_List(list):
 
 
     def mol_filter(self, query, smarts=False, invert=False,
-                   align=None, add_h=False, make_copy=True):
+                   align=None, add_h=False, make_copy=True, show=True):
         """Returns a new Mol_List containing the substructure matches.
-        By default it creates an independent copy of the mol objects."""
+        By default it creates an independent copy of the mol objects.
+        With `show == True` (default), the resulting numbers of the search will be printed."""
         result_list = Mol_List()
         if self.order:
             result_list.order = self.order.copy()
@@ -596,15 +599,16 @@ class Mol_List(list):
 
         if align and len(result_list) > 0:
             result_list.align(query_mol)
-
-        print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
+        if show:
+            print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
         return result_list
 
 
-    def has_prop_filter(self, prop, invert=False, make_copy=True):
+    def has_prop_filter(self, prop, invert=False, make_copy=True, show=True):
         """Returns a new Mol_list with molecules containing the property `prop`.
-        By default it creates an independent copy of the mol objects."""
+        By default it creates an independent copy of the mol objects.
+        With `show == True` (default), the resulting numbers of the search will be printed."""
 
         result_list = Mol_List()
         if self.order:
@@ -627,8 +631,8 @@ class Mol_List(list):
                 if make_copy:
                     mol = deepcopy(mol)
                 result_list.append(mol)
-
-        print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
+        if show:
+            print("> processed: {:7d}   found: {:6d}".format(mol_counter_in + 1, mol_counter_out))
 
         return result_list
 
