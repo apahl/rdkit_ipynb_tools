@@ -732,30 +732,30 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
                 rec["Formula"] = Chem.CalcMolFormula(mol)
 
             if "hba" in props:
-                rec["HBA"] = str(Desc.NOCount(mol))
+                rec["HBA"] = Desc.NOCount(mol)
 
             if "hbd" in props:
-                rec["HBD"] = str(Desc.NHOHCount(mol))
+                rec["HBD"] = Desc.NHOHCount(mol)
 
             if "logp" in props:
-                rec["LogP"] = "{:.2f}".format(Desc.MolLogP(mol))
+                rec["LogP"] = round(Desc.MolLogP(mol), 2)
 
             if "mw" in props:
-                rec["MW"] = "{:.2f}".format(Desc.MolWt(mol))
+                rec["MW"] = round(Desc.MolWt(mol), 2)
 
             if "rotb" in props:
-                mol.SetProp("RotB", str(Desc.NumRotatableBonds(mol)))
+                rec["RotB"] = Desc.NumRotatableBonds(mol)
 
             if "smiles" in props:
-                mol.SetProp("Smiles", Chem.MolToSmiles(mol))
+                rec["Smiles"] = Chem.MolToSmiles(mol)
 
             if SASCORER and "sa" in props:
                 score = sascorer.calculateScore(mol)
                 norm_score = 1 - (score / 10)
-                rec["SA"] = "{:.2f}".format(norm_score)
+                rec["SA"] = round(norm_score, 2)
 
             if "tpsa" in props:
-                rec["TPSA"] = str(int(Desc.TPSA(mol)))
+                rec["TPSA"] = int(Desc.TPSA(mol))
 
             rec_counter += 1
             if summary is not None:
