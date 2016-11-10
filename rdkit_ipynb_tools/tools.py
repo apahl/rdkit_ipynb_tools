@@ -19,6 +19,7 @@ import random
 import csv
 import gzip
 import math
+import pickle
 from copy import deepcopy
 
 from rdkit.Chem import AllChem as Chem
@@ -28,6 +29,7 @@ import rdkit.Chem.Descriptors as Desc
 # imports for similarity search
 from rdkit.Chem.Fingerprints import FingerprintMols
 from rdkit import DataStructs
+from rdkit.SimDivFilters.rdSimDivPickers import MaxMinPicker
 
 import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
 
@@ -636,6 +638,10 @@ class Mol_List(list):
 
         return result_list
 
+
+    def div_filter(self, count):
+        """Returns a diverse selection of the mol_list with length `count`."""
+        return div_filter(self, count)
 
 
     def get_ids(self):
@@ -2210,6 +2216,38 @@ def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=No
                           props=props, size=size)),
         page=ipyw.IntSlider(min=0, max=num_pages, step=1, value=0)
     )
+
+
+def div_filter(mol_list, count):
+    """Returns a diverse selection of the mol_list with length `count`."""
+
+    def distij(i, j):
+        return 1 - DataStructs.DiceSimilarity(fp_list[i], fp_list[j])
+
+    ctr = 0
+    fp_list = []
+    for mol in mol_list:
+        if mol.HasProp("FP_b64"):
+            fp_list.append(pickle.loads(base64.b64decode(mol.GetProp("FP_b64"))))
+        else:
+            ctr += 1
+            if USE_AVALON:
+                mol_fp = pyAv.GetAvalonFP(mol, 1024)
+            else:
+                mol_fp = FingerprintMols.FingerprintMol(mol)
+
+            fp_list.append(mol_fp)
+    print("{} Fingerprints had to be calculated. {} Fingerprints available.".format(ctr,
+                                                                                    len(fp_list)))
+    picker = MaxMinPicker()
+    pick_idx_list = picker.LazyPick(distij, len(fp_list), count, seed=0xF00D)
+
+    result_list = Mol_List()
+    for idx in pick_idx_list:
+        mol = deepcopy(mol_list[idx])  # make an independent copy
+        result_list.append(mol)
+
+    return result_list
 
 
 def jsme(name="mol"):
