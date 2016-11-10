@@ -285,6 +285,10 @@ class Hist():
         self.plot.xaxis.axis_label = xlabel
         self.plot.yaxis.axis_label = ylabel
         self.plot.axis.major_label_text_font_size = tick_size
+        self.plot.axis.axis_label_text_font_size = "14pt"
+        self.plot.axis.major_label_text_font_size = "14pt"
+        self.plot.title.text_font_size = "18pt"
+
 
 
     def add_data(self, data, bins=10, series=None, color=None, normed=False, **kwargs):
