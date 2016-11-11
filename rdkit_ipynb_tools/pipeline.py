@@ -738,10 +738,10 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
                 rec["HBD"] = Desc.NHOHCount(mol)
 
             if "logp" in props:
-                rec["LogP"] = round(Desc.MolLogP(mol), 2)
+                rec["LogP"] = np.round(Desc.MolLogP(mol), 2)
 
             if "mw" in props:
-                rec["MW"] = round(Desc.MolWt(mol), 2)
+                rec["MW"] = np.round(Desc.MolWt(mol), 2)
 
             if "rotb" in props:
                 rec["RotB"] = Desc.NumRotatableBonds(mol)
@@ -752,7 +752,7 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
             if SASCORER and "sa" in props:
                 score = sascorer.calculateScore(mol)
                 norm_score = 1 - (score / 10)
-                rec["SA"] = round(norm_score, 2)
+                rec["SA"] = np.round(norm_score, 2)
 
             if "tpsa" in props:
                 rec["TPSA"] = int(Desc.TPSA(mol))
@@ -1196,25 +1196,29 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
     def _get_merged_val_from_val_list(val_list, str_props, num_props):
         if isinstance(val_list[0], str):
             if "concat" in str_props:
-                return "; ".join(val_list)
+                return "; ".join(val_list), None, None
             if "unique" in str_props:
-                return "; ".join(set(val_list))
+                return "; ".join(set(val_list)), None, None
             if "first" in str_props:
-                return val_list[0]
+                return val_list[0], None, None
             if "last" in str_props:
-                return val_list[-1]
+                return val_list[-1], None, None
 
-            return val_list[0]
+            return val_list[0], None, None
 
         else:
             if "mean" in num_props:
-                return np.round(np.mean(val_list), digits)
+                val = np.mean(val_list)
+                return (np.round(val, digits), "Std",  # Standard deviation
+                        np.round(np.std(val_list), digits))
             if "median" in num_props:
-                return np.round(np.median(val_list), digits)
+                val = np.median(val_list)
+                return (np.round(val, digits), "MAD",  # Median Absolute Deviation
+                        np.round(np.median([abs(x - val) for x in val_list]), digits))
             if "first" in num_props:
-                return val_list[0]
+                return val_list[0], None, None
             if "last" in num_props:
-                return val_list[-1]
+                return val_list[-1], None, None
 
             return val_list[0]
 
@@ -1238,7 +1242,10 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
         for prop in merged[item]:
             val_list = merged[item][prop]
             if len(val_list) > 1:
-                rec[prop] = _get_merged_val_from_val_list(val_list, str_props, num_props)
+                merge_result = _get_merged_val_from_val_list(val_list, str_props, num_props)
+                rec[prop] = _get_merged_val_from_val_list(val_list, str_props, num_props)[0]
+                if merge_result[1] is not None:  # deviation values from mean or median
+                    rec["{}_{}".format(prop, merge_result[1])] = merge_result[2]
                 if mark:
                     rec["Merged"] = len(val_list)
             else:
