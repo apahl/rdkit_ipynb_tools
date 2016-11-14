@@ -772,7 +772,8 @@ class Mol_List(list):
         Calculable properties:
             2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb,
             sa (synthetic accessibility, tpsa, murcko (MurckoScaffold as Smiles),
-            sim (similarity relative to `sim_mol_or_smiles` or the mol with `sim_id`),
+            sim (similarity of the Murcko scaffold relative to `sim_mol_or_smiles`
+                or the mol with `sim_id`),
             smiles (isomeric=True/False)
 
         Synthetic Accessibility (normalized):
@@ -1655,10 +1656,11 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
                         query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
 
             if query_fp is not None:
+                murcko_mol = MurckoScaffold.GetScaffoldForMol(mol)
                 if USE_AVALON:
-                    mol_fp = pyAv.GetAvalonFP(mol, 1024)
+                    mol_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
                 else:
-                    mol_fp = FingerprintMols.FingerprintMol(mol)
+                    mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
                 sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
                 mol.SetProp("Sim", "{:.2f}".format(sim * 100))
                 calculated_props.add("sim")

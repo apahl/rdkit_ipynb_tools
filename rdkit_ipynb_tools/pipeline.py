@@ -50,6 +50,7 @@ import rdkit.Chem.Descriptors as Desc
 # imports for similarity search
 from rdkit import DataStructs
 from rdkit.Chem.Fingerprints import FingerprintMols
+import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
 
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
@@ -880,7 +881,7 @@ def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_f
     """Filter for compounds that have a similarity greater or equal
     than `cutoff` to the `query` Smiles.
     If the field `FP_b64` (e.g. pre-calculated) is present, this will be used,
-    otherwise the fingerprint will be generated on-the-fly (much slower)."""
+    otherwise the fingerprint of the Murcko scaffold will be generated on-the-fly (much slower)."""
     rec_counter = 0
 
     query_mol = Chem.MolFromSmiles(query)
@@ -895,10 +896,11 @@ def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_f
         if "FP_b64" in rec:  # use the pre-defined fingerprint if it is present in the stream
             mol_fp = pickle.loads(b64.b64decode(rec["FP_b64"]))
         else:
+            murcko_mol = MurckoScaffold.GetScaffoldForMol(rec["mol"])
             if USE_AVALON:
-                mol_fp = pyAv.GetAvalonFP(rec["mol"], 1024)
+                mol_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
             else:
-                mol_fp = FingerprintMols.FingerprintMol(rec["mol"])
+                mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
 
 
 
