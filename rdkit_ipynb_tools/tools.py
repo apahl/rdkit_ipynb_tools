@@ -272,20 +272,6 @@ class Mol_List(list):
             self.recalc_needed[k] = True
 
 
-    def _key_get_prop(self, mol, field, reverse=False):
-        if reverse:
-            not_found = -1000000.0
-        else:
-            not_found = 1000000.0
-        try:
-            val = float(mol.GetProp(field))
-        except ValueError:  # GetProp value could not be converted to float
-            val = 0
-        except KeyError:   # field is not present in the mol properties
-            val = not_found
-        return val
-
-
     def _get_field_types(self):
         """Detect all the property field types.
 
@@ -447,7 +433,7 @@ class Mol_List(list):
 
     def sort_list(self, field, reverse=True):
         """Sort the Mol_List according to <field>."""
-        self.sort(key=lambda x: self._key_get_prop(x, field, reverse=reverse), reverse=reverse)
+        self.sort(key=lambda x: _key_get_prop(x, field, reverse=reverse), reverse=reverse)
 
 
     def order_props(self, order="default"):
@@ -1295,6 +1281,20 @@ class Mol_List(list):
             self.recalc_needed["plot_tool"] = self.plot_tool
         return self._d
 
+
+
+def _key_get_prop(self, mol, field, reverse=False):
+    if reverse:
+        not_found = -1000000.0
+    else:
+        not_found = 1000000.0
+    try:
+        val = float(mol.GetProp(field))
+    except ValueError:  # GetProp value could not be converted to float
+        val = 0
+    except KeyError:   # field is not present in the mol properties
+        val = not_found
+    return val
 
 
 def create_dir_if_not_exist(dir_name):
