@@ -697,12 +697,13 @@ def check_2d_coords(mol, force=False):
             mol.Compute2DCoords()
 
 
-def pipe_calc_ic50(stream, prop_pic50, prop_ic50=None, unit="uM",
+def pipe_calc_ic50(stream, prop_pic50, prop_ic50=None, unit="uM", digits=3,
                    summary=None, comp_id="pipe_calc_ic50"):
     """Calculates the IC50 from a pIC50 value that has to be present in the record.
     Parameters:
         prop_pic50 (string): the name of the pIC50 prop from which to calc the IC50.
-        prop_ic50 (string): the name of the calculated IC50."""
+        prop_ic50 (string): the name of the calculated IC50.
+        digits (int): number of decimal digits to use."""
 
     rec_counter = 0
     if prop_ic50 is None:

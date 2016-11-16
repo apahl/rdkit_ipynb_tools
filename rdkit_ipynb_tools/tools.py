@@ -1283,7 +1283,7 @@ class Mol_List(list):
 
 
 
-def _key_get_prop(self, mol, field, reverse=False):
+def _key_get_prop(mol, field, reverse=False):
     if reverse:
         not_found = -1000000.0
     else:
@@ -1489,21 +1489,21 @@ def unit_factor(unit):
     return factor
 
 
-def pic50(ic50, unit=None, ndigits=3):
+def pic50(ic50, unit=None, digits=3):
     """Calculate pIC50 from IC50. Optionally, a unit for the input IC50 value may be given.
     Known units are: mM, uM, nM, pM"""
     if unit is not None:
         ic50 *= unit_factor(unit)
-    return np.round(-math.log10(ic50), ndigits=ndigits)
+    return np.round(-math.log10(ic50), decimals=digits)
 
 
-def ic50(pic50, unit=None):
+def ic50(pic50, unit=None, digits=3):
     """Calculate IC50 from pIC50. Optionally, a unit for the returned IC50 value may be given.
     Known units are: mM, uM, nM, pM"""
     ic50 = 10 ** (-pic50)
     if unit is not None:
         ic50 /= unit_factor(unit)
-    return ic50
+    return np.round(ic50, digits)
 
 
 def set_margin(container, margin=10):
