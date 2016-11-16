@@ -739,10 +739,10 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
                 rec["HBD"] = Desc.NHOHCount(mol)
 
             if "logp" in props:
-                rec["LogP"] = np.round(Desc.MolLogP(mol), 2)
+                rec["LogP"] = np.round(Desc.MolLogP(mol), 3)
 
             if "mw" in props:
-                rec["MW"] = np.round(Desc.MolWt(mol), 2)
+                rec["MW"] = np.round(Desc.MolWt(mol), 3)
 
             if "rotb" in props:
                 rec["RotB"] = Desc.NumRotatableBonds(mol)
@@ -753,7 +753,7 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
             if SASCORER and "sa" in props:
                 score = sascorer.calculateScore(mol)
                 norm_score = 1 - (score / 10)
-                rec["SA"] = np.round(norm_score, 2)
+                rec["SA"] = np.round(norm_score, 3)
 
             if "tpsa" in props:
                 rec["TPSA"] = int(Desc.TPSA(mol))
@@ -994,7 +994,7 @@ def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_ren
 
 
 def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
-                             decimals=2, summary=None, comp_id="pipe_join_data_from_file", show_first=False):
+                             summary=None, comp_id="pipe_join_data_from_file", show_first=False):
     """Joins data from a csv or SD file.
     CAUTION: The input stream will be held in memory by this component!
 
@@ -1004,8 +1004,7 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
         join_on (str): property to join on
         behaviour (str):
             "joined_only": only put those recored on the stream on which data was joined (default).
-            "keep_all": put all input records on the stream again, including those, on which no data was joined.
-        decimals (int): number of decimal places for floating point values. Default: 2."""
+            "keep_all": put all input records on the stream again, including those, on which no data was joined."""
 
     # collect the records from the stream in a list, store the position of the join_on properties in a dict
     stream_rec_list = []
@@ -1179,7 +1178,7 @@ def pipe_inspect_stream(stream, fn="pipe_inspect.txt", exclude=None, summary=Non
         yield rec
 
 
-def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark=True, digits=2, summary=None, comp_id="pipe_merge_data"):
+def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark=True, digits=3, summary=None, comp_id="pipe_merge_data"):
     """Merge the data from the stream on the `merge_on` property.
     WARNING: The stream is collected in memory by this component!
 

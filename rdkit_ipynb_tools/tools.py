@@ -1489,12 +1489,12 @@ def unit_factor(unit):
     return factor
 
 
-def pic50(ic50, unit=None, ndigits=2):
+def pic50(ic50, unit=None, ndigits=3):
     """Calculate pIC50 from IC50. Optionally, a unit for the input IC50 value may be given.
     Known units are: mM, uM, nM, pM"""
     if unit is not None:
         ic50 *= unit_factor(unit)
-    return round(-math.log10(ic50), ndigits=ndigits)
+    return np.round(-math.log10(ic50), ndigits=ndigits)
 
 
 def ic50(pic50, unit=None):
@@ -1615,12 +1615,12 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
                 calculated_props.add("hbd")
 
         if "logp" in props:
-            mol.SetProp("LogP", "{:.2f}".format(Desc.MolLogP(mol)))
+            mol.SetProp("LogP", "{:.3f}".format(Desc.MolLogP(mol)))
             if calculated_props is not None:
                 calculated_props.add("logp")
 
         if "mw" in props:
-            mol.SetProp("MW", "{:.2f}".format(Desc.MolWt(mol)))
+            mol.SetProp("MW", "{:.3f}".format(Desc.MolWt(mol)))
             if calculated_props is not None:
                 calculated_props.add("mw")
 
@@ -1632,7 +1632,7 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
         if SASCORER and "sa" in props:
             score = sascorer.calculateScore(mol)
             norm_score = 1 - (score / 10)
-            mol.SetProp("SA", "{:.2f}".format(norm_score))
+            mol.SetProp("SA", "{:.3f}".format(norm_score))
             if calculated_props is not None:
                 calculated_props.add("sa")
 
@@ -1662,7 +1662,7 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
                 else:
                     mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
                 sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
-                mol.SetProp("Sim", "{:.2f}".format(sim * 100))
+                mol.SetProp("Sim", "{:.3f}".format(sim * 100))
                 calculated_props.add("sim")
 
 
@@ -2339,7 +2339,7 @@ def o3da(input_list, ref, fn="aligned.sdf"):
     for ctr, mol in enumerate(mol_list, 1):
         mol_pymp = Chem.MMFFGetMoleculeProperties(mol)
         o3a = Chem.GetO3A(mol, ref, mol_pymp, ref_pymp)
-        print("{}\t\t{:.2f}\t\t{:.2f}".format(ctr, o3a.Score(), o3a.Align()))
+        print("{}\t\t{:.3f}\t\t{:.3f}".format(ctr, o3a.Score(), o3a.Align()))
         writer.write(mol)
 
     writer.close()
