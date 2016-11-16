@@ -685,10 +685,11 @@ def pipe_mol_to_b64(stream, out_b64="Mol_b64", summary=None, comp_id="pipe_mol_t
 
 def check_2d_coords(mol, force=False):
     """Check if a mol has 2D coordinates and if not, calculate them."""
-    try:
-        mol.GetConformer()
-    except ValueError:
-        force = True  # no 2D coords... calculate them
+    if not force:
+        try:
+            mol.GetConformer()
+        except ValueError:
+            force = True  # no 2D coords... calculate them
 
     if force:
         if USE_AVALON:

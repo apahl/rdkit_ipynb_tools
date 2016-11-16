@@ -1562,10 +1562,11 @@ def ia_smiles_from_smiles():
 
 def check_2d_coords(mol, force=False):
     """Check if a mol has 2D coordinates and if not, calculate them."""
-    try:
-        mol.GetConformer()
-    except ValueError:
-        force = True  # no 2D coords... calculate them
+    if not force:
+        try:
+            mol.GetConformer()
+        except ValueError:
+            force = True  # no 2D coords... calculate them
 
     if force:
         if USE_AVALON:
