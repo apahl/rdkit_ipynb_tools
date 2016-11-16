@@ -30,7 +30,13 @@ from rdkit.ML.Cluster import Butina
 
 # from PIL import Image, ImageChops
 import numpy as np
-import matplotlib.pyplot as plt
+try:
+    # this mainly needs to be done because Sphinx can not import Matplotlib
+    # (it gives `NotImplementedError('Implement enable_gui in a subclass')`)
+    import matplotlib.pyplot as plt
+    MPL = True
+except:
+    MPL = False
 
 # from . import html_templates as html
 from . import tools, html_templates as html, file_templ as ft
@@ -246,7 +252,7 @@ def get_stats_for_cluster(cluster_list, activity_prop=None):
 
 def add_stats_to_cores(cluster_list_w_cores, props=None):
     """Add statistical information for the given props to the cluster cores.
-    If `props`is None, a default list of properties is used.
+    If 'props' is None, a default list of properties is used.
     The cores have to be already present in the list."""
     if props is None:
         props = ["ALogP", "QED", "SA_Score"]
@@ -289,6 +295,7 @@ def add_stats_to_cores(cluster_list_w_cores, props=None):
 
 def get_clusters_with_activity(cluster_list, activity_prop, min_act=None, max_act=None, min_len=1, renumber=False):
     """Return only the clusters which fulfill the given activity criteria.
+
     Parameters:
         min_act (str): something like `< 50` or `> 70` that can be evaluated.
         max_act (str): see above."""
@@ -375,6 +382,7 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
     """Add cluster centers to the cores.
     Contrary to the cores, this is not an MCS, but one of the cluster members,
     with a certain property.
+
     Parameters:
         mode (str): `most_active` (default): if activity_prop is not None, the most active compound is taken.
             `smallest`: the compound with the least amount of heavy atoms is taken as center.
@@ -665,7 +673,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
         if props is not None:
             first_prop = props[0]
             cluster.sort_list(first_prop, reverse=reverse)
-            if show_hist and len(cluster) > 4:
+            if MPL and show_hist and len(cluster) > 4:
                 hist_fn = "img/hist_{}.png".format(cl_no)
                 data = [tools.get_value(mol.GetProp(first_prop)) for mol in cluster if mol.HasProp(first_prop)]
                 mpl_hist(data, bins=bins, xlabel=first_prop, fn=hist_fn)

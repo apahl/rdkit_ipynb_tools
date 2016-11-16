@@ -757,9 +757,11 @@ class Mol_List(list):
 
         Calculable properties:
             2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb,
-            sa (synthetic accessibility, tpsa, murcko (MurckoScaffold as Smiles),
+            sa (synthetic accessibility, tpsa, murcko (MurckoScaffold as Smiles).
+
             sim (similarity of the Murcko scaffold relative to `sim_mol_or_smiles`
-                or the mol with `sim_id`),
+                or the mol with `sim_id`).
+
             smiles (isomeric=True/False)
 
         Synthetic Accessibility (normalized):
@@ -770,6 +772,7 @@ class Mol_List(list):
                 | *Peter Ertl and Ansgar Schuffenhauer*
                 | Journal of Cheminformatics 1:8 (2009) (`link <http://www.jcheminf.com/content/1/1/8>`_)
         """
+
         sim_mol_or_smiles = kwargs.get("sim_mol_or_smiles", None)
         sim_id = kwargs.get("sim_id", None)
         query_fp = None
