@@ -697,6 +697,35 @@ def check_2d_coords(mol, force=False):
             mol.Compute2DCoords()
 
 
+def pipe_calc_ic50(stream, prop_pic50, prop_ic50=None, unit="uM",
+                   summary=None, comp_id="pipe_calc_ic50"):
+    """Calculates the IC50 from a pIC50 value that has to be present in the record.
+    Parameters:
+        prop_pic50 (string): the name of the pIC50 prop from which to calc the IC50.
+        prop_ic50 (string): the name of the calculated IC50."""
+
+    rec_counter = 0
+    if prop_ic50 is None:
+        pos = prop_pic50.rfind("_")
+        if pos > 0:
+            bn = prop_pic50[:pos]
+        else:
+            bn = prop_pic50
+
+        prop_ic50 = "{}_(IC50_{})".format(bn, unit)
+
+    for rec in stream:
+        rec_counter += 1
+        if prop_pic50 in rec:
+            ic50 = tools.ic50(rec[prop_pic50], unit)
+            rec[prop_ic50] = ic50
+
+        if summary is not None:
+            summary[comp_id] = rec_counter
+
+        yield rec
+
+
 def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_calc_props"):
     """Calculate properties from the Mol_List.
     props can be a single property or a list of properties.
@@ -976,8 +1005,7 @@ def pipe_sleep(stream, duration):
 
 def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_rename_prop"):
     """Rename a property on the stream.
-
-    Parameters:
+        Parameters:
         prop_old (str): old name of the property
         prop_new (str): newname of the property"""
 
@@ -993,7 +1021,7 @@ def pipe_rename_prop(stream, prop_old, prop_new, summary=None, comp_id="pipe_ren
         yield rec
 
 
-def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
+def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only", append=True,
                              summary=None, comp_id="pipe_join_data_from_file", show_first=False):
     """Joins data from a csv or SD file.
     CAUTION: The input stream will be held in memory by this component!
@@ -1004,7 +1032,11 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
         join_on (str): property to join on
         behaviour (str):
             "joined_only": only put those recored on the stream on which data was joined (default).
-            "keep_all": put all input records on the stream again, including those, on which no data was joined."""
+            "keep_all": put all input records on the stream again, including those, on which no data was joined.
+        append (bool): if True (default), new values will be appended to existing fields
+            on the stream, forming a list.
+            This list has to be merged with the `pipe_merge_data` component.abs
+            If False, existing values are kept."""
 
     # collect the records from the stream in a list, store the position of the join_on properties in a dict
     stream_rec_list = []
@@ -1037,7 +1069,14 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only",
 
             for k in stream_rec:
                 if k != join_on:
-                    rec_copy[k] = stream_rec[k]
+                    if append and k in rec_copy:
+                        val = rec_copy[k]
+                        if not isinstance(val, list):
+                            val = [val]
+                        val.append(stream_rec[k])
+                        rec_copy[k] = val
+                    else:
+                        rec_copy[k] = stream_rec[k]
 
             rec_counter += 1
             if summary is not None:
@@ -1233,7 +1272,11 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
 
         merge_on_val = rec.pop(merge_on)
         for prop in rec.keys():
-            merged[merge_on_val][prop].append(rec[prop])
+            val = rec[prop]
+            if isinstance(val, list):  # from a pipe_join operation with append == True
+                merged[merge_on_val][prop].extend(val)
+            else:
+                merged[merge_on_val][prop].append(val)
 
     rec_counter = 0
     prev_time = time.time()
