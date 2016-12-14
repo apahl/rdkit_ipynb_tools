@@ -545,7 +545,7 @@ class Mol_List(list):
                 if align is None:  # Aligning to mol generated from Smarts does not work
                     align = False
             else:
-                Chem.MolFromSmiles(query)
+                query_mol = Chem.MolFromSmiles(query)
                 if align is None:
                     align = True
 
