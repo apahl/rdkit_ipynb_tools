@@ -394,7 +394,7 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
         if activity_prop is not None:
             al = activity_prop.lower()
             reverse = False
-            if "pic50" in al or "pec500" in al:
+            if "pic50" in al or "pec50" in al:
                 reverse = True
 
         else:
