@@ -378,7 +378,7 @@ def add_cores(cluster_list, activity_prop=None, align_to_core=False):
     return members_all
 
 
-def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
+def add_centers(cluster_list, mode="most_active", activity_prop=None, min_num_members=3, **kwargs):
     """Add cluster centers to the cores.
     Contrary to the cores, this is not an MCS, but one of the cluster members,
     with a certain property.
@@ -408,7 +408,7 @@ def add_centers(cluster_list, mode="most_active", activity_prop=None, **kwargs):
 
     for cl_id in cl_ids:
         cluster = get_clusters_by_no(members_all, cl_id, make_copy=False)
-        if len(cluster) < 3:
+        if len(cluster) < min_num_members:
             continue
 
         if "active" in mode:
@@ -700,29 +700,18 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
         pb.done()
 
 
-def inject_charts(cluster_list, fn="clusters.html", img_dir="img", basename="hist", options='align="right", width="250"'):
-    """Insert links to chart (e.g. histogram) images into the HTML report."""
+def add_remarks_to_report(remarks, index_file="clustering/index.html"):
+    """Takes remarks and adds them to the clustering report by cluster number.
+    Writes a new `index_remarks.html` file
 
-    cluster_numbers = OrderedDict()
-    for mol in cluster_list.has_prop_filter("Cluster_No"):
-        cluster_numbers[int(mol.GetProp("Cluster_No"))] = 0  # dummy value
+    Parameters:
+        remarks (dict): keys are cluster numbers, values are the remarks
+        index_file (str): the name of the report index file"""
 
-    report = open(fn).read()
-
-    for cl_no in cluster_numbers:
-        chart_link = op.join(img_dir, "{}_{}.png".format(basename, cl_no))
-        if op.isfile(chart_link):
-            print(chart_link)
-            cluster_title = "<h2>Cluster {}</h2>\n".format(cl_no)
-            html_str = """{}<img src="{}" {}/><br>""".format(cluster_title, chart_link, options)
-            report = report.replace(cluster_title, html_str)
-
-    with open("new_" + fn, "w") as f:
-        f.write(report)
-
-
-# def write_cluster_viewer(cluster_list, viewer_dir="cluster_viewer", fn="index.html", title="Cluster Viewer", activity_prop=None):
-#     """Write out a HTML file that allows interactive viewing of Clusters.
-#     After the report has been written, the javascript has to be generated with: `cd cluster_viewer && transcrypt -b cluster_js.py`"""
-#     tools.create_dir_if_not_exist(dir)
-#     content = []
+    new_file = open(op.join(op.dirname(index_file), "index_remarks.html"), "w")
+    for line in open(index_file):
+        for cl_no in remarks:
+            if "Cluster {:03d}".format(cl_no) in line:
+                line = '<h2 id="{0}">Cluster {0:03d}</h2><p>{1}</p>\n'.format(cl_no, remarks[cl_no])
+                break
+        new_file.write(line)
