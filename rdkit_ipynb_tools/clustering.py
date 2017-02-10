@@ -700,18 +700,35 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
         pb.done()
 
 
-def add_remarks_to_report(remarks, index_file="clustering/index.html"):
+def add_remarks_to_report(remarks, highlights=None, index_file="clustering/index.html"):
     """Takes remarks and adds them to the clustering report by cluster number.
     Writes a new `index_remarks.html` file
 
     Parameters:
-        remarks (dict): keys are cluster numbers, values are the remarks
+        remarks (dict): keys are cluster numbers, values are lists of two elements,
+            first is true/false for highlighting of the cluster, second is the remark as text
+        highlights (list): list of strings whose occurrence in the report should be highlighted
         index_file (str): the name of the report index file"""
 
+    if isinstance(highlights, str):  # make a list out of a single string argument
+        highlights = [highlights]
     new_file = open(op.join(op.dirname(index_file), "index_remarks.html"), "w")
     for line in open(index_file):
         for cl_no in remarks:
             if "Cluster {:03d}".format(cl_no) in line:
-                line = '<h2 id="{0}">Cluster {0:03d}</h2><p>{1}</p>\n'.format(cl_no, remarks[cl_no])
+                hl = remarks[cl_no][0]
+                txt = remarks[cl_no][1]
+                if hl:
+                    line = '<h2 style="background-color: #ffff4d" id="{0}">Cluster {0:03d}</h2>'.format(cl_no)
+                else:
+                    line = '<h2 id="{0}">Cluster {0:03d}</h2>'.format(cl_no)
+                if len(txt) > 1:
+                    line += '<p>{0}</p>\n'.format(txt)
+                else:
+                    line += '\n'
                 break
+        if highlights is not None:
+            for hl in highlights:
+                if hl in line:
+                    line = line.replace(hl, '<div style="background-color: #ffff4d">{}</div>'.format(hl))
         new_file.write(line)
