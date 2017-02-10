@@ -1730,7 +1730,7 @@ def align(mol_list, mol_or_smiles=None):
             check_2d_coords(mol)
 
         for align_mol in align_mols:
-                if mol.HasSubstructMatch(align_mol):
+                if align_mol.GetNumHeavyAtoms() / mol.GetNumHeavyAtoms() > 0.33 and mol.HasSubstructMatch(align_mol):
                     Chem.GenerateDepictionMatching2DStructure(mol, align_mol)
                     break
 
