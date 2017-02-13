@@ -1681,11 +1681,13 @@ def find_mcs(mol_list):
 
     if mcs.smartsString:
         mol = Chem.MolFromSmarts(mcs.smartsString)
-        if not mol:
+        if not mol:  # or Desc.RingCount(mol) == 0:
             return None
 
         mol.UpdatePropertyCache(False)
         Chem.SanitizeMol(mol, sanitizeOps=Chem.SANITIZE_SYMMRINGS | Chem.SANITIZE_SETCONJUGATION | Chem.SANITIZE_SETHYBRIDIZATION)
+        if Desc.RingCount(mol) == 0:
+            return None
 
         return mol
 
@@ -1694,7 +1696,7 @@ def find_mcs(mol_list):
         return None
 
 
-def align(mol_list, mol_or_smiles=None):
+def align(mol_list, am, mol_or_smiles=None):
     """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
     Parameters:
@@ -1717,22 +1719,22 @@ def align(mol_list, mol_or_smiles=None):
     for el in mol_or_smiles:
         if isinstance(el, str):
             mol = Chem.MolFromSmiles(el)
-            check_2d_coords(mol)
-            align_mols.append(mol)
         else:
             mol = deepcopy(el)
-            check_2d_coords(mol)
-            align_mols.append(mol)
+        check_2d_coords(mol)
+        align_mols.append(mol)
 
-
+    for align_mol in align_mols:
+        am.append(align_mol)
     for mol in mol_list:
         if mol:
             check_2d_coords(mol)
 
         for align_mol in align_mols:
-                if align_mol.GetNumHeavyAtoms() / mol.GetNumHeavyAtoms() > 0.33 and mol.HasSubstructMatch(align_mol):
-                    Chem.GenerateDepictionMatching2DStructure(mol, align_mol)
-                    break
+            # only align when the match is unique
+            if len(mol.GetSubstructMatches(align_mol)) == 1:
+                Chem.GenerateDepictionMatching2DStructure(mol, align_mol)
+                break
 
 
 def guess_id_prop(prop_list):  # try to guess an id_prop
