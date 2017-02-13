@@ -1670,33 +1670,45 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
                 calculated_props.add("sim")
 
 
+def calc_murcko_scaf(mol):
+    "Calculate the Murcko scaffold from a molecule and return as Smiles."
+    return MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
+
+
+def calc_scaffolds(parent_list):
+    "Returns a list of the BRICS fragments as Smiles, sorted by decreasing size."
+    scaf_set = set()
+    for parent in parent_list:
+        frags = Chem.FragmentOnBRICSBonds(parent)
+        frag_list = Chem.MolToSmiles(frags).split(".")
+        frag_list = [f.replace("*", "H") for f in frag_list]
+        for frag in frag_list:
+            mol = Chem.MolFromSmiles(frag)
+            if Desc.RingCount(mol) > 0:
+                murcko = calc_murcko_scaf(mol)
+                scaf_set.add(murcko)
+
+    scaf_list = sorted(scaf_set, key=len, reverse=True)
+    return scaf_list
+
+
 def find_mcs(mol_list):
-    """Returns the MCS molecule object for a set of molecule or None if not found."""
-    mcs = rdFMCS.FindMCS(mol_list, maximizeBonds=True, matchValences=True,
-                         ringMatchesRingOnly=True, completeRingsOnly=True)
-
-    if mcs.canceled:
-        print("* MCSS function timed out. Please provide a mol_or_smiles to align to.")
-        return None
-
-    if mcs.smartsString:
-        mol = Chem.MolFromSmarts(mcs.smartsString)
-        if not mol:  # or Desc.RingCount(mol) == 0:
-            return None
-
-        mol.UpdatePropertyCache(False)
-        Chem.SanitizeMol(mol, sanitizeOps=Chem.SANITIZE_SYMMRINGS | Chem.SANITIZE_SETCONJUGATION | Chem.SANITIZE_SETHYBRIDIZATION)
-        if Desc.RingCount(mol) == 0:
-            return None
-
-        return mol
-
-    else:
-        print("* Could not find MCSS. Please provide a mol_or_smiles to align to.")
-        return None
+    """Returns the MCS ring molecule object for a set of molecules or None if not found."""
+    if len(mol_list) < 2: return None
+    scaf_list = calc_scaffolds(mol_list)
+    if len(scaf_list) == 0: return None
+    for scaf in scaf_list:
+        found = True
+        scaf_mol = Chem.MolFromSmiles(scaf)
+        for mol in mol_list:
+            if not mol.HasSubstructMatch(scaf_mol):
+                found = False
+        if found:
+            return scaf_mol
+    return None
 
 
-def align(mol_list, am, mol_or_smiles=None):
+def align(mol_list, mol_or_smiles=None):
     """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
     Parameters:
@@ -1724,8 +1736,6 @@ def align(mol_list, am, mol_or_smiles=None):
         check_2d_coords(mol)
         align_mols.append(mol)
 
-    for align_mol in align_mols:
-        am.append(align_mol)
     for mol in mol_list:
         if mol:
             check_2d_coords(mol)
