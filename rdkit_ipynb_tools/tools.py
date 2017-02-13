@@ -23,7 +23,7 @@ import pickle
 from copy import deepcopy
 
 from rdkit.Chem import AllChem as Chem
-from rdkit.Chem import Draw, rdFMCS
+from rdkit.Chem import Draw
 import rdkit.Chem.Descriptors as Desc
 
 # imports for similarity search
