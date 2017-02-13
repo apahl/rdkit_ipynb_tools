@@ -666,7 +666,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
             pb.update(100 * idx / len_cluster_numbers)
         cluster = get_clusters_by_no(cluster_list, cl_no)
         if len(cluster) == 0: continue
-        if align and len(cluster) > 2:
+        if align and len(cluster) > 1:
             cluster.align()
 
         hist_fn = None
