@@ -290,7 +290,7 @@ def start_sdf_reader(fn, max_records=0, tag=True, summary=None, comp_id="start_s
 
     for filen in fn:
         if ".gz" in filen:
-            f = gzip.open(filen, mode="rt")
+            f = gzip.open(filen, mode="rb")
         else:
             f = open(filen, "rb")
 
@@ -759,6 +759,9 @@ def pipe_calc_props(stream, props, force2d=False, summary=None, comp_id="pipe_ca
 
             if "date" in props:
                 rec["Date"] = time.strftime("%Y%m%d")
+
+            if "molid" in props:
+                rec["Compound_Id"] = rec_counter
 
             if "formula" in props:
                 rec["Formula"] = Chem.CalcMolFormula(mol)
