@@ -1978,7 +1978,6 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
         HTML table as TEXT with molecules in grid-like layout to embed in IPython or a web page."""
 
     time_stamp = time.strftime("%y%m%d%H%M%S")
-    prop_opt = {"style": "text-align: left;"}
     # td_opt = {"align": "center"}
     td_opt = {"style": "text-align: center;"}
 
@@ -2056,12 +2055,16 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
 
         if props:
             for prop_no, prop in enumerate(props):
+                prop_opt = {"style": "text-align: left;"}
+                val_opt = {"style": "text-align: left;"}
                 prop_cells = []
                 prop_val = ""
                 if mol.HasProp(prop):
                     prop_val = mol.GetProp(prop)
+                    if prop == "Hit" and mol.HasProp("ActAss"):
+                        val_opt["title"] = mol.GetProp("ActAss")
                 prop_cells.extend(html.td(prop[:25], prop_opt))
-                prop_cells.extend(html.td(prop_val[:8], prop_opt))
+                prop_cells.extend(html.td(prop_val[:8], val_opt))
                 prop_row_cells[prop_no].extend(prop_cells)
 
         if idx % mols_per_row == 0 or idx == len(sdf_list):
