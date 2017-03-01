@@ -2063,6 +2063,8 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
                     prop_val = mol.GetProp(prop)
                     if prop == "Hit" and mol.HasProp("ActAss"):
                         val_opt["title"] = mol.GetProp("ActAss")
+                    elif prop == "Pure_Flag" and prop_val != "" and prop_val != "n.d." and mol.HasProp("Purity") and mol.HasProp("LCMS_Date"):
+                        val_opt["title"] = "{}% ({})".format(mol.GetProp("Purity"), mol.GetProp("LCMS_Date"))
                 prop_cells.extend(html.td(prop[:25], prop_opt))
                 prop_cells.extend(html.td(prop_val[:8], val_opt))
                 prop_row_cells[prop_no].extend(prop_cells)
