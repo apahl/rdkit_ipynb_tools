@@ -441,6 +441,11 @@ class Mol_List(list):
         order_props(self, order)
 
 
+    def sample(self, size):
+        """Return a sample of size `size`."""
+        return Mol_List(random.sample(self, size))
+
+
     def mols_with_prop(self, prop):
         """Returns:
             Am iterator of molecules in the list where mol and prop are defined."""
@@ -640,7 +645,7 @@ class Mol_List(list):
             A list of compound ids"""
         prop_list = self.fields
 
-        if self.id_prop:
+        if self.id_prop is not None:
             if self.id_prop not in prop_list:
                 raise LookupError("id_prop not found in data set.")
         else:  # try to guess an id_prop
@@ -738,6 +743,29 @@ class Mol_List(list):
         if show_smiles:
             print("idx: {:3d}   Smiles: {}".format(idx, Chem.MolToSmiles(new_list[0])))
         return new_list
+
+
+    def add_props_from_dictlist(self, dl, id_prop=None):
+        """Add properties from a dictionary list to the Mol_List.
+        [{"Compound_Id": 123456, "Prop1": 1, "Prop2": 2}, {"Compound_Id: 123457, ...}]"""
+        if id_prop is None:
+            if self.id_prop is None:
+                self.id_prop = guess_id_prop(self)
+        else:
+            self.id_prop = id_prop
+        if self.id_prop is None:
+            raise LookupError("id_prop is required.")
+
+        # get a list of the Compound Ids
+        cpd_ids = [d[self.id_prop] for d in dl]
+        for mol in self:
+            cpd_id = get_value(mol.GetProp(self.id_prop))
+            if cpd_id in cpd_ids:
+                pos = cpd_ids.index(cpd_id)
+                props = dl[pos]
+                for prop in props:
+                    if prop == self.id_prop: continue
+                    mol.SetProp(prop, str(props[prop]))
 
 
     def set_prop_on_mol(self, id_no, prop_name, prop_value, is_cpd_id=True):
