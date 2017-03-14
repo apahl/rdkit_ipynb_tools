@@ -39,23 +39,13 @@ except:
     MPL = False
 
 # from . import html_templates as html
-from . import tools, html_templates as html, file_templ as ft
+from . import tools, html_templates as html, file_templ as ft, nb_tools as nbt
 
 try:
     from rdkit.Avalon import pyAvalonTools as pyAv
     USE_AVALON = True
 except ImportError:
     USE_AVALON = False
-
-try:
-    from misc_tools import nb_tools as nbt
-    NBT = True
-except ImportError:
-    NBT = False
-    print("* Could not import Notebook tools. Progress bars will not be displayed.")
-
-# from ipywidgets import widgets
-# from IPython.core.display import HTML, display
 
 
 nbits = 1024
@@ -628,8 +618,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     show_hist = kwargs.get("show_hist", True)
     add_stats = kwargs.get("add_stats", False)
 
-    if NBT:
-        pb = nbt.ProgressbarJS()
+    pb = nbt.ProgressbarJS()
 
     print("  Copying resources...")
     if op.isdir("./clustering"):
@@ -662,8 +651,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
 
     len_cluster_numbers = len(cluster_numbers)
     for idx, cl_no in enumerate(cluster_numbers, 1):
-        if NBT:
-            pb.update(100 * idx / len_cluster_numbers)
+        pb.update(100 * idx / len_cluster_numbers)
         cluster = get_clusters_by_no(cluster_list, cl_no)
         if len(cluster) == 0: continue
         if align and len(cluster) > 1:
@@ -696,8 +684,7 @@ def write_report(cluster_list, title="Clusters", props=None, reverse=True, **kwa
     open("index.html", "w").write("\n".join(content))
     os.chdir(cur_dir)
     print("  done. The report has been written to \n        {}.".format(op.join(cur_dir, "clustering", "index.html")))
-    if NBT:
-        pb.done()
+    pb.done()
 
 
 def add_remarks_to_report(remarks, highlights=None, index_file="clustering/index.html"):
