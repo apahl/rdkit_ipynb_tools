@@ -757,7 +757,8 @@ class Mol_List(list):
 
         Calculable properties:
             2d, date, formula, smiles, hba, hbd, logp, molid, mw, rotb,
-            sa (synthetic accessibility, tpsa, murcko (MurckoScaffold as Smiles).
+            nha (number of heavy atoms),
+            sa (synthetic accessibility), tpsa, murcko (MurckoScaffold as Smiles).
 
             sim (similarity of the Murcko scaffold relative to `sim_mol_or_smiles`
                 or the mol with `sim_id`).
@@ -1617,6 +1618,11 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
             mol.SetProp("HBD", str(Desc.NHOHCount(mol)))
             if calculated_props is not None:
                 calculated_props.add("hbd")
+
+        if "nha" in props:
+            mol.SetProp("NHA", str(mol.GetNumAtoms()))
+            if calculated_props is not None:
+                calculated_props.add("nha")
 
         if "logp" in props:
             mol.SetProp("LogP", "{:.3f}".format(Desc.MolLogP(mol)))
