@@ -1,2 +1,2 @@
-start_csv_reader  :    2323
-pipe_custom_filter:     430               (time: 00h 00m 2.12s)
+start_csv_reader         :    2323
+stop_mol_list_from_stream:    2292               (time: 00h 00m 5.96s)

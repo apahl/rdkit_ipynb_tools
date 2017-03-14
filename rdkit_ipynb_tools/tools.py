@@ -446,6 +446,20 @@ class Mol_List(list):
         return Mol_List(random.sample(self, size))
 
 
+    def split(self, ratio=0.5):
+        """Split the mol_list in two halves of the specified `ratio`.
+        Two Mol_Lists are returned"""
+        l1 = Mol_List()
+        l2 = Mol_List()
+        for mol in self:
+            mol_copy = deepcopy(mol)
+            if random.random() < ratio:
+                l1.append(mol_copy)
+            else:
+                l2.append(mol_copy)
+        return l1, l2
+
+
     def mols_with_prop(self, prop):
         """Returns:
             Am iterator of molecules in the list where mol and prop are defined."""
