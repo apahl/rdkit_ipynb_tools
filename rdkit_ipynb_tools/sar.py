@@ -10,8 +10,8 @@ SAR
 SAR Tools.
 """
 
-# import csv, os, pickle, random
-import base64, sys, time
+# import csv, os, pickle
+import base64, random, sys, time
 import os.path as op
 from collections import Counter
 
@@ -96,7 +96,7 @@ class SAR_List(tools.Mol_List):
             return result
 
 
-    def train(self, act_class_prop="ActClass"):
+    def train(self, act_class_prop="AC_Real"):
         self.model = train(self, act_class_prop)
         """Generates the trained model."""
 
@@ -110,26 +110,7 @@ class SAR_List(tools.Mol_List):
         self.html = None
 
 
-    def sim_map(self):
-        if self.html is None:
-            self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
-        else:
-            print("Using cached HTML content...")
-            print("Set property `html` to `None` to re-generate.")
-        return HTML(self.html)
-
-
-    def write_sim_map(self, fn="sim_map.html", title="Similarity Map", summary=None):
-        if self.html is None:
-            self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
-        else:
-            print("Using cached HTML content...")
-            print("Set property `html` to `None` to re-generate.")
-        html.write(html.page(self.html, summary=summary, title=title), fn=fn)
-        return HTML('<a href="{}">{}</a>'.format(fn, fn))
-
-
-    def analyze(self, act_class="ActClass", pred_class="ActClass_Pred"):
+    def analyze(self, act_class="AC_Real", pred_class="AC_Pred"):
         """Prints the ratio of succcessful predictions for the molecules which have `act_class` and `pred_class` properties."""
         mol_ctr = Counter()
         hit_ctr = Counter()
@@ -153,7 +134,37 @@ class SAR_List(tools.Mol_List):
         return hit_ctr, mol_ctr
 
 
-def train(mol_list, act_class_prop="ActClass"):
+    def sample(self, size):
+        """Return a sample of size `size`."""
+        new_list = SAR_List(random.sample(self, size))
+        new_list.order = self.order
+        new_list.ia = self.ia
+        new_list.plot_tool = self.plot_tool
+        new_list.model = self.model
+        self.html = None
+        return new_list
+
+
+    def sim_map(self):
+        if self.html is None:
+            self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
+        else:
+            print("Using cached HTML content...")
+            print("Set property `html` to `None` to re-generate.")
+        return HTML(self.html)
+
+
+    def write_sim_map(self, fn="sim_map.html", title="Similarity Map", summary=None):
+        if self.html is None:
+            self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
+        else:
+            print("Using cached HTML content...")
+            print("Set property `html` to `None` to re-generate.")
+        html.write(html.page(self.html, summary=summary, title=title), fn=fn)
+        return HTML('<a href="{}">{}</a>'.format(fn, fn))
+
+
+def train(mol_list, act_class_prop="AC_Real"):
     """Returns the trained model."""
     fps = []
     act_classes = []
@@ -188,8 +199,8 @@ def predict_mol(mol, model):
 def predict(mol_list, model):
     for mol in mol_list:
         pred_class, pred_prob = predict_mol(mol, model)
-        mol.SetProp("ActClass_Pred", str(pred_class))
-        mol.SetProp("ActClass_Prob", str(pred_prob[pred_class]))
+        mol.SetProp("AC_Pred", str(pred_class))
+        mol.SetProp("Prob", "{:.2}".format(pred_prob[pred_class]))
 
 
 def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_hidden=False, order=None, size=300):
