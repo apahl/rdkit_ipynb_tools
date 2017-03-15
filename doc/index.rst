@@ -23,7 +23,7 @@ Indices and tables
    :private-members:
    :special-members:
 
-.. automodule:: rdkit_ipynb_tools.scaffolds
+.. automodule:: rdkit_ipynb_tools.sar
    :members:
    :private-members:
    :special-members:

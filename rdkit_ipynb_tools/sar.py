@@ -13,25 +13,18 @@ SAR Tools.
 # import csv, os, pickle, random
 import base64, sys, time
 import os.path as op
-# import gzip
-# import math
-# from copy import deepcopy
+from collections import Counter
 
 from sklearn.ensemble import RandomForestClassifier
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
-# import rdkit.Chem.Descriptors as Desc
 
-# imports for similarity search
-# from rdkit.Chem.Fingerprints import FingerprintMols
 from rdkit.Chem.Draw import SimilarityMaps
 from rdkit import DataStructs
 
 Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
-
-# from PIL import Image, ImageChops
 
 import numpy as np
 
@@ -52,14 +45,6 @@ try:
     AP_TOOLS = True
 except ImportError:
     AP_TOOLS = False
-
-# try:
-#     # Try to import Avalon so it can be used for generation of 2d coordinates.
-#     from rdkit.Avalon import pyAvalonTools as pyAv
-#     USE_AVALON = True
-# except ImportError:
-#     print("  * Avalon not available. Using RDKit for 2d coordinate generation.")
-#     USE_AVALON = False
 
 if AP_TOOLS:
     #: Library version
@@ -92,6 +77,23 @@ class SAR_List(tools.Mol_List):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = None
+        self.html = None
+
+
+    def __getitem__(self, item):
+        result = list.__getitem__(self, item)
+        try:
+            new_list = SAR_List(result)
+
+            # pass on properties
+            new_list.order = self.order
+            new_list.ia = self.ia
+            new_list.plot_tool = self.plot_tool
+            new_list.model = self.model
+            self.html = None
+            return new_list
+        except TypeError:
+            return result
 
 
     def train(self, act_class_prop="ActClass"):
@@ -105,17 +107,50 @@ class SAR_List(tools.Mol_List):
         if self.model is None:
             raise LookupError("Model is not available. Please train first.")
         predict(self, self.model)
+        self.html = None
 
 
     def sim_map(self):
-        return HTML(sim_map(self, self.model, id_prop=self.id_prop, order=self.order))
+        if self.html is None:
+            self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
+        else:
+            print("Using cached HTML content...")
+            print("Set property `html` to `None` to re-generate.")
+        return HTML(self.html)
 
 
     def write_sim_map(self, fn="sim_map.html", title="Similarity Map", summary=None):
-        html.write(html.page(sim_map(self, self.model, id_prop=self.id_prop, order=self.order),
-                             summary=summary, title=title), fn=fn)
+        if self.html is None:
+            self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
+        else:
+            print("Using cached HTML content...")
+            print("Set property `html` to `None` to re-generate.")
+        html.write(html.page(self.html, summary=summary, title=title), fn=fn)
         return HTML('<a href="{}">{}</a>'.format(fn, fn))
 
+
+    def analyze(self, act_class="ActClass", pred_class="ActClass_Pred"):
+        """Prints the ratio of succcessful predictions for the molecules which have `act_class` and `pred_class` properties."""
+        mol_ctr = Counter()
+        hit_ctr = Counter()
+        for mol in self:
+            if mol.HasProp(act_class) and mol.HasProp(pred_class):
+                mol_ctr[int(mol.GetProp(act_class))] += 1
+                if mol.GetProp(act_class) != mol.GetProp(pred_class):
+                    continue
+                hit_ctr[int(mol.GetProp(act_class))] += 1
+        if len(mol_ctr) > 0:
+            sum_mol_ctr = sum(mol_ctr.values())
+            sum_hit_ctr = sum(hit_ctr.values())
+            print("Number of correctly predicted molecules: {} / {}    ({:.2f}%)"
+                  .format(sum_hit_ctr, sum_mol_ctr, 100 * sum_hit_ctr /
+                          sum_mol_ctr))
+            print("\nCorrectly predicted molecules per Activity Class:")
+            for c in sorted(hit_ctr):
+                print("  {}:  {:.2f}".format(c, 100 * hit_ctr[c] / mol_ctr[c]))
+        else:
+            print("No molecules found with both {} and {}.".format(act_class, pred_class))
+        return hit_ctr, mol_ctr
 
 
 def train(mol_list, act_class_prop="ActClass"):

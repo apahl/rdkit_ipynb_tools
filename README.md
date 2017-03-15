@@ -94,7 +94,8 @@ Please refer to the docstrings until then.
 New, WIP, **not** usable. Has been moved to the scaffolds branch.
 
 # Tutorial
-Much of the functionality is shown in the [tutorial notebook](tutorial/tutorial.ipynb).
+Much of the functionality is shown in the [tools tutorial notebook](tutorial/tutorial_tools.ipynb).
+SAR functionality is shown in the [SAR tutorial notebook](tutorial/tutorial_sar.ipynb). The SAR module is new and Work in Progress.
 
 # Documentation
 The module documentation can be built with sphinx using the `make_doc.sh` script
