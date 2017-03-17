@@ -1040,7 +1040,7 @@ def pipe_join_data_from_file(stream, fn, join_on, behaviour="joined_only", appen
             "keep_all": put all input records on the stream again, including those, on which no data was joined.
         append (bool): if True (default), new values will be appended to existing fields
             on the stream, forming a list.
-            This list has to be merged with the `pipe_merge_data` component.abs
+            This list has to be merged with the `pipe_merge_data` component.
             If False, existing values are kept."""
 
     # collect the records from the stream in a list, store the position of the join_on properties in a dict

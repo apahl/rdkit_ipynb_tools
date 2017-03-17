@@ -10,8 +10,8 @@ SAR
 SAR Tools.
 """
 
-# import csv, os, pickle
-import base64, random, sys, time
+# import csv, os
+import base64, pickle, random, sys, time
 import os.path as op
 from collections import Counter
 
@@ -145,6 +145,23 @@ class SAR_List(tools.Mol_List):
         return new_list
 
 
+    def save_model(self, fn="sar"):
+        if self.model is None:
+            print("No model available.")
+            return
+        save_model(self.model, fn)
+
+
+    def load_model(self, fn="sar", force=False):
+        if self.model is not None and not force:
+            print("There is already a model available. Use `force=True` to override.")
+            return
+        if not fn.endswith(".model"):
+            fn = fn + ".model"
+        with open(fn, "rb") as f:
+            self.model = pickle.load(f)
+
+
     def sim_map(self):
         if self.html is None:
             self.html = sim_map(self, self.model, id_prop=self.id_prop, order=self.order)
@@ -201,6 +218,26 @@ def predict(mol_list, model):
         pred_class, pred_prob = predict_mol(mol, model)
         mol.SetProp("AC_Pred", str(pred_class))
         mol.SetProp("Prob", "{:.2}".format(pred_prob[pred_class]))
+
+
+def save_model(model, fn="sar"):
+    if not fn.endswith(".model"):
+        fn = fn + ".model"
+    with open(fn, "wb") as f:
+        pickle.dump(model, f)
+
+
+def load_sdf(fn, model_name=None):
+    mol_list = tools.load_sdf(fn)
+    sar_list = SAR_List(mol_list)
+    if model_name is None:
+        print("  * No model was loaded. Please provide a name to load.")
+    else:
+        try:
+            sar_list.load_model(model_name)
+        except FileNotFoundError:
+            print("  * Model {} could not be found. No model was loaded".format(model_name))
+    return sar_list
 
 
 def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_hidden=False, order=None, size=300):
