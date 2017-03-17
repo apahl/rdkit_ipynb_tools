@@ -243,18 +243,28 @@ class Mol_List(list):
         self._set_recalc_needed()
 
 
-    def __getitem__(self, item):
-        result = list.__getitem__(self, item)
-        try:
-            new_list = Mol_List(result)
-
-            # pass on properties
+    def _pass_properties(self, new_list):
             new_list.order = self.order
             new_list.ia = self.ia
             new_list.plot_tool = self.plot_tool
+
+
+    def __getitem__(self, item):
+        result = list.__getitem__(self, item)
+        try:
+            new_list = type(self)(result)
+            # pass on properties
+            self._pass_properties(new_list)
             return new_list
         except TypeError:
             return result
+
+
+    def new(self, *args):
+        new_list = type(self)(*args)
+        # pass on properties
+        self._pass_properties(new_list)
+        return new_list
 
 
     def _repr_html_(self):
@@ -443,14 +453,14 @@ class Mol_List(list):
 
     def sample(self, size):
         """Return a sample of size `size`."""
-        return Mol_List(random.sample(self, size))
+        return self.new(random.sample(self, size))
 
 
     def split(self, ratio=0.5):
         """Split the mol_list in two halves of the specified `ratio`.
         Two Mol_Lists are returned"""
-        l1 = Mol_List()
-        l2 = Mol_List()
+        l1 = self.new()
+        l2 = self.new()
         for mol in self:
             mol_copy = deepcopy(mol)
             if random.random() < ratio:
@@ -474,7 +484,7 @@ class Mol_List(list):
         """Return a new Mol_List based on the property filtering.
         By default it creates an independent copy of the mol objects.
         With `show == True` (default), the resulting numbers of the search will be printed."""
-        result_list = Mol_List()
+        result_list = self.new()
         if self.order:
             result_list.order = self.order.copy()
         result_list.ia = self.ia
@@ -545,7 +555,7 @@ class Mol_List(list):
         """Returns a new Mol_List containing the substructure matches.
         By default it creates an independent copy of the mol objects.
         With `show == True` (default), the resulting numbers of the search will be printed."""
-        result_list = Mol_List()
+        result_list = self.new()
         if self.order:
             result_list.order = self.order.copy()
         result_list.ia = self.ia
@@ -617,7 +627,7 @@ class Mol_List(list):
         By default it creates an independent copy of the mol objects.
         With `show == True` (default), the resulting numbers of the search will be printed."""
 
-        result_list = Mol_List()
+        result_list = self.new()
         if self.order:
             result_list.order = self.order.copy()
         result_list.ia = self.ia
@@ -699,7 +709,7 @@ class Mol_List(list):
         else:
             id_keep = id_set.intersection(id_all)
 
-        new_list = Mol_List()
+        new_list = self.new()
         if self.order:
             new_list.order = self.order.copy()
         new_list.ia = self.ia
@@ -722,7 +732,7 @@ class Mol_List(list):
         With is_cpd_id == True (default), the given id_no is interpreted as a Compound_Id.
         Otherwise it is used as index in the list."""
 
-        new_list = Mol_List()
+        new_list = self.new()
         if self.order:
             new_list.order = self.order.copy()
         new_list.ia = self.ia
@@ -918,7 +928,7 @@ class Mol_List(list):
             new Mol_list without the duplicate Ids.
             By default it creates an independent copy of the mol objects."""
 
-        new_list = Mol_List()
+        new_list = self.new()
         if self.order:
             new_list.order = self.order.copy()
         new_list.ia = self.ia
@@ -950,7 +960,7 @@ class Mol_List(list):
             new Mol_List without the duplicate structures.
             By default it creates an independent copy of the mol objects. """
 
-        new_list = Mol_List()
+        new_list = self.new()
         if self.order:
             new_list.order = self.order.copy()
         new_list.ia = self.ia

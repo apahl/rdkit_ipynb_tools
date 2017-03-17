@@ -11,7 +11,7 @@ SAR Tools.
 """
 
 # import csv, os
-import base64, pickle, random, sys, time
+import base64, pickle, sys, time
 import os.path as op
 from collections import Counter
 
@@ -80,20 +80,31 @@ class SAR_List(tools.Mol_List):
         self.html = None
 
 
-    def __getitem__(self, item):
-        result = list.__getitem__(self, item)
-        try:
-            new_list = SAR_List(result)
-
-            # pass on properties
+    def _pass_properties(self, new_list):
             new_list.order = self.order
             new_list.ia = self.ia
             new_list.plot_tool = self.plot_tool
             new_list.model = self.model
-            self.html = None
+            new_list.html = None
+
+
+    def __getitem__(self, item):
+        result = list.__getitem__(self, item)
+        try:
+            new_list = type(self)(result)
+
+            # pass on properties
+            self._pass_properties(new_list)
             return new_list
         except TypeError:
             return result
+
+
+    def new(self, *args):
+        new_list = type(self)(*args)
+        # pass on properties
+        self._pass_properties(new_list)
+        return new_list
 
 
     def train(self, act_class_prop="AC_Real"):
@@ -132,17 +143,6 @@ class SAR_List(tools.Mol_List):
         else:
             print("No molecules found with both {} and {}.".format(act_class, pred_class))
         return hit_ctr, mol_ctr
-
-
-    def sample(self, size):
-        """Return a sample of size `size`."""
-        new_list = SAR_List(random.sample(self, size))
-        new_list.order = self.order
-        new_list.ia = self.ia
-        new_list.plot_tool = self.plot_tool
-        new_list.model = self.model
-        self.html = None
-        return new_list
 
 
     def save_model(self, fn="sar"):
