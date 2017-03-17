@@ -1126,7 +1126,7 @@ class Mol_List(list):
 
 
     def write_grid(self, props=None, highlight=None, mols_per_row=5, size=IMG_GRID_SIZE,
-                   header=None, summary=None, img_dir=None, title="Results", fn="mol_grid.html"):
+                   header=None, summary=None, img_dir=None, title="Grid", fn="mol_grid.html"):
         html.write(html.page(self.grid(props=props, highlight=highlight,
                              mols_per_row=mols_per_row, size=size, img_dir=img_dir, raw=True), header=header, summary=summary, title=title), fn=fn)
         return HTML('<a href="{}">{}</a>'.format(fn, fn))
