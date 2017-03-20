@@ -160,6 +160,7 @@ class SAR_List(tools.Mol_List):
             fn = fn + ".model"
         with open(fn, "rb") as f:
             self.model = pickle.load(f)
+        print("  > model loaded (last modified: {}).".format(time.strftime("%Y-%m-%d %H:%M", time.localtime(op.getmtime(fn)))))
 
 
     def sim_map(self):
