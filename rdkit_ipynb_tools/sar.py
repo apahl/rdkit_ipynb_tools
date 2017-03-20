@@ -279,7 +279,8 @@ def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_
         if id_prop not in prop_list:
             raise LookupError("Id property {} not found in data set.".format(id_prop))
 
-    pb = nbt.ProgressbarJS()
+    if len(mol_list) > 5:
+        pb = nbt.ProgressbarJS()
 
     if guessed_id:
         # make sure that the id_prop (or the guessed id prop) is first:
@@ -297,7 +298,8 @@ def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_
 
     list_len = len(mol_list)
     for idx, mol in enumerate(mol_list):
-        pb.update(100 * (idx + 1) / list_len)
+        if len(mol_list) > 5:
+            pb.update(100 * (idx + 1) / list_len)
         cells = []
         mol_props = mol.GetPropNames()
 
@@ -367,5 +369,6 @@ def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_
     if interact and guessed_id is not None:
         table_list.append(tools.ID_LIST.format(ts=time_stamp))
 
-    pb.done()
+    if len(mol_list) > 5:
+        pb.done()
     return "".join(table_list)
