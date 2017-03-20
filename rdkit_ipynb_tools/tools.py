@@ -354,17 +354,22 @@ class Mol_List(list):
         super().extend(other)
 
 
-    def align(self, mol_or_smiles=None):
+    def align(self, mol_or_smiles=None, in_place=True):
         """Align the Mol_list to the common substructure provided as Mol or Smiles.
 
         Args:
             mol_or_smiles (bool): The substructure to which to align.
                 If None, then the method uses rdFMCS to determine the MCSS
                 of the Mol_List."""
-
-        align(self, mol_or_smiles)
-
         self.recalc_needed["d"] = True
+        if in_place:
+            align(self, mol_or_smiles)
+        else:
+            new_list = Mol_List()
+            for mol in self:
+                new_list.append(mol)
+            align(new_list, mol_or_smiles)
+            return new_list
 
 
     def add_id(self, id_prop="molid"):
