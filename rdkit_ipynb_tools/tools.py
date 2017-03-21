@@ -72,13 +72,15 @@ try:
 except ImportError:
     AP_TOOLS = False
 
+USE_FP = "morgan"  # other options: "avalon", "default"
+
 try:
     # Try to import Avalon so it can be used for generation of 2d coordinates.
     from rdkit.Avalon import pyAvalonTools as pyAv
-    USE_AVALON = True
+    USE_AVALON_2D = True
 except ImportError:
     print("  * Avalon not available. Using RDKit for 2d coordinate generation.")
-    USE_AVALON = False
+    USE_AVALON_2D = False
 
 try:
     from Contrib.SA_Score import sascorer
@@ -365,7 +367,7 @@ class Mol_List(list):
         if in_place:
             align(self, mol_or_smiles)
         else:
-            new_list = Mol_List()
+            new_list = self.new()
             for mol in self:
                 new_list.append(mol)
             align(new_list, mol_or_smiles)
@@ -456,9 +458,16 @@ class Mol_List(list):
         order_props(self, order)
 
 
-    def sample(self, size):
-        """Return a sample of size `size`."""
+    def sample_random(self, size):
+        """Return a random sample of size `size`."""
         return self.new(random.sample(self, size))
+
+
+    def sample_diverse(self, size, fp=None):
+        """Return a diverse sample of size `size`.
+        Fingerprint options: None (default), Morgan.
+        (see http://rdkit.blogspot.de/2014/08/picking-diverse-compounds-from-large.html)."""
+        return self.new(sample_diverse(self, size, fp))
 
 
     def split(self, ratio=0.5):
@@ -659,11 +668,6 @@ class Mol_List(list):
         return result_list
 
 
-    def div_filter(self, count):
-        """Returns a diverse selection of the mol_list with length `count`."""
-        return div_filter(self, count)
-
-
     def get_ids(self):
         """Get the list of Compound IDs in the Mol_List
 
@@ -849,7 +853,9 @@ class Mol_List(list):
         if sim_mol_or_smiles is not None:
             if isinstance(sim_mol_or_smiles, str):
                 sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
-            if USE_AVALON:
+            if USE_FP == "morgan":
+                query_fp = Desc.rdMolDescriptors.GetMorganFingerprint(sim_mol_or_smiles, 2)
+            elif USE_FP == "avalon":
                 query_fp = pyAv.GetAvalonFP(sim_mol_or_smiles, 1024)
             else:
                 query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
@@ -1630,7 +1636,7 @@ def check_2d_coords(mol, force=False):
             force = True  # no 2D coords... calculate them
 
     if force:
-        if USE_AVALON:
+        if USE_AVALON_2D:
             pyAv.Generate2DCoords(mol)
         else:
             mol.Compute2DCoords()
@@ -1717,14 +1723,18 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
             if sim_mol_or_smiles is not None:
                 if isinstance(sim_mol_or_smiles, str):
                     sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
-                    if USE_AVALON:
+                    if USE_FP == "morgan":
+                        query_fp = Desc.rdMolDescriptors.GetMorganFingerprint(sim_mol_or_smiles, 2)
+                    elif USE_FP == "avalon":
                         query_fp = pyAv.GetAvalonFP(sim_mol_or_smiles, 1024)
                     else:
                         query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
 
             if query_fp is not None:
                 murcko_mol = MurckoScaffold.GetScaffoldForMol(mol)
-                if USE_AVALON:
+                if USE_FP == "morgan":
+                    mol_fp = Desc.rdMolDescriptors.GetMorganFingerprint(murcko_mol, 2)
+                if USE_FP == "avalon":
                     mol_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
                 else:
                     mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
@@ -2304,11 +2314,17 @@ def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=No
     )
 
 
-def div_filter(mol_list, count):
-    """Returns a diverse selection of the mol_list with length `count`."""
+def sample_diverse(mol_list, size, fp=None):
+    """Returns a diverse selection of the mol_list with length `size`.
+    `fp` is the type of fingerprint to use (None (default), Morgan, Avalon)"""
 
     def distij(i, j):
         return 1 - DataStructs.DiceSimilarity(fp_list[i], fp_list[j])
+
+    if fp is None:
+        fp = USE_FP
+    else:
+        fp = fp.lower()
 
     ctr = 0
     fp_list = []
@@ -2317,16 +2333,19 @@ def div_filter(mol_list, count):
             fp_list.append(pickle.loads(base64.b64decode(mol.GetProp("FP_b64"))))
         else:
             ctr += 1
-            if USE_AVALON:
+            if fp == "morgan":
+                mol_fp = Desc.rdMolDescriptors.GetMorganFingerprint(mol, 2)
+            elif fp == "avalon":
                 mol_fp = pyAv.GetAvalonFP(mol, 1024)
             else:
                 mol_fp = FingerprintMols.FingerprintMol(mol)
 
             fp_list.append(mol_fp)
-    print("{} Fingerprints had to be calculated. {} Fingerprints available.".format(ctr,
-                                                                                    len(fp_list)))
+    if ctr > 0:
+        print("{} {} fingerprints were calculated.".format(ctr, fp.capitalize()))
+    print("{} Fingerprints available.".format(len(fp_list)))
     picker = MaxMinPicker()
-    pick_idx_list = picker.LazyPick(distij, len(fp_list), count, seed=0xF00D)
+    pick_idx_list = picker.LazyPick(distij, len(fp_list), size, seed=0xF00D)
 
     result_list = Mol_List()
     for idx in pick_idx_list:
