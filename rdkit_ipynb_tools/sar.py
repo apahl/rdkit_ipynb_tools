@@ -31,7 +31,7 @@ import numpy as np
 from . import tools, html_templates as html, nb_tools as nbt
 
 
-from IPython.core.display import HTML
+from IPython.core.display import HTML, display, clear_output
 
 if sys.version_info[0] > 2:
     PY3 = True
@@ -180,6 +180,28 @@ class SAR_List(tools.Mol_List):
             print("Set property `html` to `None` to re-generate.")
         html.write(html.page(self.html, summary=summary, title=title), fn=fn)
         return HTML('<a href="{}">{}</a>'.format(fn, fn))
+
+
+    def map_from_id(self, cpd_id=None):
+        if cpd_id is None and tools.WIDGETS:
+            def show_sim_map(ev):
+                cpd_id = tools.get_value(w_input_id.value.strip())
+                clear_output()
+                w_input_id.value = ""
+                display(self.new_list_from_ids(cpd_id).sim_map())
+
+            w_input_id = tools.ipyw.Text(description="Compound Id:")
+            # w_btn_clear_input = tools.ipyw.Button(description="Clear Input")
+            # w_btn_clear_input.on_click(clear_input)
+            w_btn_show = tools.ipyw.Button(description="Show Sim Map")
+            w_btn_show.on_click(show_sim_map)
+
+            w_hb_show = tools.ipyw.HBox(children=[w_input_id, w_btn_show])
+            # tools.set_margin(w_vb_search1)
+            display(w_hb_show)
+        else:
+            new_list = self.new_list_from_ids(cpd_id)
+            return HTML(sim_map(new_list, self.model, id_prop=self.id_prop, order=self.order))
 
 
 def train(mol_list, act_class_prop="AC_Real"):
