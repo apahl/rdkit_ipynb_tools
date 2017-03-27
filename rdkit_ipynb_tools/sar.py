@@ -14,8 +14,8 @@ SAR Tools.
 import base64, pickle, sys, time
 import os.path as op
 from collections import Counter
-
-from sklearn.ensemble import RandomForestClassifier
+import re
+import colorsys
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
@@ -27,6 +27,7 @@ Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
 Draw.DrawingOptions.atomLabelFontSize = 18
 
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier
 
 from . import tools, html_templates as html, nb_tools as nbt
 
@@ -57,6 +58,101 @@ else:
 
 BGCOLOR = "#94CAEF"
 IMG_GRID_SIZE = 235
+
+
+TABLE_INTRO = """<table id="sar_table" width="" cellspacing="1" cellpadding="1" border="1" align="center" height="60" summary="">"""
+HTML_INTRO = """<!DOCTYPE html>
+<html>
+<head>
+  <title>%s</title>
+  <meta charset="UTF-8">
+
+  <link rel="stylesheet" type="text/css" href="css/style.css" />
+
+  <script src="lib/float.js"></script>
+
+</head>
+<body>
+<script src="lib/wz_tooltip.js"></script>
+<h2>%s (%s)</h2>
+
+"""
+HTML_EXTRO = """<div style="width:4000px;height:2000px"></div>
+<script>
+      function addEvent(obj, ev, fu) {
+      if (obj.addEventListener) {
+          obj.addEventListener(ev, fu, false);
+      } else {
+          var eev = 'on' + ev;
+          obj.attachEvent(eev, fu);
+      }
+      }
+      addEvent(window, 'load', function () {
+      tt1 = floatHeader('sar_table', {ncpth: [1], nccol: 1, topDif: 0, leftDif: 0});
+      });
+</script>
+</body>
+</html>"""
+
+LOGP_INTRO = """</tbody>
+</table>
+<p></p>
+<p>LogP color coding:</p>
+<table width="" cellspacing="1" cellpadding="1" border="1" align="left" height="40" summary="">
+<tbody>
+<tr>
+"""
+LOGP_EXTRO = "</tbody>\n</table>\n"
+
+
+class ColorScale():
+
+    def __init__(self, num_values, val_min, val_max, middle_color="yellow", reverse=False):
+        self.num_values = num_values
+        self.num_val_1 = num_values - 1
+        self.value_min = val_min
+        self.value_max = val_max
+        self.reverse = reverse
+        self.value_range = self.value_max - self.value_min
+        self.color_scale = []
+        if middle_color.startswith("y"):  # middle color yellow
+            hsv_tuples = [(0.0 + ((x * 0.35) / (self.num_val_1)), 0.99, 0.9) for x in range(self.num_values)]
+            self.reverse = not self.reverse
+        else:  # middle color blue
+            hsv_tuples = [(0.35 + ((x * 0.65) / (self.num_val_1)), 0.9, 0.9) for x in range(self.num_values)]
+        rgb_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)
+        for rgb in rgb_tuples:
+            rgb_int = [int(255 * x) for x in rgb]
+            self.color_scale.append('#{:02x}{:02x}{:02x}'.format(*rgb_int))
+
+        if self.reverse:
+            self.color_scale.reverse()
+
+    def __call__(self, value):
+        """return the color from the scale corresponding to the place in the value_min .. value_max range"""
+        pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
+
+        return self.color_scale[pos]
+
+
+    def legend(self):
+        """Return the value_range and a list of tuples (value, color) to be used in a legend."""
+        legend = []
+        for idx, color in enumerate(self.color_scale):
+            val = self.value_min + idx / self.num_val_1 * self.value_range
+            legend.append((val, color))
+
+        return legend
+
+
+def format_num(val):
+    """Return a suitable format string depending on the size of the value."""
+    if val > 50:
+        return ".0f"
+    if val > 1:
+        return ".1f"
+    else:
+        return ".2f"
 
 
 def _get_proba(fp, predictionFunction):
@@ -394,3 +490,207 @@ def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_
     if len(mol_list) > 5:
         pb.done()
     return "".join(table_list)
+
+
+def legend_table(legend):
+    """Return a HTML table with the ColorScale label as text.
+
+    Psrsmeters:
+    legend (list): list of tuples as returned from ColorScale.legend()."""
+    intro = "<table>\n<tbody>\n<tr>"
+    extro = "</tr>\n</tbody>\n</table>\n"
+    tbl_list = [intro]
+    rnge = abs(legend[0][0] - legend[-1][0])
+    digits = format_num(rnge)
+    for tup in legend:
+        cell = "<td bgcolor={color}>{val:{digits}}</td>".format(color=tup[1], val=tup[0], digits=digits)
+        tbl_list.append(cell)
+
+    tbl_list.append(extro)
+
+    return "".join(tbl_list)
+
+
+def get_res_pos(smiles):
+    pat = re.compile('\[(.*?)\*\]')
+    pos_str = re.findall(pat, smiles)[0]
+    if pos_str:
+        return int(pos_str)
+    else:
+        return 0
+
+
+def generate_sar_table(db_list, core, id_prop, act_prop, dir_name="html/sar_table", color_prop="logp"):
+    """core: smiles string; id_prop, act_prop: string"""
+
+    tools.create_dir_if_not_exist(dir_name)
+    tools.create_dir_if_not_exist(op.join(dir_name, "img"))
+
+    act_xy = np.zeros([55, 55], dtype=np.float)    # coordinates for the activity
+    # color_xy = np.zeros([55, 55], dtype=np.float)
+    color_xy = np.full([55, 55], np.NaN, dtype=np.float)
+    molid_xy = np.zeros([55, 55], dtype=np.int)
+    # molid_xy = np.arange(900, dtype=np.int).reshape(30, 30)  # coordinates for the molid
+    rx_dict = {}  # axes for the residues
+    ry_dict = {}
+    max_x = -1  # keep track of the arraysize
+    max_y = -1
+    res_pos_x = -1
+    res_pos_y = -1
+
+    core_mol = Chem.MolFromSmiles(core)
+    Draw.MolToFile(core_mol, "%s/img/core.png" % dir_name, [90, 90])
+
+    for idx, mol in enumerate(db_list):
+        act = float(mol.GetProp(act_prop))
+        color = float(mol.GetProp(color_prop))
+        molid = int(mol.GetProp(id_prop))
+        tmp = Chem.ReplaceCore(mol, core_mol, labelByIndex=True)
+        frag_mols = list(Chem.GetMolFrags(tmp, asMols=True))
+        frag_smiles = [Chem.MolToSmiles(m, True) for m in frag_mols]
+        if len(frag_mols) == 1:
+            # one of the two residues is H:
+            pos = get_res_pos(frag_smiles[0])
+            if pos == res_pos_x:
+                h_smiles = "[%d*]([H])" % res_pos_y
+                frag_smiles.append(h_smiles)
+                frag_mols.append(Chem.MolFromSmiles(h_smiles))
+            else:
+                h_smiles = "[%d*]([H])" % res_pos_x
+                frag_smiles.insert(0, h_smiles)
+                frag_mols.insert(0, Chem.MolFromSmiles(h_smiles))
+
+            print(" adding H residue in pos {} to  mol #{} (molid: {})".format(pos, idx, mol.GetProp(id_prop)))
+
+        elif len(frag_mols) > 2:
+            print("*  incorrect number of fragments ({}) in mol #{} (molid: {})".format(len(frag_mols), idx, mol.GetProp(id_prop)))
+            continue
+
+        if res_pos_x == -1:
+            # print frag_smiles[0], frag_smiles[1]
+            res_pos_x = get_res_pos(frag_smiles[0])
+            res_pos_y = get_res_pos(frag_smiles[1])
+            # print "res_pos_x: {}     res_pos_y: {}".format(res_pos_x, res_pos_y)
+        else:
+            test_pos_x = get_res_pos(frag_smiles[0])
+            if test_pos_x != res_pos_x:  # switch residues
+                frag_smiles = frag_smiles[::-1]
+                frag_mols = frag_mols[::-1]
+        if frag_smiles[0] in rx_dict:
+            curr_x = rx_dict[frag_smiles[0]]
+        else:
+            max_x += 1
+            rx_dict[frag_smiles[0]] = max_x
+            curr_x = max_x
+            Draw.MolToFile(frag_mols[0], "%s/img/frag_x_%02d.png" % (dir_name, max_x), [100, 100])
+        if frag_smiles[1] in ry_dict:
+            curr_y = ry_dict[frag_smiles[1]]
+        else:
+            max_y += 1
+            ry_dict[frag_smiles[1]] = max_y
+            curr_y = max_y
+            Draw.MolToFile(frag_mols[1], "%s/img/frag_y_%02d.png" % (dir_name, max_y), [100, 100])
+
+        # draw thw whole molecule for the tooltip
+        img_file = op.join(dir_name, "img/", "cpd_{}_{}.png".format(curr_x, curr_y))
+        img = tools.autocrop(Draw.MolToImage(mol), "white")
+        img.save(img_file, format='PNG')
+
+        act_xy[curr_x][curr_y] = act
+        color_xy[curr_x][curr_y] = color
+        molid_xy[curr_x][curr_y] = molid
+
+    return act_xy, molid_xy, color_xy, max_x, max_y
+
+
+def sar_table_report_html(act_xy, molid_xy, color_xy, max_x, max_y, color_by="logp", reverse_color=False,
+                          show_link=False, show_tooltip=True):
+    if "logp" in color_by.lower():
+        # logp_colors = {2.7: "#5F84FF", 3.0: "#A4D8FF", 4.2: "#66FF66", 5.0: "#FFFF66", 1000.0: "#FF4E4E"}
+        logp_colors = {2.7: "#98C0FF", 3.0: "#BDF1FF", 4.2: "#AAFF9B", 5.0: "#F3FFBF", 1000.0: "#FF9E9E"}
+
+    else:
+        color_min = float(np.nanmin(color_xy))
+        color_max = float(np.nanmax(color_xy))
+        color_scale = ColorScale(20, color_min, color_max, reverse=reverse_color)
+
+    # write horizontal residues
+    line = [TABLE_INTRO]
+    line.append("\n<thead><tr><th align=\"left\">Core:<br><img src=\"img/core.png\" alt=\"icon\" /></th>")
+    for curr_x in range(max_x + 1):
+        line.append("<th><img src=\"img/frag_x_%02d.png\" alt=\"icon\" /></th>" % curr_x)
+
+    line.append("</tr></thead>\n<tbody>\n")
+
+    for curr_y in range(max_y + 1):
+        line.append("<tr><td><img src=\"img/frag_y_%02d.png\" alt=\"icon\" /></td>" % curr_y)
+        for curr_x in range(max_x + 1):
+            molid = molid_xy[curr_x][curr_y]
+            if molid > 0:
+                link_in = ""
+                link_out = ""
+                bg_color = " "
+                mouseover = ""
+                if show_link:
+                    link = "../reports/ind_stock_results.htm#cpd_%05d" % molid
+                    link_in = "<a href=\"%s\">" % link
+                    link_out = "</a>"
+                if "logp" in color_by.lower():
+                    logp = color_xy[curr_x][curr_y]
+                    if show_tooltip:
+                        prop_tip = 'LogP: %.2f' % logp
+                    for limit in sorted(logp_colors):
+                        if logp <= limit:
+                            bg_color = ' bgcolor="%s"' % logp_colors[limit]
+                            break
+                else:
+                    value = float(color_xy[curr_x][curr_y])
+                    html_color = color_scale(value)
+                    bg_color = ' bgcolor="{}"'.format(html_color)
+                    if show_tooltip:
+                        prop_tip = '{}: {:.2f}'.format(color_by, color_xy[curr_x][curr_y])
+
+                if show_tooltip:
+                    tool_tip = '<img src=&quot;img/cpd_{}_{}.png&quot; alt=&quot;icon&quot; /><br><br>{}'.format(curr_x, curr_y, prop_tip)
+                    mouseover = """ onmouseover="Tip('{}')" onmouseout="UnTip()" """.format(tool_tip)
+
+                line.append("<td%s align=\"center\"%s><b>%.2f</b><br><br>(%s%d%s)</td>" % (mouseover, bg_color, act_xy[curr_x][curr_y], link_in, molid_xy[curr_x][curr_y], link_out))
+
+            else:  # empty value in numpy array
+                line.append("<td></td>")
+
+
+        line.append("</tr>\n")
+
+    line.append("</tbody>\n</table>\n")
+
+    if "logp" in color_by.lower():
+        line.append(LOGP_INTRO)
+        for limit in sorted(logp_colors):
+            line.append('<td align="center" bgcolor="%s">&le; %.2f</td>' % (logp_colors[limit], limit))
+        line.append("\n</tr>\n")
+        line.append(LOGP_EXTRO)
+    else:
+        line.append("<br><br>Coloring legend for {}:<br>\n".format(color_by))
+        legend = color_scale.legend()
+        line.append(legend_table(legend))
+
+
+    html_table = "".join(line)
+
+    return html_table
+
+
+def write_html_page(html_content, dir_name="html/sar_table", page_name="sar_table", page_title="SAR Table"):
+
+    tools.create_dir_if_not_exist(dir_name)
+    tools.create_dir_if_not_exist(op.join(dir_name, "img"))
+
+    filename = op.join(dir_name, "%s.htm" % page_name)
+    f = open(filename, "w")
+    f.write(HTML_INTRO % (page_title, page_title, time.strftime("%d-%b-%Y")))
+
+    f.write(html_content)
+
+    f.write(HTML_EXTRO)
+    f.close()
