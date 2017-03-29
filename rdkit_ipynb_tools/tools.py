@@ -911,6 +911,18 @@ class Mol_List(list):
         self._set_recalc_needed()
 
 
+    def keep_largest_fragment(self):
+        frag_counter = 0
+        for mol in self:
+            mols = Chem.GetMolFrags(mol, asMols=True)
+            if len(mols) > 1:
+                frag_counter += 1
+                mols.sort(key=Desc.HeavyAtomCount, reverse=True)
+
+            mol = mols[0]
+        print("  > small fragments were removed in {} moleucles.".format(frag_counter))
+
+
     def copy_prop(self, prop_orig, prop_copy, move=False):
         """Copy or rename a property in the Mol_List."""
 
@@ -2279,7 +2291,7 @@ def table_pager(mol_list, id_prop=None, interact=False, pagesize=25, highlight=N
         return HTML(mol_table(mol_list, id_prop=id_prop, highlight=highlight,
                               order=order, show_hidden=show_hidden))
 
-    return ipyw.interactive(
+    ipyw.interact(
         lambda page: HTML(mol_table(mol_list[page * pagesize:(page + 1) * pagesize],
                           id_prop=id_prop, interact=interact, order=order,
                           show_hidden=show_hidden)),
@@ -2293,7 +2305,7 @@ def nested_pager(mol_list, pagesize=10, id_prop=None, props=None, order=None):
     if not WIDGETS or l <= pagesize:
         return HTML(nested_table(mol_list, id_prop=id_prop, props=props, order=order))
 
-    return ipyw.interactive(
+    ipyw.interact(
         lambda page: HTML(nested_table(mol_list[page * pagesize:(page + 1) * pagesize],
                           id_prop=id_prop, props=props, order=order)),
         page=ipyw.IntSlider(min=0, max=num_pages, step=1, value=0)
@@ -2306,7 +2318,7 @@ def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=No
     if not WIDGETS or l <= pagesize:
         return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))
 
-    return ipyw.interactive(
+    ipyw.interact(
         lambda page: HTML(mol_sheet(mol_list[page * pagesize:(page + 1) * pagesize],
                           id_prop=id_prop, interact=interact, highlight=highlight,
                           props=props, size=size)),
