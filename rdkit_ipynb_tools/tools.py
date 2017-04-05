@@ -2124,7 +2124,7 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
             cell = html.img(img_src, img_opt)
 
         # td_opt = {"align": "center"}
-        td_opt = {"style": "text-align: center;"}
+        td_opt = {"style": "text-align: center;", "bgcolor": "#FFFFFF"}
         if props is not None:
             td_opt["colspan"] = "2"
 
