@@ -912,15 +912,26 @@ class Mol_List(list):
 
 
     def keep_largest_fragment(self):
+        """Removes salts, etc.
+        Returns a new Mol_List instance. The original properties are copied over."""
         frag_counter = 0
+        new_list = self.new()
+        if self.order:
+            new_list.order = self.order.copy()
+        new_list.ia = self.ia
         for mol in self:
             mols = Chem.GetMolFrags(mol, asMols=True)
             if len(mols) > 1:
                 frag_counter += 1
-                mols.sort(key=Desc.HeavyAtomCount, reverse=True)
+                mols = sorted(mols, key=Desc.HeavyAtomCount, reverse=True)
+                new_mol = mols[0]
+                copy_mol_props(mol, new_mol)
+            else:
+                new_mol = deepcopy(mol)
+            new_list.append(new_mol)
 
-            mol = mols[0]
-        print("  > small fragments were removed in {} moleucles.".format(frag_counter))
+        print("  > small fragments were removed in {} molecules.".format(frag_counter))
+        return new_list
 
 
     def copy_prop(self, prop_orig, prop_copy, move=False):
@@ -1391,6 +1402,13 @@ def autocrop(im, bgcolor="white"):
     if bbox:
         return im.crop(bbox)
     return None  # no contents
+
+
+def copy_mol_props(mol1, mol2):
+    """Copy properties fom `mol1` to `mol2`."""
+    for prop in mol1.GetPropNames():
+        prop_val = mol1.GetProp(prop)
+        mol2.SetProp(prop, prop_val)
 
 
 def list_fields(sdf_list):
