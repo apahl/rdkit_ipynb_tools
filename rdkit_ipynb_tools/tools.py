@@ -1411,6 +1411,12 @@ def copy_mol_props(mol1, mol2):
         mol2.SetProp(prop, prop_val)
 
 
+def try_remove(lst, item):
+    """When the item is present in the list, remove it; otherwise do nothing."""
+    if item in lst:
+        lst.remove(item)
+
+
 def list_fields(sdf_list):
     field_list = []
 
