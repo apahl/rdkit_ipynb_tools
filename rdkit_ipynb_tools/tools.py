@@ -848,17 +848,18 @@ class Mol_List(list):
         if sim_id is not None:  # sim_id represents a Compound_Id,
                                 # which is then taken as the Similarity base
             sim_mol_or_smiles = self.show_cpd(sim_id, is_cpd_id=True,
-                                              make_copy=False, show_smiles=False)[0]
+                                              make_copy=True, show_smiles=False)[0]
 
         if sim_mol_or_smiles is not None:
             if isinstance(sim_mol_or_smiles, str):
                 sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
+            murcko_mol = MurckoScaffold.GetScaffoldForMol(sim_mol_or_smiles)
             if USE_FP == "morgan":
-                query_fp = Desc.rdMolDescriptors.GetMorganFingerprint(sim_mol_or_smiles, 2)
+                query_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
             elif USE_FP == "avalon":
-                query_fp = pyAv.GetAvalonFP(sim_mol_or_smiles, 1024)
+                query_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
             else:
-                query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
+                query_fp = FingerprintMols.FingerprintMol(murcko_mol)
 
         ctr = 0
         calculated_props = set()
@@ -1756,24 +1757,30 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
             calculated_props.add("murcko")
 
         if "sim" in props:
-            if sim_mol_or_smiles is not None:
-                if isinstance(sim_mol_or_smiles, str):
-                    sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
+            if query_fp is None:
+                if sim_mol_or_smiles is not None:
+                    if isinstance(sim_mol_or_smiles, str):
+                        sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
+                    murcko_mol = MurckoScaffold.GetScaffoldForMol(sim_mol_or_smiles)
                     if USE_FP == "morgan":
-                        query_fp = Desc.rdMolDescriptors.GetMorganFingerprint(sim_mol_or_smiles, 2)
+                        query_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
                     elif USE_FP == "avalon":
-                        query_fp = pyAv.GetAvalonFP(sim_mol_or_smiles, 1024)
+                        query_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
                     else:
-                        query_fp = FingerprintMols.FingerprintMol(sim_mol_or_smiles)
+                        query_fp = FingerprintMols.FingerprintMol(murcko_mol)
 
             if query_fp is not None:
                 murcko_mol = MurckoScaffold.GetScaffoldForMol(mol)
-                if USE_FP == "morgan":
-                    mol_fp = Desc.rdMolDescriptors.GetMorganFingerprint(murcko_mol, 2)
-                if USE_FP == "avalon":
-                    mol_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
+                if mol.HasProp("FP_b64"):
+                    mol_fp = pickle.loads(base64.b64decode(mol.GetProp("FP_b64")))
                 else:
-                    mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
+                    if USE_FP == "morgan":
+                        mol_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
+                    elif USE_FP == "avalon":
+                        mol_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
+                    else:
+                        mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
+
                 sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
                 mol.SetProp("Sim", "{:.3f}".format(sim * 100))
                 calculated_props.add("sim")
@@ -2370,7 +2377,7 @@ def sample_diverse(mol_list, size, fp=None):
         else:
             ctr += 1
             if fp == "morgan":
-                mol_fp = Desc.rdMolDescriptors.GetMorganFingerprint(mol, 2)
+                mol_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, 2)
             elif fp == "avalon":
                 mol_fp = pyAv.GetAvalonFP(mol, 1024)
             else:
