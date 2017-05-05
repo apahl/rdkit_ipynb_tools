@@ -856,7 +856,7 @@ class Mol_List(list):
 
             # use pre-calculated fingerprints whenever possible
             if sim_mol_or_smiles.HasProp("FP_b64"):
-                query_fp = pickle.loads(base64.b64decode(mol.GetProp("FP_b64")))
+                query_fp = pickle.loads(base64.b64decode(sim_mol_or_smiles.GetProp("FP_b64")))
             else:
                 murcko_mol = MurckoScaffold.GetScaffoldForMol(sim_mol_or_smiles)
                 if USE_FP == "morgan":
@@ -1421,6 +1421,19 @@ def try_remove(lst, item):
     """When the item is present in the list, remove it; otherwise do nothing."""
     if item in lst:
         lst.remove(item)
+
+
+def save_obj(obj, fn="object.pkl"):
+    """Save a generic python object through pickling."""
+    with open(fn, "wb") as f:
+        pickle.dump(obj, f)
+
+
+def load_obj(fn="object.pkl"):
+    """Load and return a previously pickled object."""
+    with open(fn, "rb") as f:
+        obj = pickle.load(f)
+    return obj
 
 
 def list_fields(sdf_list):
