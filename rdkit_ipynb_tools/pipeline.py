@@ -70,6 +70,8 @@ except ImportError:
     print("* SA scorer not available. RDKit's Contrib dir needs to be in the Python import path...")
     SASCORER = False
 
+USE_FP = "morgan"  # other options: "avalon", "default"
+
 try:
     # interactive IPython session
     _ = get_ipython()
@@ -911,9 +913,9 @@ def pipe_mol_filter(stream, query, smarts=False, invert=False, add_h=False, summ
             yield rec
 
 
-def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_filter"):
+def pipe_sim_filter(stream, query, cutoff=80, summary=None, comp_id="pipe_sim_filter"):
     """Filter for compounds that have a similarity greater or equal
-    than `cutoff` to the `query` Smiles.
+    than `cutoff` (in percent) to the `query` Smiles.
     If the field `FP_b64` (e.g. pre-calculated) is present, this will be used,
     otherwise the fingerprint of the Murcko scaffold will be generated on-the-fly (much slower)."""
     rec_counter = 0
@@ -923,7 +925,14 @@ def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_f
         print("* {} ERROR: could not generate query from SMILES.".format(comp_id))
         return None
 
-    query_fp = FingerprintMols.FingerprintMol(query_mol)
+    murcko_mol = MurckoScaffold.GetScaffoldForMol(query_mol)
+    if USE_FP == "morgan":
+        query_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
+    elif USE_FP == "avalon":
+        query_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
+    else:
+        query_fp = FingerprintMols.FingerprintMol(murcko_mol)
+
     for rec in stream:
         if "mol" not in rec: continue
 
@@ -931,16 +940,17 @@ def pipe_sim_filter(stream, query, cutoff=0.8, summary=None, comp_id="pipe_sim_f
             mol_fp = pickle.loads(b64.b64decode(rec["FP_b64"]))
         else:
             murcko_mol = MurckoScaffold.GetScaffoldForMol(rec["mol"])
-            if USE_AVALON:
+            if USE_FP == "morgan":
+                mol_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
+            elif USE_FP == "avalon":
                 mol_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
             else:
                 mol_fp = FingerprintMols.FingerprintMol(murcko_mol)
 
-
-
         sim = DataStructs.FingerprintSimilarity(query_fp, mol_fp)
-        if sim >= cutoff:
+        if sim * 100 >= cutoff:
             rec_counter += 1
+            rec["Sim"] = np.round(sim * 100, 2)
 
             if summary is not None:
                 summary[comp_id] = rec_counter
