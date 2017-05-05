@@ -853,13 +853,18 @@ class Mol_List(list):
         if sim_mol_or_smiles is not None:
             if isinstance(sim_mol_or_smiles, str):
                 sim_mol_or_smiles = Chem.MolFromSmiles(sim_mol_or_smiles)
-            murcko_mol = MurckoScaffold.GetScaffoldForMol(sim_mol_or_smiles)
-            if USE_FP == "morgan":
-                query_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
-            elif USE_FP == "avalon":
-                query_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
+
+            # use pre-calculated fingerprints whenever possible
+            if sim_mol_or_smiles.HasProp("FP_b64"):
+                query_fp = pickle.loads(base64.b64decode(mol.GetProp("FP_b64")))
             else:
-                query_fp = FingerprintMols.FingerprintMol(murcko_mol)
+                murcko_mol = MurckoScaffold.GetScaffoldForMol(sim_mol_or_smiles)
+                if USE_FP == "morgan":
+                    query_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
+                elif USE_FP == "avalon":
+                    query_fp = pyAv.GetAvalonFP(murcko_mol, 1024)
+                else:
+                    query_fp = FingerprintMols.FingerprintMol(murcko_mol)
 
         ctr = 0
         calculated_props = set()
