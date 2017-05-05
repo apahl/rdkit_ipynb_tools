@@ -1770,10 +1770,10 @@ def calc_props(mol, props, force2d=False, calculated_props=None, **kwargs):
                         query_fp = FingerprintMols.FingerprintMol(murcko_mol)
 
             if query_fp is not None:
-                murcko_mol = MurckoScaffold.GetScaffoldForMol(mol)
                 if mol.HasProp("FP_b64"):
                     mol_fp = pickle.loads(base64.b64decode(mol.GetProp("FP_b64")))
                 else:
+                    murcko_mol = MurckoScaffold.GetScaffoldForMol(mol)
                     if USE_FP == "morgan":
                         mol_fp = Desc.rdMolDescriptors.GetMorganFingerprintAsBitVect(murcko_mol, 2)
                     elif USE_FP == "avalon":
