@@ -2209,9 +2209,16 @@ def mol_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=None
             rows.extend(html.tr(mol_cells))
 
             if props is not None:
+                colspan_factor = 2
                 for prop_no in sorted(prop_row_cells):
                     rows.extend(html.tr(prop_row_cells[prop_no]))
                 prop_row_cells = {k: [] for k, _ in enumerate(props)}
+            else:
+                colspan_factor = 1
+            empty_row_options = {"colspan": mols_per_row * colspan_factor}
+            empty_row_options["style"] = "border: none;"
+            empty_row = html.tr(html.td("&nbsp;", options=empty_row_options))
+            rows.extend(empty_row)
             id_cells = []
             mol_cells = []
 
