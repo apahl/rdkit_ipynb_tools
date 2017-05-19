@@ -398,7 +398,7 @@ def start_stream_from_mol_list(mol_list, summary=None, comp_id="start_stream_fro
         summary.update()
 
 
-def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
+def stop_csv_writer(stream, fn, sep="\t", summary=None, comp_id="stop_csv_writer"):
     """Write CSV file from the incoming stream.
 
     Parameters:
@@ -447,7 +447,7 @@ def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
         if first_line:  # write the final header
             first_line = False
             line = list(fields.keys())
-            f.write("\t".join(line) + "\n")
+            f.write(sep.join(line) + "\n")
 
         line = line_str.rstrip("\n").split("\t")
 
@@ -457,7 +457,7 @@ def stop_csv_writer(stream, fn, summary=None, comp_id="stop_csv_writer"):
         line.extend(fill)
 
 
-        f.write("\t".join(line) + "\n")
+        f.write(sep.join(line) + "\n")
 
     f.close()
     tmp.close()
