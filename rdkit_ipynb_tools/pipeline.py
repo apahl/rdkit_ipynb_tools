@@ -1261,12 +1261,13 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
 
             return val_list[0], None, None
 
-        else:
+        elif isinstance(val_list[0], float) or isinstance(val_list[0], int):
             if "mean" in num_props:
                 val = np.mean(val_list)
                 return (np.round(val, digits), "Std",  # Standard deviation
                         np.round(np.std(val_list), digits))
             if "median" in num_props:
+                print(val_list)
                 val = np.median(val_list)
                 return (np.round(val, digits), "MAD",  # Median Absolute Deviation
                         np.round(np.median([abs(x - val) for x in val_list]), digits))
@@ -1275,6 +1276,9 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
             if "last" in num_props:
                 return val_list[-1], None, None
 
+            return val_list[0]
+
+        else:
             return val_list[0]
 
 
