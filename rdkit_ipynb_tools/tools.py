@@ -993,6 +993,40 @@ class Mol_List(list):
         return new_list
 
 
+    def remove_by_id(self, cpd_id, id_prop=None, make_copy=True):
+        """Remove molecules records by Compound Id.
+
+        Parameters:
+            id_prop (None, str): The name of the Id property, if *None*, it will be guessed.
+
+        Returns:
+            new Mol_list without the duplicate Ids.
+            By default it creates an independent copy of the mol objects."""
+
+        if not isinstance(cpd_id, list):
+            cpd_id = [cpd_id]
+        new_list = self.new()
+        if self.order:
+            new_list.order = self.order.copy()
+        new_list.ia = self.ia
+
+        if not id_prop:
+            id_prop = guess_id_prop(list_fields(self))
+        if not id_prop:
+            print("* could not determine Id property.")
+            return None
+
+        for mol in self:
+            if not mol: continue
+            mol_id = get_value(mol.GetProp(id_prop))
+            if mol_id in cpd_id: continue
+            if make_copy:
+                mol = deepcopy(mol)
+            new_list.append(mol)
+
+        return new_list
+
+
     def remove_dups_by_struct(self, make_copy=True):
         """Remove duplicates by structure. Duplicates are determined by Smiles.
 
