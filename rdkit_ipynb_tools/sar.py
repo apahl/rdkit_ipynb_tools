@@ -107,11 +107,17 @@ LOGP_EXTRO = "</tbody>\n</table>\n"
 
 class ColorScale():
 
-    def __init__(self, num_values, val_min, val_max, middle_color="yellow", reverse=False):
+    def __init__(self, num_values, val_min, val_max, middle_color="yellow",
+                 reverse=False, is_lin=True):
         self.num_values = num_values
         self.num_val_1 = num_values - 1
-        self.value_min = val_min
-        self.value_max = val_max
+        self.is_lin = is_lin  # is the range fo the color prop linear (e.g. pIC50)?
+        if self.is_lin:
+            self.value_min = val_min
+            self.value_max = val_max
+        else:
+            self.value_min = tools.pic50(val_min, "um")
+            self.value_max = tools.pic50(val_max, "um")
         self.reverse = reverse
         self.value_range = self.value_max - self.value_min
         self.color_scale = []
@@ -130,6 +136,8 @@ class ColorScale():
 
     def __call__(self, value):
         """return the color from the scale corresponding to the place in the value_min .. value_max range"""
+        if not self.is_lin:
+            value = tools.pic50(value, "um")
         pos = int(((value - self.value_min) / self.value_range) * self.num_val_1)
 
         return self.color_scale[pos]
@@ -140,6 +148,8 @@ class ColorScale():
         legend = []
         for idx, color in enumerate(self.color_scale):
             val = self.value_min + idx / self.num_val_1 * self.value_range
+            if not self.is_lin:
+                val = tools.ic50(val, "um")
             legend.append((val, color))
 
         return legend
@@ -520,11 +530,15 @@ def get_res_pos(smiles):
         return 0
 
 
-def generate_sar_table(db_list, core, id_prop, act_prop, dir_name="html/sar_table", color_prop="logp"):
-    """core: smiles string; id_prop, act_prop: string"""
+def generate_sar_table(db_list, core, id_prop, act_prop, sort_reverse=True,
+                       dir_name="html/sar_table", color_prop="logp"):
+    """core: smiles string; id_prop, act_prop: string
+    colorprop_is_lin: whether or not the property used for coloring is linear (e.g. LogP or PercActivity) or needs to be logarithmitized (e.g. IC50_uM)."""
 
     tools.create_dir_if_not_exist(dir_name)
     tools.create_dir_if_not_exist(op.join(dir_name, "img"))
+
+    db_list.sort_list(act_prop, reverse=sort_reverse)
 
     act_xy = np.zeros([55, 55], dtype=np.float)    # coordinates for the activity
     # color_xy = np.zeros([55, 55], dtype=np.float)
@@ -603,7 +617,8 @@ def generate_sar_table(db_list, core, id_prop, act_prop, dir_name="html/sar_tabl
     return act_xy, molid_xy, color_xy, max_x, max_y
 
 
-def sar_table_report_html(act_xy, molid_xy, color_xy, max_x, max_y, color_by="logp", reverse_color=False,
+def sar_table_report_html(act_xy, molid_xy, color_xy, max_x, max_y, color_by="logp",
+                          reverse_color=False, colorprop_is_lin=True,
                           show_link=False, show_tooltip=True):
     if "logp" in color_by.lower():
         # logp_colors = {2.7: "#5F84FF", 3.0: "#A4D8FF", 4.2: "#66FF66", 5.0: "#FFFF66", 1000.0: "#FF4E4E"}
@@ -612,7 +627,8 @@ def sar_table_report_html(act_xy, molid_xy, color_xy, max_x, max_y, color_by="lo
     else:
         color_min = float(np.nanmin(color_xy))
         color_max = float(np.nanmax(color_xy))
-        color_scale = ColorScale(20, color_min, color_max, reverse=reverse_color)
+        color_scale = ColorScale(20, color_min, color_max,
+                                 reverse=reverse_color, is_lin=colorprop_is_lin)
 
     # write horizontal residues
     line = [TABLE_INTRO]
