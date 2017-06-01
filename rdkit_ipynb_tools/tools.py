@@ -41,7 +41,6 @@ from PIL import Image, ImageChops
 import numpy as np
 
 from . import html_templates as html
-from . import hc_tools as hct
 
 try:
     import ipywidgets as ipyw
@@ -65,6 +64,8 @@ try:
 except ImportError:
     print("  * could not import Bokeh, plotting with Highcharts instead.")
     PLOT_TOOL = "highcharts"
+    from . import hc_tools as hct
+
 
 try:
     from misc_tools import apl_tools as apt
