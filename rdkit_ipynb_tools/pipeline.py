@@ -238,7 +238,10 @@ def start_csv_reader(fn, max_records=0, tag=True, summary=None, comp_id="start_c
         else:
             f = open(filen)
 
-        reader = csv.DictReader(f, dialect="excel-tab")
+        # Guess the dialect:
+        dialect = csv.Sniffer().sniff(f.read(1024))
+        f.seek(0)
+        reader = csv.DictReader(f, dialect=dialect)
         prev_time = time.time()
         for row_dict in reader:
             rec_counter += 1
@@ -1289,12 +1292,6 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
         if merge_on not in rec: continue
 
         merge_on_val = rec.pop(merge_on)
-        if "mol" in rec:
-            has_mol = True
-            rec_mol = rec["mol"]
-            rec.pop("mol")
-        else:
-            has_mol = False
         for prop in rec.keys():
             val = rec[prop]
             if isinstance(val, list):  # from a pipe_join operation with append == True
@@ -1328,8 +1325,6 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
                 print(summary, file=open("pipeline.log", "w"))
                 summary.update()
 
-        if has_mol:
-            rec["mol"] = rec_mol
         yield rec
 
     if summary:
