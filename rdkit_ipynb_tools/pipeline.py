@@ -1275,10 +1275,10 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
             if "last" in num_props:
                 return val_list[-1], None, None
 
-            return val_list[0]
+            return val_list[0], None, None
 
         else:
-            return val_list[0]
+            return val_list[0], None, None
 
 
     merged = defaultdict(lambda: defaultdict(list))  # defaultdict of defaultdict(list)
@@ -1305,7 +1305,7 @@ def pipe_merge_data(stream, merge_on, str_props="concat", num_props="mean", mark
             val_list = merged[item][prop]
             if len(val_list) > 1:
                 merge_result = _get_merged_val_from_val_list(val_list, str_props, num_props)
-                rec[prop] = _get_merged_val_from_val_list(val_list, str_props, num_props)[0]
+                rec[prop] = merge_result[0]
                 if merge_result[1] is not None:  # deviation values from mean or median
                     rec["{}_{}".format(prop, merge_result[1])] = merge_result[2]
                 if mark:
