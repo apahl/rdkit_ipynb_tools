@@ -15,7 +15,7 @@ import math
 
 import numpy as np
 
-from bokeh.charts import Bar
+from bkcharts import Bar
 from bokeh.plotting import figure, ColumnDataSource
 import bokeh.io as io
 from bokeh.models import HoverTool, OpenURL, TapTool
