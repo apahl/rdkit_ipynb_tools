@@ -93,6 +93,8 @@ def format_seconds(seconds):
 def get_value(str_val):
     if not str_val:
         return None
+    if isinstance(str_val, list):
+        print(str_val)
 
     try:
         val = float(str_val)
@@ -215,7 +217,8 @@ def pipe(val, *forms):
     return result
 
 
-def start_csv_reader(fn, max_records=0, tag=True, summary=None, comp_id="start_csv_reader"):
+def start_csv_reader(fn, max_records=0, tag=True, sep="\t",
+                     summary=None, comp_id="start_csv_reader"):
     """A reader for csv files.
 
     Returns:
@@ -238,9 +241,10 @@ def start_csv_reader(fn, max_records=0, tag=True, summary=None, comp_id="start_c
         else:
             f = open(filen)
 
-        # Guess the dialect:
-        dialect = csv.Sniffer().sniff(f.read(1024))
-        f.seek(0)
+        if sep == "\t":
+            dialect = "excel-tab"
+        else:
+            dialect = "excel"
         reader = csv.DictReader(f, dialect=dialect)
         prev_time = time.time()
         for row_dict in reader:
@@ -643,7 +647,7 @@ def pipe_mol_from_b64(stream, in_b64="Mol_b64", remove=True, summary=None, comp_
                 yield rec
 
 
-def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", tag=True, summary=None, comp_id="start_mol_csv_reader"):
+def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", tag=True, sep="\t", summary=None, comp_id="start_mol_csv_reader"):
     """A reader for csv files containing molecules in binary b64 format.
 
     Returns:
@@ -656,7 +660,7 @@ def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", tag=True, summary=
         summary (Summary): a Counter class to collect runtime statistics.
         comp_id: (str): the component Id to use for the summary."""
 
-    rd = start_csv_reader(fn, max_records, tag, summary, comp_id)
+    rd = start_csv_reader(fn, max_records, tag, sep, summary, comp_id)
     mol = pipe_mol_from_b64(rd, in_b64)
 
     return mol
