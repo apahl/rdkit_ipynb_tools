@@ -1054,6 +1054,58 @@ class Mol_List(list):
         return new_list
 
 
+    def enum_racemates(self, find_only=True):
+        """returns: result_sdf::list<mol>, racemic_molids::list<int>
+        find_only==True:  return new sdf as list which contains all the racemates of the input sdf.
+        find_only==False: return new sdf as list with ALL input structures, where the racemates are
+                        replaced by their two enantiomers. The returned sdf is always
+                        equal in size or larger as the input sdf.
+        Multiple stereo centers are not yet handled.
+        In the new sdf the molids are no longer unique and should be reassigned
+        (remove molid and run calc_props(sdf))."""
+
+        prop_list = self.fields
+        if self.id_prop is not None:
+            if self.id_prop not in prop_list:
+                raise LookupError("id_prop not found in data set.")
+        else:  # try to guess an id_prop
+            self.id_prop = guess_id_prop(prop_list)
+        result = self.new()
+        racemic_molids = []
+
+        for mol in self:
+            first_undefined = False
+            chiral_centers = Chem.FindMolChiralCenters(mol, includeUnassigned=True)
+
+            if chiral_centers:
+                first_center = chiral_centers[0][0]
+                first_undefined = chiral_centers[0][1] == "?"
+
+            if first_undefined:
+                racemic_molids.append(get_value(mol.GetProp(self.id_prop)))
+                if find_only:
+                    result.append(mol)
+                    continue
+
+                else:
+                    mol1 = Chem.Mol(mol)
+                    mol2 = Chem.Mol(mol)
+                    mol1.GetAtomWithIdx(first_center).SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
+                    mol2.GetAtomWithIdx(first_center).SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW)
+                    result.append(mol1)
+                    result.append(mol2)
+
+            else:
+                if not find_only:  # return ALL mols
+                    result.append(mol)
+
+        return result, racemic_molids
+
+
+
+
+
+
     def join_data_from_file(self, fn, id_prop=None, decimals=2):
         """Joins data from a file with name ``fn`` by Id property ``id_prop``. If no Id property is given, it will be guessed.
         CAUTION: The records from the file are loaded into memory!
