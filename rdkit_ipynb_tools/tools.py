@@ -21,6 +21,7 @@ import gzip
 import math
 import pickle
 from copy import deepcopy
+from itertools import product
 
 from rdkit.Chem import AllChem as Chem
 from rdkit.Chem import Draw
@@ -1064,6 +1065,8 @@ class Mol_List(list):
         In the new sdf the molids are no longer unique and should be reassigned
         (remove molid and run calc_props(sdf))."""
 
+        chirality = {"R": Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
+                     "S": Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW}
         prop_list = self.fields
         if self.id_prop is not None:
             if self.id_prop not in prop_list:
@@ -1074,36 +1077,29 @@ class Mol_List(list):
         racemic_molids = []
 
         for mol in self:
-            first_undefined = False
             chiral_centers = Chem.FindMolChiralCenters(mol, includeUnassigned=True)
+            undefined_centers = [center[0] for center in chiral_centers if center[1] == "?"]
 
-            if chiral_centers:
-                first_center = chiral_centers[0][0]
-                first_undefined = chiral_centers[0][1] == "?"
-
-            if first_undefined:
+            if undefined_centers:
                 racemic_molids.append(get_value(mol.GetProp(self.id_prop)))
                 if find_only:
                     result.append(mol)
                     continue
 
                 else:
-                    mol1 = Chem.Mol(mol)
-                    mol2 = Chem.Mol(mol)
-                    mol1.GetAtomWithIdx(first_center).SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
-                    mol2.GetAtomWithIdx(first_center).SetChiralTag(Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW)
-                    result.append(mol1)
-                    result.append(mol2)
+                    num_stereocenters = len(undefined_centers)
+                    stereocenters = product("RS", repeat=num_stereocenters)
+                    for stereo in stereocenters:
+                        new_mol = Chem.Mol(mol)
+                        for idx, center in enumerate(undefined_centers):
+                            new_mol.GetAtomWithIdx(center).SetChiralTag(chirality[stereo[idx]])
+                        result.append(new_mol)
 
             else:
                 if not find_only:  # return ALL mols
                     result.append(mol)
 
         return result, racemic_molids
-
-
-
-
 
 
     def join_data_from_file(self, fn, id_prop=None, decimals=2):
