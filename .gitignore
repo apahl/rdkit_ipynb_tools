@@ -1,6 +1,7 @@
-doc/_build/
 .ipynb_checkpoints/
 .kdev4/
+.vscode/
+doc/_build/
 tutorial/.ipynb_checkpoints/
 tutorial/lib
 tutorial/chembl_et-a_antagonists.txt
