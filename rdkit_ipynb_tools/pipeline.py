@@ -171,7 +171,7 @@ class Summary(OrderedDict):
 
     def update(self, final=False):
         if IPY:
-            clear_output()
+            clear_output(wait=True)
             display(HTML(self.__html__(final)))
         else:
             print(self.__str__())
