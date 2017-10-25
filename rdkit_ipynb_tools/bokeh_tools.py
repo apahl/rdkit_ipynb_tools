@@ -15,7 +15,7 @@ import math
 
 import numpy as np
 
-from bkcharts import Bar
+# from bkcharts import Bar
 from bokeh.plotting import figure, ColumnDataSource
 import bokeh.io as io
 from bokeh.models import HoverTool, OpenURL, TapTool
@@ -320,23 +320,23 @@ class Hist():
         io.show(self.plot)
 
 
-def bar_chart(d, x, show=True, **kwargs):
-    """Displays a bar chart for the occurrence of the given x-value.
-    This plot type is especially useful for plotting the occurrence of categorical data,
-    where only a small number (<= 10) of different values are present.
-    This function is directly calling the advanced bokeh bar chart type,
-    therefore no additional class is used.
-    Useful kwargs include: title, plot_height, plot_width."""
-    title = kwargs.pop("title", "Occurrence of {}".format(x))
-    p = Bar(d, x, values=x, agg="count", legend=False, title=title, **kwargs)
-    p.yaxis.axis_label = "Occurrence"
-    p.axis.axis_label_text_font_size = "14pt"
-    p.axis.major_label_text_font_size = "14pt"
-    p.title.text_font_size = "18pt"
-    if show:
-        io.show(p)
-    else:
-        return p
+# def bar_chart(d, x, show=True, **kwargs):
+#     """Displays a bar chart for the occurrence of the given x-value.
+#     This plot type is especially useful for plotting the occurrence of categorical data,
+#     where only a small number (<= 10) of different values are present.
+#     This function is directly calling the advanced bokeh bar chart type,
+#     therefore no additional class is used.
+#     Useful kwargs include: title, plot_height, plot_width."""
+#     title = kwargs.pop("title", "Occurrence of {}".format(x))
+#     p = Bar(d, x, values=x, agg="count", legend=False, title=title, **kwargs)
+#     p.yaxis.axis_label = "Occurrence"
+#     p.axis.axis_label_text_font_size = "14pt"
+#     p.axis.major_label_text_font_size = "14pt"
+#     p.title.text_font_size = "18pt"
+#     if show:
+#         io.show(p)
+#     else:
+#         return p
 
 
 def get_tooltip(x, y, pid=None, series=None, series_by=None, color_by=None, size_by=None, tooltip=None):
