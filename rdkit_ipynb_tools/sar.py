@@ -166,7 +166,7 @@ def format_num(val):
 
 
 def _get_proba(fp, predictionFunction):
-    return predictionFunction(fp)[0][1]
+    return predictionFunction([fp])[0][1]
 
 
 def b64_fig(fig, dpi=72):
@@ -461,7 +461,9 @@ def sim_map(mol_list, model, id_prop=None, interact=False, highlight=None, show_
             cell = html.img(img_src, img_opt)
             cells.extend(html.td(cell, cell_opt))
 
-            fig, _ = SimilarityMaps.GetSimilarityMapForModel(mol, SimilarityMaps.GetMorganFingerprint, lambda x: _get_proba(x, model.predict_proba))
+
+            fig, _ = SimilarityMaps.GetSimilarityMapForModel(
+                mol, SimilarityMaps.GetMorganFingerprint, lambda x: _get_proba(x, model.predict_proba))
             b64 = b64_fig(fig, dpi=72)
             img_src = "data:image/png;base64,{}".format(b64)
             cell_opt = {}
