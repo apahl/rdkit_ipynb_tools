@@ -1311,7 +1311,7 @@ class Mol_List(list):
         ``mean`` and ``median`` are calculated with numpy."""
 
         field_types = self.field_types
-        l = len(self)
+        ln = len(self)
         max_max = 0
         sum_d = {}
         for prop in field_types:
@@ -1330,7 +1330,7 @@ class Mol_List(list):
         n_digits = str(np.floor(np.log10(max_max)) + 5.3) + "f"  # digits for formatting
 
         if text_only:
-            print("number of records:", l)
+            print("number of records:", ln)
             for prop in sum_d:
                 print("\n{} ({}, {}):".format(prop, sum_d[prop]["type"], sum_d[prop]["num_values"]))
                 if field_types[prop] == "number":
@@ -1343,7 +1343,7 @@ class Mol_List(list):
             cells = []
             opt1 = {"align": "center", "bgcolor": "#94CAEF"}
             opt2 = {"align": "center", "bgcolor": "#94CAEF", "colspan": 7}
-            cell = html.td(html.b("Summary ({} records)".format(l)), options=opt2)
+            cell = html.td(html.b("Summary ({} records)".format(ln)), options=opt2)
             rows.extend(html.tr(cell))
             for cell in ["Property", "Type", "Num Values", "Min", "Max", "Mean", "Median"]:
                 cells.extend(html.td(html.b(cell), options=opt1))
@@ -1376,14 +1376,14 @@ class Mol_List(list):
         n = len(number_fields)
         pair_format = str(max(len(i) for i in number_fields) * 2 + 7) + "s"
         corr_d = {}
-        l = len(self)
+        ln = len(self)
         for left in range(n):
             left_values = [get_prop_val(mol, number_fields[left]) for mol in self]
             for right in range(left + 1, n):
                 right_values = [get_prop_val(mol, number_fields[right]) for mol in self]
                 both_y = []
                 both_x = []
-                for i in range(l):
+                for i in range(ln):
                     if left_values[i] is None or right_values[i] is None:
                         continue
                     both_y.append(left_values[i])
@@ -2026,10 +2026,11 @@ def get_value(str_val):
 
 def isnumber(x):
     """Returns True, if x is a number (i.e. can be converted to float)."""
+    if x is None: return False
     try:
         float(x)
         return True
-    except:
+    except ValueError:
         return False
 
 
@@ -2424,9 +2425,9 @@ def show_sheet(sdf_list, props=None, id_prop=None, interact=False, highlight=Non
 
 
 def table_pager(mol_list, id_prop=None, interact=False, pagesize=25, highlight=None, order=None, show_hidden=False):
-    l = len(mol_list)
-    num_pages = l // pagesize
-    if not WIDGETS or l <= pagesize:
+    ln = len(mol_list)
+    num_pages = ln // pagesize
+    if not WIDGETS or ln <= pagesize:
         return HTML(mol_table(mol_list, id_prop=id_prop, highlight=highlight,
                               order=order, show_hidden=show_hidden))
 
@@ -2439,9 +2440,9 @@ def table_pager(mol_list, id_prop=None, interact=False, pagesize=25, highlight=N
 
 
 def nested_pager(mol_list, pagesize=10, id_prop=None, props=None, order=None):
-    l = len(mol_list)
-    num_pages = l // pagesize
-    if not WIDGETS or l <= pagesize:
+    ln = len(mol_list)
+    num_pages = ln // pagesize
+    if not WIDGETS or ln <= pagesize:
         return HTML(nested_table(mol_list, id_prop=id_prop, props=props, order=order))
 
     ipyw.interact(
@@ -2452,9 +2453,9 @@ def nested_pager(mol_list, pagesize=10, id_prop=None, props=None, order=None):
 
 
 def grid_pager(mol_list, pagesize=20, id_prop=None, interact=False, highlight=None, props=None, mols_per_row=4, size=IMG_GRID_SIZE):
-    l = len(mol_list)
-    num_pages = l // pagesize
-    if not WIDGETS or l <= pagesize:
+    ln = len(mol_list)
+    num_pages = ln // pagesize
+    if not WIDGETS or ln <= pagesize:
         return HTML(mol_sheet(mol_list, id_prop=id_prop, props=props, size=size))
 
     ipyw.interact(

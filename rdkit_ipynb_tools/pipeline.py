@@ -346,9 +346,9 @@ def start_stream_from_dict(d, summary=None, comp_id="start_stream_from_dict", sh
     """Provide a data stream from a dict."""
     prev_time = time.time()
     d_keys = list(d.keys())
-    l = len(d[d_keys[0]])  # length of the stream
+    ln = len(d[d_keys[0]])  # length of the stream
     rec_counter = 0
-    for idx in range(l):
+    for idx in range(ln):
         rec = {}
         for k in d_keys:
             rec[k] = d[k][idx]
