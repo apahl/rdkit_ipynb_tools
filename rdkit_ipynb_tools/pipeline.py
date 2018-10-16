@@ -9,15 +9,22 @@ Pipeline
 
 A Pipelining Workflow using Python Generators, mainly for RDKit and large compound sets.
 
-Example use:
-    >>> from rdkit_ipynb_tools import pipeline as p
-    >>> s = p.Summary()
-    >>> rd = p.start_csv_reader("/home/pahl/data_b64.csv.gz", summary=s)
-    >>> b64 = p.pipe_mol_from_b64(rd, summary=s)
-    >>> filt = p.pipe_mol_filter(b64, "[H]c2c([H])c1ncoc1c([H])c2C(N)=O", summary=s)
-    >>> p.stop_sdf_writer(filt, "test.sdf", summary=s)
+Example use (converting a dl Chembl SDF to tab-separated Smiles):
+```Python
+chembl_fn = "chembl_23.sdf.gz"
+keep_stereo = True
+fn_info = "stereo" if keep_stereo else "rac"
+s = p.Summary()
+rd = p.start_sdf_reader(chembl_fn, max_records=0, summary=s)
+res = p.pipe(rd,
+             (p.pipe_rename_prop, "chembl_id", "Chembl_Id"),
+             (p.pipe_keep_largest_fragment),
+             (p.pipe_mol_to_smiles, {"isomeric": keep_stereo}),
+             (p.stop_csv_writer, "chembl_23_{}.tsv".format(keep_stereo), {"summary": s})
+            )
+```
 
-The progress of the pipeline can be followed in a terminal with: `watch -n 2 less pipeline.log`
+The progress of the pipeline is displayed in the notebook.
 """
 
 
@@ -84,9 +91,10 @@ if IPY:
 
 
 def format_seconds(seconds):
+    seconds = int(seconds)
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
-    t_str = "{:02.0f}h {:02.0f}m {:02.2f}s".format(h, m, s)
+    t_str = "{:02.0f}h {:02d}m {:02d}s".format(h, m, s)
     return t_str
 
 
@@ -666,12 +674,12 @@ def start_mol_csv_reader(fn, max_records=0, in_b64="Mol_b64", tag=True, sep="\t"
     return mol
 
 
-def pipe_mol_to_smiles(stream, out_smiles="Smiles", summary=None, comp_id="pipe_mol_to_smiles"):
+def pipe_mol_to_smiles(stream, out_smiles="Smiles", isomeric=False, summary=None, comp_id="pipe_mol_to_smiles"):
     """Calculate Smiles from the mol object onthe stram."""
     rec_counter = 0
     for rec in stream:
         if "mol" in rec:
-            rec[out_smiles] = Chem.MolToSmiles(rec["mol"])
+            rec[out_smiles] = Chem.MolToSmiles(rec["mol"], isomericSmiles=isomeric)
             rec_counter += 1
             if summary is not None:
                 summary[comp_id] = rec_counter

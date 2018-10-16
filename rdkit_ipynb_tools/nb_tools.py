@@ -115,7 +115,8 @@ def show_progress(iterable, iter_len=0):
 
 
 def format_seconds(seconds):
+    seconds = int(seconds)
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
-    t_str = "{:02.0f}h {:02.0f}m {:02.2f}s".format(h, m, s)
+    t_str = "{:02.0f}h {:02d}m {:02d}s".format(h, m, s)
     return t_str

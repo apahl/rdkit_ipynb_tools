@@ -1901,6 +1901,7 @@ def calc_scaffolds(parent_list):
         frag_list = [f.replace("*", "H") for f in frag_list]
         for frag in frag_list:
             mol = Chem.MolFromSmiles(frag)
+            if not mol: continue
             if Desc.RingCount(mol) > 0:
                 murcko = calc_murcko_scaf(mol)
                 scaf_set.add(murcko)
