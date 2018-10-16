@@ -23,8 +23,11 @@ from rdkit.Chem import Draw
 from rdkit.Chem.Draw import SimilarityMaps
 from rdkit import DataStructs
 
-Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
-Draw.DrawingOptions.atomLabelFontSize = 18
+try:
+    Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
+    Draw.DrawingOptions.atomLabelFontSize = 18
+except KeyError:  # Font "DejaVu Sans" is not available
+    pass
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier

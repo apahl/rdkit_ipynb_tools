@@ -22,8 +22,11 @@ import rdkit.Chem.Descriptors as Desc
 from rdkit.Chem.AtomPairs import Pairs, Torsions
 
 # import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
-Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
-Draw.DrawingOptions.atomLabelFontSize = 18
+try:
+    Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
+    Draw.DrawingOptions.atomLabelFontSize = 18
+except KeyError:  # Font "DejaVu Sans" is not available
+    pass
 
 from rdkit import DataStructs
 from rdkit.ML.Cluster import Butina
@@ -35,7 +38,7 @@ try:
     # (it gives `NotImplementedError('Implement enable_gui in a subclass')`)
     import matplotlib.pyplot as plt
     MPL = True
-except:
+except ImportError:
     MPL = False
 
 # from . import html_templates as html

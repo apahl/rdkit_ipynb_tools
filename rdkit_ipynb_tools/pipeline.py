@@ -59,8 +59,11 @@ from rdkit import DataStructs
 from rdkit.Chem.Fingerprints import FingerprintMols
 import rdkit.Chem.Scaffolds.MurckoScaffold as MurckoScaffold
 
-Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
-Draw.DrawingOptions.atomLabelFontSize = 18
+try:
+    Draw.DrawingOptions.atomLabelFontFace = "DejaVu Sans"
+    Draw.DrawingOptions.atomLabelFontSize = 18
+except KeyError:  # Font "DejaVu Sans" is not available
+    pass
 
 from . import tools
 
